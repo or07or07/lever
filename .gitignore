@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Environment secrets
+.env
+.env.prod
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Data & logs (local dev)
+data/
+logs/
+*.log
+
+# Build artifacts & temp files
+b64_chunks.txt
+index_b64.txt
+notif_js.txt
+i18n_strings.js
+pip_out.txt
+pip_err.txt
+seed_out.txt
+seed_err.txt
+test_out.txt
+test_err.txt
+patch_out.txt
+patch_err.txt
+
+# Docker volumes (not config)
+pgdata/
+
+# Certbot certs (generated, not committed)
+deploy/certbot/
+
+# Backup files
+*.bak
+
+# Node / Capacitor
+node_modules/
+
+# Android (Capacitor native project — generated/build artifacts)
+android/.gradle/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+android/app/src/main/assets/public/
+*.jks
+*.keystore
+
+# iOS (Capacitor native project, if added later)
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/

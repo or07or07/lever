@@ -1,0 +1,89 @@
+# =============================================================================
+# Lever — Docker Compose (Development)
+#
+# Services:
+#   app      — FastAPI application on port 8500
+#   db       — PostgreSQL 16 on port 5432
+#   mailpit  — Dev mail server on ports 1025 (SMTP) / 8025 (Web UI)
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose logs -f app    # Follow app logs
+#   docker compose down           # Stop all services
+#   docker compose down -v        # Stop and remove volumes (reset DB)
+#
+# CIA Triad:
+#   Confidentiality: Passwords in .env (not committed), internal network
+#   Integrity:       Named volumes for persistent data, health checks
+#   Availability:    Restart policies, depends_on with health conditions
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ---------- PostgreSQL ----------
+  db:
+    image: postgres:16-alpine
+    container_name: lever-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lever
+      POSTGRES_USER: lever
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lever_dev_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lever -d lever"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------- Mailpit (dev SMTP) ----------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: lever-mail
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ---------- Lever App ----------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lever-app
+    restart: unless-stopped
+    ports:
+      - "8500:8500"
+    environment:
+      DATABASE_URL: postgresql://lever:${DB_PASSWORD:-lever_dev_2026}@db:5432/lever
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production-use-openssl-rand-hex-32}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USE_TLS: "false"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@lever.app}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin123!}
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    volumes:
+      - ./frontend:/app/frontend:ro   # Live-reload frontend during dev
+      - app_logs:/app/logs
+
+volumes:
+  pgdata:
+    driver: local
+  app_logs:
+    driver: local
