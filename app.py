@@ -83,9 +83,9 @@ app.add_middleware(
         "http://localhost:8500",
         "http://127.0.0.1:8500",
         "http://0.0.0.0:8500",
-        # Production — real domain, behind Cloudflare proxy (HTTPS enforced)
-        "https://ec-lever.com",
-        "https://www.ec-lever.com",
+        # Production — real domain, DNS pointed directly at this VPS (HTTPS enforced)
+        "https://lever-ec.com",
+        "https://www.lever-ec.com",
         # Legacy placeholder domain — HTTPS enforced
         "https://lever.test-test-now.com",
         # HTTP fallback (redirect to HTTPS via nginx, but allow during transition)
