@@ -1176,6 +1176,12 @@ function setLanguage(lang) {
   }
 }
 
+function applyAuthLang(lang) {
+  var isRegister = document.getElementById('tab-register')?.classList.contains('active');
+  setLanguage(lang);
+  renderAuth(isRegister ? 'register' : 'login');
+}
+
 // ============================================================
 //  NAVIGATION UPGRADE
 // ============================================================
@@ -3409,6 +3415,11 @@ function renderAuth(initialTab) {
         <div class="auth-logo">
           <h1 style="display:inline-flex;align-items:center;gap:4px"><svg width="28" height="28" viewBox="0 0 100 100" fill="none" style="display:inline-block;vertical-align:middle"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg><span style="letter-spacing:-.5px;margin-left:-1px">ever</span></h1>
           <p>${_t('auth.tagline')}</p>
+          <div style="margin-top:8px">
+            <button type="button" class="btn-ghost" style="font-size:.78rem;${_lang==='es'?'font-weight:700;color:var(--brand)':'color:var(--gray-500)'}" onclick="applyAuthLang('es')">Español</button>
+            <span style="color:var(--gray-300)">|</span>
+            <button type="button" class="btn-ghost" style="font-size:.78rem;${_lang==='en'?'font-weight:700;color:var(--brand)':'color:var(--gray-500)'}" onclick="applyAuthLang('en')">English</button>
+          </div>
         </div>
 
         <div class="tab-row">
