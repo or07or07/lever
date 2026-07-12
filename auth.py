@@ -81,7 +81,6 @@ def require_role(*roles):
 
 
 require_client = require_role("client")
-require_mechanic = require_role("mechanic")       # Legacy alias
 require_provider = require_role("mechanic")        # Preferred — maps to DB role "mechanic"
 require_admin = require_role("admin")
 require_client_or_mechanic = require_role("client", "mechanic")

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import logging
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import List
 
@@ -57,6 +58,52 @@ logging.basicConfig(
 logger = logging.getLogger("lever")
 
 # ---------------------------------------------------------------------------
+# Startup – ensure DB tables + admin user
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from database import engine
+    Base.metadata.create_all(bind=engine)
+
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.email == settings.admin_email).first()
+        if not admin:
+            admin = User(
+                email=settings.admin_email,
+                password_hash=hash_password(settings.admin_password),
+                role="admin",
+                is_active=True,
+                email_verified=True,  # Admin is pre-verified
+            )
+            db.add(admin)
+            db.commit()
+            logger.info(f"Admin user created: {settings.admin_email}")
+        else:
+            # Ensure existing admin is verified
+            if not admin.email_verified:
+                admin.email_verified = True
+                db.commit()
+                logger.info(f"Admin user marked as verified: {settings.admin_email}")
+            else:
+                logger.info(f"Admin user exists: {settings.admin_email}")
+    finally:
+        db.close()
+
+    logger.info(f"SMTP configured: {settings.smtp_host}:{settings.smtp_port}")
+    logger.info(f"Professions loaded: {', '.join(PROFESSION_KEYS)}")
+    logger.info("Security headers middleware: ACTIVE (defense in depth)")
+    logger.info("Rate limiting middleware: ACTIVE")
+    logger.info("WebSocket messaging: ACTIVE (/ws/messages/{job_id})")
+    logger.info("Notifications system: ACTIVE (/api/notifications)")
+    logger.info("Search + Geolocation: ACTIVE (/api/search/*)")
+    logger.info("GPS Live Tracking: ACTIVE (/ws/tracking/{job_id}/*)")
+
+    yield
+
+
+# ---------------------------------------------------------------------------
 # FastAPI app
 # ---------------------------------------------------------------------------
 
@@ -64,6 +111,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="Multi-profession on-demand service marketplace API",
+    lifespan=lifespan,
 )
 
 # Security Headers Middleware (defense in depth — supplements nginx headers)
@@ -113,50 +161,6 @@ async def log_requests(request, call_next):
     if elapsed > 500:
         logger.warning(f"SLOW {request.method} {request.url.path} – {elapsed:.0f}ms")
     return response
-
-
-# ---------------------------------------------------------------------------
-# Startup – ensure DB tables + admin user
-# ---------------------------------------------------------------------------
-
-@app.on_event("startup")
-def on_startup():
-    from database import engine
-    Base.metadata.create_all(bind=engine)
-
-    db = SessionLocal()
-    try:
-        admin = db.query(User).filter(User.email == settings.admin_email).first()
-        if not admin:
-            admin = User(
-                email=settings.admin_email,
-                password_hash=hash_password(settings.admin_password),
-                role="admin",
-                is_active=True,
-                email_verified=True,  # Admin is pre-verified
-            )
-            db.add(admin)
-            db.commit()
-            logger.info(f"Admin user created: {settings.admin_email}")
-        else:
-            # Ensure existing admin is verified
-            if not admin.email_verified:
-                admin.email_verified = True
-                db.commit()
-                logger.info(f"Admin user marked as verified: {settings.admin_email}")
-            else:
-                logger.info(f"Admin user exists: {settings.admin_email}")
-    finally:
-        db.close()
-
-    logger.info(f"SMTP configured: {settings.smtp_host}:{settings.smtp_port}")
-    logger.info(f"Professions loaded: {', '.join(PROFESSION_KEYS)}")
-    logger.info("Security headers middleware: ACTIVE (defense in depth)")
-    logger.info("Rate limiting middleware: ACTIVE")
-    logger.info("WebSocket messaging: ACTIVE (/ws/messages/{job_id})")
-    logger.info("Notifications system: ACTIVE (/api/notifications)")
-    logger.info("Search + Geolocation: ACTIVE (/api/search/*)")
-    logger.info("GPS Live Tracking: ACTIVE (/ws/tracking/{job_id}/*)")
 
 
 # ---------------------------------------------------------------------------

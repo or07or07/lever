@@ -1416,7 +1416,11 @@ function buildJobTracker(statuses, currentStatus) {
   return html;
 }
 
-const API = '';  // same-origin
+// In the Capacitor native app, the WebView's own origin is https://localhost —
+// relative "same-origin" API calls would go nowhere, so point at the real backend.
+const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const PROD_API_ORIGIN = 'https://lever-ec.com';
+const API = IS_NATIVE ? PROD_API_ORIGIN : '';  // native: absolute URL, web/PWA: same-origin
 let _token = localStorage.getItem('lever_token') || null;
 let _user  = JSON.parse(localStorage.getItem('lever_user') || 'null');
 let _professions = {}; // loaded from API
@@ -3559,7 +3563,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Capacitor native shell glue — no-op in a regular browser/PWA context.
-if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+if (IS_NATIVE) {
   window.Capacitor.Plugins.App.addListener('backButton', () => {
     const hash = window.location.hash || '#/';
     if (hash === '#/' || hash === '') {
@@ -3804,6 +3808,9 @@ let _trackingBreadcrumbs = [];   // Trail points array
  * Get WebSocket base URL from current location
  */
 function wsBase() {
+  if (IS_NATIVE) {
+    return PROD_API_ORIGIN.replace(/^http/, 'ws');
+  }
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   return proto + '//' + location.host;
 }

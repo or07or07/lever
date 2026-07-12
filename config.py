@@ -13,8 +13,12 @@ ISO 27001 Controls Referenced:
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 
 BASE_DIR = Path(__file__).parent
+
+INSECURE_DEFAULT_SECRET_KEY = "CHANGE-ME-IN-PRODUCTION-use-openssl-rand-hex-32"
+INSECURE_DEFAULT_ADMIN_PASSWORD = "Admin123!"
 
 
 class Settings(BaseSettings):
@@ -26,7 +30,7 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{BASE_DIR}/data/lever.db"
 
     # JWT – ISO 27001 A.10.1.1 (Cryptographic controls)
-    secret_key: str = "CHANGE-ME-IN-PRODUCTION-use-openssl-rand-hex-32"
+    secret_key: str = INSECURE_DEFAULT_SECRET_KEY
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
 
@@ -36,7 +40,22 @@ class Settings(BaseSettings):
 
     # Admin bootstrap (created on first startup)
     admin_email: str = "admin@lever.app"
-    admin_password: str = "Admin123!"
+    admin_password: str = INSECURE_DEFAULT_ADMIN_PASSWORD
+
+    @model_validator(mode="after")
+    def _refuse_insecure_defaults_outside_debug(self):
+        if not self.debug:
+            if self.secret_key == INSECURE_DEFAULT_SECRET_KEY:
+                raise ValueError(
+                    "SECRET_KEY is unset (using the insecure placeholder default) while DEBUG=false. "
+                    "Set a real SECRET_KEY (openssl rand -hex 32) before running in production."
+                )
+            if self.admin_password == INSECURE_DEFAULT_ADMIN_PASSWORD:
+                raise ValueError(
+                    "ADMIN_PASSWORD is unset (using the insecure placeholder default) while DEBUG=false. "
+                    "Set a real ADMIN_PASSWORD before running in production."
+                )
+        return self
 
     # ── SMTP / Email Verification ──
     # ISO 27001 A.9.4.2 (Secure log-on – email ownership proof)
