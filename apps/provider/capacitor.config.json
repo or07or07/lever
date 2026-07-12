@@ -1,0 +1,6 @@
+{
+  "appId": "com.lever.provider",
+  "appName": "Lever Provider",
+  "webDir": "../../frontend",
+  "appFlavor": "provider"
+}

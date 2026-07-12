@@ -1421,6 +1421,11 @@ function buildJobTracker(statuses, currentStatus) {
 const IS_NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const PROD_API_ORIGIN = 'https://lever-ec.com';
 const API = IS_NATIVE ? PROD_API_ORIGIN : '';  // native: absolute URL, web/PWA: same-origin
+
+// Which native app shell this is ('client' | 'provider'), read from the
+// native capacitor.config.json — null on web/PWA, where both roles coexist.
+const APP_FLAVOR = (IS_NATIVE && window.Capacitor.getConfig && window.Capacitor.getConfig().appFlavor) || null;
+const APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : (APP_FLAVOR === 'client' ? 'client' : null);
 let _token = localStorage.getItem('lever_token') || null;
 let _user  = JSON.parse(localStorage.getItem('lever_user') || 'null');
 let _professions = {}; // loaded from API
@@ -3212,14 +3217,15 @@ function renderAuth(initialTab) {
             <label>${_t('auth.password')}</label>
             <input type="password" id="r-pass" placeholder="Create a strong password" autocomplete="new-password">
           </div>
+          ${APP_FLAVOR_ROLE ? `<input type="hidden" id="r-role" value="${APP_FLAVOR_ROLE}">` : `
           <div class="form-group">
             <label>${_t('auth.role')}</label>
             <select id="r-role" onchange="document.getElementById('r-prof-group').style.display = this.value==='mechanic' ? 'block' : 'none'">
               <option value="client">${_t('auth.client')}</option>
               <option value="mechanic">${_t('auth.provider')}</option>
             </select>
-          </div>
-          <div class="form-group" id="r-prof-group" style="display:none">
+          </div>`}
+          <div class="form-group" id="r-prof-group" style="display:${APP_FLAVOR_ROLE==='mechanic'?'block':'none'}">
             <label>${_t('auth.profession')}</label>
             <select id="r-profession">
               ${profOptions}
@@ -3246,6 +3252,12 @@ async function doLogin() {
   const pass  = document.getElementById('l-pass').value;
   try {
     const data = await post('/api/auth/login', {email, password:pass});
+    if (APP_FLAVOR_ROLE && data.role !== APP_FLAVOR_ROLE) {
+      const appName = APP_FLAVOR === 'provider' ? 'Lever' : 'Lever Provider';
+      document.getElementById('l-err').innerHTML = alert_el('error',
+        `Esta cuenta es de ${data.role === 'mechanic' ? 'proveedor' : 'cliente'}. Usa la app "${appName}" para iniciar sesión.`);
+      return;
+    }
     login(data.access_token, {id:data.user_id, email, role:data.role, profession:data.profession||null, email_verified:data.email_verified!==false});
     await loadProfessions();
     if (data.email_verified === false) { route('#/verify-email'); }

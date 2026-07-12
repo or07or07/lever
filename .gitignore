@@ -63,13 +63,13 @@ deploy/certbot/
 # Node / Capacitor
 node_modules/
 
-# Android (Capacitor native project — generated/build artifacts)
-android/.gradle/
-android/app/build/
-android/build/
-android/capacitor-cordova-android-plugins/build/
-android/local.properties
-android/app/src/main/assets/public/
+# Android (Capacitor native projects — generated/build artifacts)
+apps/*/android/.gradle/
+apps/*/android/app/build/
+apps/*/android/build/
+apps/*/android/capacitor-cordova-android-plugins/build/
+apps/*/android/local.properties
+apps/*/android/app/src/main/assets/public/
 *.jks
 *.keystore
 
