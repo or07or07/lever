@@ -68,6 +68,11 @@ input,textarea,select{font-family:inherit}
 .topbar-user{font-size:.85rem;color:var(--gray-600)}
 .btn-sm{padding:6px 14px;border-radius:var(--radius);border:1px solid var(--brand-200);font-size:.8rem;font-weight:600;background:#fff;color:var(--brand);transition:all var(--duration) var(--ease)}
 .btn-sm:hover{background:var(--brand-50)}
+.provider-status-toggle{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius-full);border:1px solid var(--gray-300);font-size:.8rem;font-weight:600;background:var(--gray-100);color:var(--gray-600);transition:all var(--duration) var(--ease)}
+.provider-status-toggle .status-dot{width:8px;height:8px;border-radius:50%;background:var(--gray-400)}
+.provider-status-toggle.is-online{border-color:var(--success);background:var(--success-light);color:var(--success)}
+.provider-status-toggle.is-online .status-dot{background:var(--success)}
+.provider-status-toggle:disabled{opacity:.6;cursor:not-allowed}
 
 .main-wrap{display:flex;flex:1}
 .sidebar{width:240px;background:#fff;border-right:1px solid var(--gray-200);padding:16px 0;flex-shrink:0}
@@ -833,6 +838,8 @@ var _translations = {
   'nav.reviews': {es:'Rese\u00f1as', en:'Reviews'},
   'nav.users': {es:'Usuarios', en:'Users'},
   'nav.disputes': {es:'Disputas', en:'Disputes'},
+  'nav.map': {es:'Mapa', en:'Map'},
+  'nav.vehicles': {es:'Mis Vehículos', en:'My Vehicles'},
   'nav.packages': {es:'Paquetes', en:'Packages'},
   'nav.principal': {es:'Principal', en:'Main'},
   'nav.cuenta': {es:'Cuenta', en:'Account'},
@@ -1117,6 +1124,40 @@ var _translations = {
   'wait.step4': {es:'Solicitud publicada en el tablero', en:'Request posted to the board'},
   'wait.done': {es:'\u00a1Listo! Tu solicitud est\u00e1 activa', en:'Done! Your request is live'},
   'wait.doneSub': {es:'Los profesionales disponibles pueden ver y aceptar tu trabajo', en:'Available professionals can see and accept your job'},
+
+  'provider.online': {es:'En l\u00ednea', en:'Online'},
+  'provider.offline': {es:'Desconectado', en:'Offline'},
+  'provider.offlineBoardTitle': {es:'Est\u00e1s desconectado', en:'You are offline'},
+  'provider.offlineBoardSub': {es:'Con\u00e9ctate para ver y aceptar trabajos disponibles', en:'Go online to see and accept available jobs'},
+  'provider.goOnline': {es:'Conectarse', en:'Go online'},
+
+  'veh.title': {es:'Mis Vehículos', en:'My Vehicles'},
+  'veh.add': {es:'Agregar Vehículo', en:'Add Vehicle'},
+  'veh.edit': {es:'Editar Vehículo', en:'Edit Vehicle'},
+  'veh.empty': {es:'Sin vehículos registrados', en:'No vehicles yet'},
+  'veh.emptySub': {es:'Agrega un vehículo para usarlo en tus solicitudes', en:'Add a vehicle to use it in your service requests'},
+  'veh.make': {es:'Marca', en:'Make'},
+  'veh.model': {es:'Modelo', en:'Model'},
+  'veh.year': {es:'Año', en:'Year'},
+  'veh.color': {es:'Color', en:'Color'},
+  'veh.plate': {es:'Placa', en:'License plate'},
+  'veh.vin': {es:'VIN', en:'VIN'},
+  'veh.mileage': {es:'Kilometraje', en:'Mileage'},
+  'veh.notes': {es:'Notas', en:'Notes'},
+  'veh.save': {es:'Guardar', en:'Save'},
+  'veh.delete': {es:'Eliminar', en:'Delete'},
+  'veh.editBtn': {es:'Editar', en:'Edit'},
+  'veh.deleteConfirm': {es:'¿Eliminar este vehículo?', en:'Delete this vehicle?'},
+  'veh.noneSelected': {es:'Sin vehículo', en:'No vehicle'},
+  'veh.selectVehicle': {es:'Vehículo (opcional)', en:'Vehicle (optional)'},
+
+  'dispute.raise': {es:'Reportar un Problema', en:'Raise a Dispute'},
+  'dispute.title': {es:'Reportar un Problema', en:'Raise a Dispute'},
+  'dispute.description': {es:'Describe el problema', en:'Describe the issue'},
+  'dispute.descPlaceholder': {es:'Explica qué salió mal con este trabajo (mínimo 20 caracteres)', en:'Explain what went wrong with this job (minimum 20 characters)'},
+  'dispute.submit': {es:'Enviar Reporte', en:'Submit Dispute'},
+  'dispute.success': {es:'Tu reporte fue enviado. Un administrador lo revisará pronto.', en:'Your dispute was submitted. An admin will review it soon.'},
+  'dispute.alreadyExists': {es:'Ya existe un reporte para este trabajo.', en:'A dispute already exists for this job.'},
 };
 
 function _t(key) {
@@ -1301,10 +1342,10 @@ function buildSidebarImproved(role, hash) {
   var mainHashes, secHashes;
   if (role === 'client') {
     mainHashes = ['#/', '#/requests'];
-    secHashes = ['#/messages', '#/profile', '#/settings'];
+    secHashes = ['#/messages', '#/map', '#/vehicles', '#/profile', '#/settings'];
   } else if (role === 'mechanic') {
     mainHashes = ['#/', '#/board', '#/jobs'];
-    secHashes = ['#/reviews', '#/messages', '#/profile', '#/settings'];
+    secHashes = ['#/reviews', '#/messages', '#/map', '#/profile', '#/settings'];
   } else {
     mainHashes = items.map(function(n){return n.hash;});
     secHashes = [];
@@ -1335,7 +1376,7 @@ function buildSidebarImproved(role, hash) {
 }
 
 function getPageTitle(hash) {
-  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/settings':_t('nav.settings')};
+  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
   return titles[hash] || '';
 }
 
@@ -1429,6 +1470,9 @@ const APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : (APP_FLAVOR ===
 let _token = localStorage.getItem('lever_token') || null;
 let _user  = JSON.parse(localStorage.getItem('lever_user') || 'null');
 let _professions = {}; // loaded from API
+let _providerOnline = null; // null = unknown yet, true/false once fetched
+let _providerFilter = ''; // profession filter used by map view and guest browse
+let _heartbeatTimer = null;
 
 // ---- HTTP helpers ----
 async function api(method, path, body, noAuth=false) {
@@ -1500,9 +1544,65 @@ function login(token, user) {
 function logout() {
   _token = null; _user = null;
   stopNotifPolling();
+  stopHeartbeat();
+  _providerOnline = null;
   localStorage.removeItem('lever_token');
   localStorage.removeItem('lever_user');
   route('#/login');
+}
+
+// ---- Provider online/offline ----
+function startHeartbeat() {
+  stopHeartbeat();
+  _heartbeatTimer = setInterval(() => {
+    post('/api/provider/heartbeat', {}).catch(() => {});
+  }, 60000);
+}
+function stopHeartbeat() {
+  if (_heartbeatTimer) { clearInterval(_heartbeatTimer); _heartbeatTimer = null; }
+}
+
+async function initProviderStatus() {
+  if (_user?.role !== 'mechanic') return;
+  if (_providerOnline !== null) { renderProviderStatusToggle(); return; }
+  try {
+    const profile = await get('/api/provider/profile');
+    _providerOnline = !!profile.is_online;
+  } catch (e) {
+    _providerOnline = false;
+  }
+  if (_providerOnline) startHeartbeat(); else stopHeartbeat();
+  renderProviderStatusToggle();
+}
+
+async function toggleProviderOnline() {
+  const btn = document.getElementById('provider-status-toggle');
+  if (btn) btn.disabled = true;
+  try {
+    if (_providerOnline) {
+      await post('/api/provider/go-offline', {});
+      _providerOnline = false;
+      stopHeartbeat();
+    } else {
+      await post('/api/provider/go-online', {});
+      _providerOnline = true;
+      startHeartbeat();
+    }
+    renderProviderStatusToggle();
+    // Refresh the current screen so board/dashboard reflect the new status
+    render();
+  } catch (e) {
+    alert(e.message || 'Could not update status');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderProviderStatusToggle() {
+  const el = document.getElementById('provider-status-toggle');
+  if (!el || _providerOnline === null) return;
+  el.classList.toggle('is-online', _providerOnline);
+  el.innerHTML = `<span class="status-dot"></span>${_providerOnline ? _t('provider.online') : _t('provider.offline')}`;
 }
 
 // ---- Router ----
@@ -1513,7 +1613,7 @@ window.addEventListener('load', async () => {
   render();
 });
 
-function render() {
+async function render() {
   const _hash = window.location.hash || '#/';
   // Language route shortcuts: #/us -> English, #/es -> Spanish
   if (_hash === '#/us' || _hash === '#/es') {
@@ -1552,6 +1652,7 @@ function render() {
         <div style="display:flex;align-items:center;gap:12px"><div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div><div class="topbar-brand"><svg width="22" height="22" viewBox="0 0 100 100" fill="none" style="display:inline-block;vertical-align:middle"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg><span style="font-weight:800;letter-spacing:-.5px;margin-left:0px">ever</span> <span>${roleLabel}</span></div></div>
         <div class="topbar-right">
           <span class="topbar-page-title" id="topbar-page-title"></span>
+          ${role==='mechanic' ? `<button class="provider-status-toggle" id="provider-status-toggle" onclick="toggleProviderOnline()">${_t('provider.offline')}</button>` : ''}
           <button class="topbar-bell" onclick="toggleNotifPanel()" aria-label="Notificaciones">
             \ud83d\udd14<span class="bell-count" id="bell-count"></span>
           </button>
@@ -1572,6 +1673,7 @@ function render() {
   buildSidebarImproved(role, hash);
   updateBottomTabs(role, hash);
   startNotifPolling();
+  await initProviderStatus();
   var ptEl = document.getElementById('topbar-page-title');
   if (ptEl) ptEl.textContent = getPageTitle(hash);
   loadContent(role, hash);
@@ -1597,6 +1699,8 @@ var _navLabelMap = {
   '#/reviews': 'nav.reviews',
   '#/users': 'nav.users',
   '#/disputes': 'nav.disputes',
+  '#/map': 'nav.map',
+  '#/vehicles': 'nav.vehicles',
 };
 function navLabel(n) {
   var key = _navLabelMap[n.hash];
@@ -1609,6 +1713,8 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label:_t('nav.dashboard'),   hash:'#/'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'My Requests',  hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label:'Messages',     hash:'#/messages'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>', label:_t('nav.map'), hash:'#/map'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>', label:_t('nav.vehicles'), hash:'#/vehicles'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label:'Profile',      hash:'#/profile'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings',     hash:'#/settings'},
   ],
@@ -1618,6 +1724,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>', label:'My Jobs',     hash:'#/jobs'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', label:'Reviews',     hash:'#/reviews'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label:'Messages',    hash:'#/messages'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>', label:_t('nav.map'), hash:'#/map'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label:'Profile',     hash:'#/profile'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings',    hash:'#/settings'},
   ],
@@ -1706,6 +1813,8 @@ async function clientView(hash, el) {
   if (hash==='#/messages')           return renderMessages(el, null);
   if (hash.startsWith('#/chat/'))    return renderMessages(el, hash.split('/')[2]);
   if (hash==='#/profile')            return renderClientProfile(el);
+  if (hash==='#/map')                return renderMapView(el);
+  if (hash==='#/vehicles')           return renderVehicles(el);
   if (hash==='#/settings')           return renderSettings(el);
   el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
 }
@@ -1786,6 +1895,7 @@ async function showNewRequest() {
     <div class="form-group"><label>${_t('newreq.briefTitle')}</label><input id="sr-title" placeholder="${_t('newreq.briefPlaceholder')}"></div>
     <div class="form-group"><label>${_t('newreq.description')}</label><textarea id="sr-desc" placeholder="${_t('newreq.descPlaceholder')}"></textarea></div>
     <div class="form-group"><label>${_t('newreq.location')}</label><input id="sr-loc" placeholder="${_t('newreq.locPlaceholder')}"></div>
+    <div class="form-group"><label>${_t('veh.selectVehicle')}</label><select id="sr-vehicle"><option value="">${_t('veh.noneSelected')}</option></select></div>
     <div class="form-row">
       <div class="form-group"><label>${_t('newreq.urgency')}</label>
         <select id="sr-urgency" onchange="onUrgencyChange()"><option value="scheduled">${_t('newreq.scheduled')}</option><option value="immediate">${_t('newreq.immediate')}</option></select>
@@ -1803,6 +1913,21 @@ async function showNewRequest() {
     <div id="sr-err"></div>`,
     `<button class="btn btn-primary btn-full" onclick="submitNewRequest()">${_t('newreq.submit')}</button>`);
   onProfessionChange();
+  loadVehiclesForSelection();
+}
+
+async function loadVehiclesForSelection() {
+  const sel = document.getElementById('sr-vehicle');
+  if (!sel) return;
+  try {
+    const vehicles = await get('/api/client/vehicles');
+    vehicles.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.id;
+      opt.textContent = v.year+' '+v.make+' '+v.model+(v.license_plate?' ('+v.license_plate+')':'');
+      sel.appendChild(opt);
+    });
+  } catch (e) { /* vehicle list is optional, ignore failures */ }
 }
 
 function onProfessionChange() {
@@ -1988,6 +2113,7 @@ document.addEventListener('click', function(e) {
 async function submitNewRequest() {
   const budgetMax = document.getElementById('sr-budget').value;
   const profType  = document.getElementById('sr-prof').value;
+  const vehicleId = document.getElementById('sr-vehicle')?.value;
   const payload = {
     title: document.getElementById('sr-title').value.trim(),
     description: document.getElementById('sr-desc').value.trim(),
@@ -1996,6 +2122,7 @@ async function submitNewRequest() {
     profession_type: profType,
       // NOTE: preferred_mechanic_id removed - backend does not support this field yet.
     ...(budgetMax && {budget_max: parseFloat(budgetMax)}),
+    ...(vehicleId && {vehicle_id: parseInt(vehicleId)}),
   };
   try {
     const req = await post('/api/client/requests', payload);
@@ -2333,6 +2460,7 @@ async function renderRequestDetail(el, id) {
         <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('reqdet.openChat')}</button>
         ${job.status==='completed'&&!req.review?`<button class="btn btn-success" onclick="showReviewModal(${job.id})">${_t('reqdet.leaveReview')}</button>`:''}
         ${job.status==='completed'&&req.review?`<div class="text-sm" style="display:flex;align-items:center;gap:6px">\u2B50 ${_t('reqdet.youRated')} <span class="stars">${stars(req.review?.rating||0)}</span></div>`:''}
+        ${job.status!=='cancelled'?`<button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>`:''}
       </div>
     </div>
     ${renderClientTrackingCard(job.id, job.status, req.latitude, req.longitude)}
@@ -2379,6 +2507,29 @@ async function submitReview(jobId) {
     closeModal(); render();
   } catch(e) {
     document.getElementById('rv-err').innerHTML = alert_el('error', e.message);
+  }
+}
+
+// ---- Disputes (shared: client + provider) ----
+function showDisputeModal(jobId) {
+  showModal(_t('dispute.title'), `
+    <div class="form-group">
+      <label>${_t('dispute.description')}</label>
+      <textarea id="disp-desc" placeholder="${_t('dispute.descPlaceholder')}" style="min-height:120px"></textarea>
+    </div>
+    <div id="disp-err"></div>`,
+    `<button class="btn btn-danger btn-full" onclick="submitDispute(${jobId})">${_t('dispute.submit')}</button>`);
+}
+
+async function submitDispute(jobId) {
+  const description = document.getElementById('disp-desc').value.trim();
+  try {
+    await post('/api/disputes/job/'+jobId, {description});
+    closeModal();
+    showToast(_t('dispute.success'), 'success');
+  } catch(e) {
+    const msg = /already exists/i.test(e.message) ? _t('dispute.alreadyExists') : e.message;
+    document.getElementById('disp-err').innerHTML = alert_el('error', msg);
   }
 }
 
@@ -2479,6 +2630,76 @@ function showProviderDetail(m) {
     <div class="mech-tags" style="margin-top:10px">${m.specialties.map(s=>`<span class="mech-tag">${s}</span>`).join('')}</div>`);
 }
 
+// ---- Vehicle management ----
+async function renderVehicles(el) {
+  const vehicles = await get('/api/client/vehicles');
+  el.innerHTML = pageHeader(_t('veh.title'), `<button class="btn btn-primary" onclick="showVehicleModal()">${_t('veh.add')}</button>`);
+  if (vehicles.length === 0) {
+    el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 16H9m10 0h3v-3.15a1 1 0 00-.84-.99L16 11l-2.7-3.6a1 1 0 00-.8-.4H5.24a2 2 0 00-1.8 1.1l-.8 1.63A6 6 0 002 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>', _t('veh.empty'), _t('veh.emptySub'));
+    return;
+  }
+  el.innerHTML += '<div class="stats-grid">' + vehicles.map(v => `
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">${escapeHtml(v.year+' '+v.make+' '+v.model)}</div>
+        ${v.license_plate ? `<div class="card-subtitle">${_t('veh.plate')}: ${escapeHtml(v.license_plate)}</div>` : ''}</div>
+      </div>
+      ${v.color ? `<div class="text-sm">${_t('veh.color')}: ${escapeHtml(v.color)}</div>` : ''}
+      ${v.mileage ? `<div class="text-sm">${_t('veh.mileage')}: ${v.mileage.toLocaleString()}</div>` : ''}
+      ${v.notes ? `<p class="text-sm mt-4">${escapeHtml(v.notes)}</p>` : ''}
+      <div class="mt-4" style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick='showVehicleModal(${JSON.stringify(v).replace(/'/g,"&#39;")})'>${_t('veh.editBtn')}</button>
+        <button class="btn btn-danger" onclick="deleteVehicleConfirm(${v.id})">${_t('veh.delete')}</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function showVehicleModal(vehicle) {
+  const v = vehicle || {};
+  showModal(v.id ? _t('veh.edit') : _t('veh.add'), `
+    <div class="form-row">
+      <div class="form-group"><label>${_t('veh.make')}</label><input id="v-make" value="${v.make ? escapeHtml(v.make) : ''}"></div>
+      <div class="form-group"><label>${_t('veh.model')}</label><input id="v-model" value="${v.model ? escapeHtml(v.model) : ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${_t('veh.year')}</label><input id="v-year" type="number" value="${v.year || ''}"></div>
+      <div class="form-group"><label>${_t('veh.color')}</label><input id="v-color" value="${v.color ? escapeHtml(v.color) : ''}"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>${_t('veh.plate')}</label><input id="v-plate" value="${v.license_plate ? escapeHtml(v.license_plate) : ''}"></div>
+      <div class="form-group"><label>${_t('veh.mileage')}</label><input id="v-mileage" type="number" value="${v.mileage || ''}"></div>
+    </div>
+    <div class="form-group"><label>${_t('veh.notes')}</label><textarea id="v-notes">${v.notes ? escapeHtml(v.notes) : ''}</textarea></div>
+    <div id="v-err"></div>`,
+    `<button class="btn btn-primary btn-full" onclick="submitVehicle(${v.id || 'null'})">${_t('veh.save')}</button>`);
+}
+
+async function submitVehicle(id) {
+  const payload = {
+    make: document.getElementById('v-make').value.trim(),
+    model: document.getElementById('v-model').value.trim(),
+    year: parseInt(document.getElementById('v-year').value),
+    color: document.getElementById('v-color').value.trim(),
+    license_plate: document.getElementById('v-plate').value.trim(),
+    mileage: parseInt(document.getElementById('v-mileage').value) || 0,
+    notes: document.getElementById('v-notes').value.trim(),
+  };
+  try {
+    if (id) await patch('/api/client/vehicles/'+id, payload);
+    else await post('/api/client/vehicles', payload);
+    closeModal();
+    render();
+  } catch(e) {
+    document.getElementById('v-err').innerHTML = alert_el('error', e.message);
+  }
+}
+
+async function deleteVehicleConfirm(id) {
+  if (!confirm(_t('veh.deleteConfirm'))) return;
+  try { await del('/api/client/vehicles/'+id); render(); }
+  catch(e) { alert(e.message); }
+}
+
 async function renderClientProfile(el) {
   const profile = await get('/api/client/profile');
   el.innerHTML = `
@@ -2544,15 +2765,18 @@ async function mechanicView(hash, el) {
   if (hash==='#/messages')            return renderMessages(el, null);
   if (hash.startsWith('#/chat/'))     return renderMessages(el, hash.split('/')[2]);
   if (hash==='#/profile')             return renderMechanicProfile(el);
+  if (hash==='#/map')                 return renderMapView(el);
   if (hash==='#/settings')            return renderSettings(el);
   el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
 }
 
+function offlineBoardState() {
+  return `<div class="empty"><div class="empty-icon">\u{1F6AB}</div><h3>${_t('provider.offlineBoardTitle')}</h3><p>${_t('provider.offlineBoardSub')}</p><button class="btn btn-primary" style="margin-top:12px" onclick="toggleProviderOnline()">${_t('provider.goOnline')}</button></div>`;
+}
+
 async function renderMechanicDash(el) {
-  const [jobs, board] = await Promise.all([
-    get('/api/provider/jobs'),
-    get('/api/provider/board'),
-  ]);
+  const jobs = await get('/api/provider/jobs');
+  const board = _providerOnline ? await get('/api/provider/board').catch(()=>[]) : [];
   const active = jobs.filter(j=>!['completed','cancelled'].includes(j.status)).length;
   const done   = jobs.filter(j=>j.status==='completed').length;
   const myProf = _user?.profession;
@@ -2578,8 +2802,8 @@ async function renderMechanicDash(el) {
         </table></div>`}
     </div>
     <div class="card">
-      <div class="card-header"><div class="card-title">${_t('pdash.newBoard')}</div><button class="btn btn-ghost" onclick="route('#/board')">${_t('pdash.fullBoard')}</button></div>
-      ${board.length===0 ? emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',_t('pdash.boardEmpty'),_t('pdash.noPending')) :
+      <div class="card-header"><div class="card-title">${_t('pdash.newBoard')}</div>${_providerOnline ? `<button class="btn btn-ghost" onclick="route('#/board')">${_t('pdash.fullBoard')}</button>` : ''}</div>
+      ${!_providerOnline ? offlineBoardState() : board.length===0 ? emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',_t('pdash.boardEmpty'),_t('pdash.noPending')) :
         `<div class="table-wrap"><table>
           <thead><tr><th>${_t('th.title')}</th><th>${_t('th.urgency')}</th><th>${_t('th.location')}</th><th>${_t('th.budget')}</th><th></th></tr></thead>
           <tbody>${board.slice(0,4).map(r=>`<tr>
@@ -2594,8 +2818,12 @@ async function renderMechanicDash(el) {
 }
 
 async function renderJobBoard(el) {
-  const board = await get('/api/provider/board');
   el.innerHTML = pageHeader(_t('board.title'));
+  if (!_providerOnline) {
+    el.innerHTML += offlineBoardState();
+    return;
+  }
+  const board = await get('/api/provider/board');
   if (board.length===0) {
     el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',_t('board.noOpen'),_t('board.checkBack'));
     return;
@@ -2705,11 +2933,13 @@ async function renderJobDetail(el, id) {
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         ${nextStates.map(s=>`<button class="btn ${s==='cancelled'?'btn-danger':s==='completed'?'btn-success':'btn-primary'}" onclick="updateJobStatus(${job.id},'${s}')">${statusLabel(s)}</button>`).join('')}
         <button class="btn btn-outline" onclick="route('#/chat/${job.id}')">${_t('jdet.chat')}</button>
+        <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
       </div>
     </div>`:``}
     ${renderProviderTrackingControls(job.id, job.status)}
-    ${job.status==='completed'?`<div class="card" style="text-align:center">
+    ${job.status==='completed'?`<div class="card" style="text-align:center;display:flex;gap:8px;justify-content:center">
       <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
+      <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
     </div>`:''}`;
 }
 
