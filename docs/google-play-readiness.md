@@ -1,0 +1,371 @@
+# Lever — Google Play Store Readiness Audit
+
+**Status:** Phase 1 (audit only). No implementation changes were made while producing this document, per the requirement to complete the audit and prioritized plan before large changes begin.
+
+**Audit date:** 2026-07-13
+**Auditor:** Claude (Sonnet 5), working with the Lever owner
+**Scope:** Backend (FastAPI/PostgreSQL), frontend (vanilla JS SPA), two Capacitor Android apps (client + provider), production VPS deployment
+
+---
+
+## 1. Current Architecture Summary
+
+```
+┌─────────────────┐     ┌──────────────────┐
+│  Client APK      │     │  Provider APK     │
+│  com.lever.app*  │     │  com.lever.provider│
+└────────┬─────────┘     └────────┬──────────┘
+         │  both load the SAME bundled frontend/index.html
+         │  (Capacitor WebView, appFlavor flag locks role at launch)
+         └───────────────┬───────────────────┘
+                          │ HTTPS (REST) + WSS (WebSocket)
+                          ▼
+              ┌───────────────────────┐
+              │  Cloudflare (proxy)    │  DNS, TLS, DDoS protection
+              └───────────┬────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │  nginx (Docker)        │  reverse proxy
+              └───────────┬────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │  FastAPI app (Docker)  │  Python 3, SQLAlchemy, JWT auth
+              └───────────┬────────────┘
+                          ▼
+              ┌───────────────────────┐
+              │  PostgreSQL (Docker)   │
+              └───────────────────────┘
+```
+
+*See Finding GP-01 — the client app's real `applicationId` does not match its documented one.
+
+- **Hosting:** Single VPS (Hostinger), Docker Compose (`app`, `nginx`, `db`, `certbot` containers)
+- **Domain:** `lever-ec.com`, DNS hosted at Cloudflare (migrated from GoDaddy nameservers), proxied, `Full (strict)` TLS mode with a Cloudflare Origin Certificate on the VPS
+- **Firewall:** UFW restricts SSH to a static IP + WireGuard VPN; `DOCKER-USER` iptables rules restrict ports 80/443 to Cloudflare's published IP ranges only (origin IP is not directly reachable)
+- **CI/CD:** GitHub Actions builds both Android debug APKs on every push to `main` (matrix build, `apps/client` and `apps/provider`)
+- **No staging or test environment exists** — there is only local dev and production (see Finding GP-19)
+
+---
+
+## 2. Current Mobile Implementation Type
+
+**Capacitor wrapper around a vanilla JavaScript single-page app**, built as **two separate native Android projects** sharing one web codebase.
+
+- Not a basic empty WebView: the SPA (`frontend/index.html`, ~4,200 lines) implements real client and provider dashboards, job creation/acceptance workflows, job-scoped real-time chat, live GPS tracking with a Leaflet map, vehicle management, dispute filing, notifications, and role-locked auth — this is a legitimate functional marketplace app, not a "website in a box." This satisfies the spirit of requirement #9/#24 ("not merely a low-functionality WebView"), though several features have real gaps (see Section 4).
+- Native layer is minimal by design: only `@capacitor/core`, `@capacitor/android`, and `@capacitor/app` (for the hardware back button) are installed. No native plugins for camera, geolocation, or push notifications are integrated — those features either don't exist yet, or (in the case of GPS) rely on the WebView's JS `navigator.geolocation` API, which needs a manifest permission that is currently **missing** (Finding GP-02).
+- Both apps are built via one shared GitHub Actions matrix workflow (`.github/workflows/android-build.yml`) and currently only produce **unsigned debug APKs** — no release signing, no `.aab`, no Play App Signing setup exists yet (Finding GP-03).
+
+---
+
+## 3. Website Availability Findings
+
+| URL | Status | Notes |
+|---|---|---|
+| `https://lever-ec.com` | ✅ `200`, real TLS cert (Cloudflare) | The 502 issue mentioned in the requirements was already resolved during earlier infrastructure work this session (VPS redeploy, Cloudflare cutover, firewall lockdown) — confirmed working now |
+| `https://lever-ec.com/privacy` | ⚠️ `200`, but **no real content** | Falls through to the SPA's catch-all route and serves the same landing page as `/`. No privacy policy exists anywhere in the codebase. |
+| `https://lever-ec.com/terms` | ⚠️ `200`, but **no real content** | Same catch-all fallback. No terms document exists. |
+| `https://lever-ec.com/delete-account` | ⚠️ `200`, but **no real content** | Same catch-all fallback. No account-deletion flow exists, in-app or on the web. |
+| `https://lever-ec.com/support` | ⚠️ `200`, but **no real content** | Same catch-all fallback. There is an in-app `#/support` hash route with an FAQ (web/PWA only, not shown in the native apps — see earlier session work), but no plain HTTPS path works pre-login the way Play Store review expects. |
+
+**Verified:** HTTPS redirect works, TLS cert is valid and trusted, health checks exist (`GET /health` reports app/DB/SMTP status). **Not verified/present:** friendly error pages for 4xx/5xx (FastAPI's default JSON error responses are returned, not a styled page — acceptable for an API but the SPA itself has no error boundary for a failed initial load), centralized log aggregation (currently just `docker logs`), and there is no separate frontend-only or database-only health check — the single `/health` endpoint conflates all three.
+
+---
+
+## 4. Google Play Compliance Gap Analysis
+
+Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes what blocks submission.
+
+### GP-01 — Client app's real package ID doesn't match its documented one
+- **Severity:** High
+- **Description:** `apps/client/capacitor.config.json` declares `appId: "com.lever.client"`, and all commit messages/documentation from this session refer to it as such. But the actual Android `applicationId` in `apps/client/android/app/build.gradle` — and the Java package of `MainActivity.java` — is still `com.lever.app`, the original ID from before the client/provider split. Capacitor's `appId` config only takes effect at `cap add` time for a brand-new native project; it does not retroactively rename an existing one, and `cap sync` was run on the pre-existing `android/` folder rather than a fresh `cap add`.
+- **Evidence:** `apps/client/android/app/build.gradle:7` → `applicationId "com.lever.app"`; `apps/client/capacitor.config.json` → `"appId": "com.lever.client"`; `apps/client/android/app/src/main/java/com/lever/app/MainActivity.java` package matches `com.lever.app`.
+- **Risk:** Not a functional bug (the app builds and runs fine), but the package ID is what Google Play permanently binds a listing to — it cannot be changed after first publish without creating an entirely new listing and losing all reviews/install history. Publishing under an ID that doesn't match your own documentation/branding is a decision that needs to be made deliberately, once, before submission.
+- **Recommended fix:** Decide the final production package ID now (`com.lever.app`, `com.lever.client`, or something else entirely — e.g. many teams use a reverse-DNS of a real owned domain) and make `build.gradle`, the Java package folder/`MainActivity.java`, and `capacitor.config.json` consistent. This is a "decide once, get it right" item — see Section 10.
+- **Affected files:** `apps/client/android/app/build.gradle`, `apps/client/android/app/src/main/java/com/lever/app/MainActivity.java` (and its directory path), `apps/client/capacitor.config.json`
+- **Complexity:** Low (mechanical rename), but requires an explicit decision first
+- **Blocks submission:** Yes — must be resolved before you can create the Play Console listing, since the package ID is permanent
+
+### GP-02 — Missing location permission breaks GPS tracking on Android
+- **Severity:** Critical
+- **Description:** Both `AndroidManifest.xml` files declare only `android.permission.INTERNET`. The app's core "live GPS tracking" feature (client watches provider location; provider broadcasts location) uses the WebView's JS `navigator.geolocation` API. On Android, a WebView's geolocation calls will not work — the WebView has no permission to grant — unless the hosting app holds `ACCESS_FINE_LOCATION` (and ideally `ACCESS_COARSE_LOCATION`) and the host `WebChromeClient` implements `onGeolocationPermissionsShowPrompt`. Capacitor's default `WebChromeClient` does handle that callback, but only if the manifest permission exists for it to check against.
+- **Evidence:** `apps/client/android/app/src/main/AndroidManifest.xml`, `apps/provider/android/app/src/main/AndroidManifest.xml` — both show only `<uses-permission android:name="android.permission.INTERNET" />`.
+- **Risk:** A core advertised feature (live tracking) is almost certainly non-functional in the installed APKs right now, even though the JavaScript code for it is fully implemented. This would also likely surface as a confusing silent failure during Google's review if a reviewer tries to use tracking.
+- **Recommended fix:** Add `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` to both manifests. Per the task's own permission requirements (Section 10), request it contextually (only when the user opens a job that needs tracking, not at app launch), and avoid `ACCESS_BACKGROUND_LOCATION` unless truly required — the current design (tracking only while a job screen is open) does not need background location.
+- **Affected files:** `apps/client/android/app/src/main/AndroidManifest.xml`, `apps/provider/android/app/src/main/AndroidManifest.xml`
+- **Complexity:** Low for the manifest change; Medium if a proper runtime-permission request flow with rationale UI is added (Android 6+ requires requesting dangerous permissions at runtime, not just declaring them in the manifest)
+- **Blocks submission:** Yes — a core feature must actually work before submission, and Play's review process actively tests declared functionality
+
+### GP-03 — No release signing, no `.aab`, no Play App Signing
+- **Severity:** Critical
+- **Description:** The only CI build target is `gradlew assembleDebug`, producing a debug-signed `.apk`. Google Play requires an **App Bundle** (`.aab`), signed with a release key, uploaded via Play App Signing.
+- **Evidence:** `.github/workflows/android-build.yml` — `run: ./gradlew assembleDebug --no-daemon`. No `signingConfigs` block exists in either `apps/*/android/app/build.gradle`.
+- **Risk:** Cannot submit to Play Console at all without this.
+- **Recommended fix:** Generate a release keystore per app (kept out of the repo — see GP-04), add a `release` signing config, and add an `assembleRelease`/`bundleRelease` CI job that produces a signed `.aab`. Enroll in Play App Signing during the first Play Console upload so Google manages the signing key for updates.
+- **Affected files:** `apps/client/android/app/build.gradle`, `apps/provider/android/app/build.gradle`, `.github/workflows/android-build.yml`
+- **Complexity:** Medium
+- **Blocks submission:** Yes
+
+### GP-04 — No secrets-management story for signing keys or API keys
+- **Severity:** High
+- **Description:** There is currently no keystore, no signing password, and no mechanism (GitHub Actions secrets, etc.) wired up to inject them into a release build. This needs to exist before GP-03 can be completed safely.
+- **Risk:** If done carelessly, a keystore or password could end up committed to the repo (which has no `.gitignore` protection specifically for keystores beyond the generic `*.jks`/`*.keystore` patterns already added — those patterns are present and correct, but only prevent accidental commits, they don't provide a place to *store* the secret for CI use).
+- **Recommended fix:** Store the release keystore + passwords as GitHub Actions encrypted secrets (or a dedicated secrets manager), inject them into the CI signing step via environment variables, never write them to disk in a way that could be logged.
+- **Affected files:** `.github/workflows/android-build.yml`, `.gitignore` (already has `*.jks`/`*.keystore` — correct, no change needed there)
+- **Complexity:** Low–Medium
+- **Blocks submission:** Yes (prerequisite for GP-03)
+
+### GP-05 — No privacy policy exists anywhere
+- **Severity:** Critical
+- **Description:** No privacy policy content exists in the codebase, on the live site, or in the app. `/privacy` silently falls through to the SPA landing page (Section 3).
+- **Risk:** Google Play requires a privacy policy URL for every app that handles personal data (Lever collects email, phone, location, messages, vehicle info — see Section 5). Non-negotiable submission blocker.
+- **Recommended fix:** Draft a Spanish-first privacy policy covering the required elements (Section 4 of the original requirements), publish it at a real, always-reachable, pre-login route (not a hash route that depends on the SPA loading — needs to work even if the JS bundle fails), link it from the app's settings/registration screens.
+- **Affected files:** New: a real backend route or static page for `/privacy`; `frontend/index.html` (link from registration + settings); Terms/Privacy links need to be reachable without authentication and without depending on the SPA's JS executing correctly
+- **Complexity:** Medium (content drafting is the bulk of the work; technical implementation is straightforward)
+- **Blocks submission:** Yes
+- **Needs owner/legal input:** Yes — see Section 10. I can draft the technical scaffolding and a reasonable first draft of the policy text, but the actual legal claims (what's retained, third-party processors, LOPD compliance specifics) need your review before publishing, per Section 22 rule 9 ("Do not make unsupported legal or compliance claims").
+
+### GP-06 — No terms and conditions exist
+- **Severity:** Critical
+- **Description:** Same situation as GP-05 — `/terms` has no real content, and there is no acceptance-tracking mechanism (no `terms_accepted_at`/`terms_version` field anywhere in `models.py`).
+- **Risk:** Submission blocker; also a real legal exposure gap for a marketplace facilitating real-world services between strangers (liability, dispute handling, prohibited services all currently undocumented).
+- **Recommended fix:** Draft Terms & Conditions per the required contents (Section 4 of requirements). Add `terms_version` and `terms_accepted_at` (and same for privacy) columns to `User`, require acceptance at registration, block registration until accepted.
+- **Affected files:** New Terms content/page; `models.py` (new columns + migration); `routes/auth.py` (`register` endpoint); `frontend/index.html` (registration form checkbox)
+- **Complexity:** Medium
+- **Blocks submission:** Yes
+- **Needs owner/legal input:** Yes — same reasoning as GP-05
+
+### GP-07 — No account deletion mechanism, in-app or on the web
+- **Severity:** Critical
+- **Description:** There is no `DELETE /api/auth/me` or equivalent endpoint, no "Delete Account" UI anywhere in `frontend/index.html`'s settings screen, and no `/delete-account` web page.
+- **Evidence:** `grep` for delete-account/GDPR/LOPD/retention logic across the entire backend returned nothing.
+- **Risk:** Google Play has required an accessible account-deletion path (in-app **and** a web fallback reachable without installing the app) for all apps that support account creation, since late 2023. Hard submission blocker.
+- **Recommended fix:** Build both paths per Section 5 of the requirements: an in-app `Settings > Account > Delete Account` flow (explain what's deleted, require confirmation/re-auth, revoke the JWT, then either hard-delete or anonymize per-table per the retention decisions in Section 10) and a public `/delete-account` page for users who can't/won't install the app. Needs a clear policy decision on what gets anonymized vs. hard-deleted (e.g., can a `Message` row be deleted if the *other* party in the conversation still needs it? Can a `Review` be deleted without corrupting a provider's `avg_rating` history?).
+- **Affected files:** New backend route(s), `models.py` (soft-delete/anonymization strategy), `frontend/index.html` (settings screen), new public `/delete-account` page
+- **Complexity:** Medium–High (the technical deletion itself is straightforward; deciding the retention/anonymization rules per table, correctly, is the real work)
+- **Blocks submission:** Yes
+- **Needs owner input:** Yes — what legal/financial/fraud-prevention reason (if any) justifies retaining data post-deletion, e.g. for disputes already filed. See Section 10.
+
+### GP-08 — Zero content moderation infrastructure
+- **Severity:** Critical
+- **Description:** No `Report`, `Block`, or moderation-related table exists in `models.py`. There is no way for a user to report another user, a message, a review, or a job posting. There is no admin moderation queue beyond the existing dispute-resolution screen (which handles job disputes, not content/conduct reports).
+- **Risk:** Lever has open-ended free-text fields everywhere a stranger-to-stranger marketplace needs them most — job descriptions, chat messages, review comments, bios — with zero abuse-reporting path. This is both a Play Store policy requirement (apps with user-generated content/messaging need reporting and blocking) and a real user-safety gap given the app connects people for in-person services.
+- **Recommended fix:** New `Report` table (reporter, reported entity type/id, category, description, status), new `Block` table (blocker/blocked user pair, enforced in message/job-visibility queries), admin moderation queue UI, and report entry points wired into chat, reviews, and profiles per Section 6 of the requirements.
+- **Affected files:** `models.py` (new tables + migration), new `routes/moderation.py`, `routes/admin.py` (moderation queue), `frontend/index.html` (report/block UI throughout messaging, reviews, profiles)
+- **Complexity:** High — this is the single largest implementation item in the whole audit
+- **Blocks submission:** Yes
+
+### GP-09 — No push notifications (confirmed gap from earlier audit, still open)
+- **Severity:** Medium
+- **Description:** No FCM integration, no device-token storage, no native push plugin installed. Notifications only work via in-app polling while the app is foregrounded.
+- **Risk:** Not a hard Play Store blocker by itself, but materially weakens the product (users won't know about new job offers/messages when the app is closed) and was explicitly listed as a desired capability in Section 9 of the requirements.
+- **Recommended fix:** `@capacitor/push-notifications` + Firebase project + a `device_tokens` table + backend logic to send on job/message events.
+- **Affected files:** `apps/*/package.json`, both native projects, new backend table + routes, `frontend/index.html`
+- **Complexity:** Medium–High
+- **Blocks submission:** No, but strongly recommended before launch
+
+### GP-10 — No payment processing at all, despite the marketing copy promising a fee
+- **Severity:** High
+- **Description:** The landing page FAQ states a $0.05 scheduling fee, but `requirements.txt` has no payment SDK, and no payment-related model/route exists anywhere.
+- **Risk:** Not a Play Store blocker on its own (an app can facilitate real-world service payments outside the app via cash/external processor without needing Play Billing — see Finding GP-11 for the one case where that's *not* true). But the current landing copy makes a claim the product doesn't back up, which is itself a store-listing accuracy problem (Section 16 explicitly prohibits inaccurate feature claims) and a business-readiness gap independent of Play compliance.
+- **Recommended fix:** Either implement real payment processing (e.g., Stripe Connect for marketplace payouts) or remove/correct the fee claim from the landing page and app copy until it's real.
+- **Affected files:** `frontend/index.html` (landing page FAQ), eventually new payment integration if implemented
+- **Complexity:** Low to correct the copy; High to actually implement payments
+- **Blocks submission:** No directly, but the listing/copy must not claim a feature that doesn't exist
+- **Needs owner input:** Yes — is a $0.05 fee still the intended model, and should payment processing be built before launch or should the claim be removed for a v1 launch that facilitates the introduction only? See Section 10.
+
+### GP-11 — Payment/billing model needs Google Play Billing review if any *digital* feature is monetized
+- **Severity:** Informational (contingent — only applies if a specific plan exists)
+- **Description:** The requirements correctly flag that while payment for the *physical* service itself can go through an external processor, any **digital-only** feature (e.g., a "featured listing" upsell for providers, a premium subscription tier) would need to go through Google Play's own in-app billing, not an external processor, per Play policy.
+- **Risk:** None currently, since no such feature exists. Flagging so it isn't accidentally built the wrong way later.
+- **Recommended fix:** No action needed now. If a "boost my listing"-style feature is ever planned, route it through Play Billing, not Stripe/external.
+- **Blocks submission:** No
+
+### GP-12 — In-memory rate limiter and dispatch timers (repeat of earlier audit finding, still relevant to Play readiness)
+- **Severity:** Medium
+- **Description:** `rate_limiter.py`'s sliding-window store and `dispatch.py`'s offer-rotation timers are process-local memory, not shared across workers/instances.
+- **Risk:** Not a Play Store blocker, but relevant to Section 19 (observability/operational readiness) and Section 7 (brute-force/rate-limit protection) — if the app ever scales past a single worker, rate limiting silently stops being effective per-user, and in-flight dispatch offers could be lost on a process restart.
+- **Recommended fix:** Move to Redis-backed rate limiting and dispatch state if/when scaling beyond one process.
+- **Affected files:** `rate_limiter.py`, `dispatch.py`
+- **Complexity:** Medium
+- **Blocks submission:** No
+
+### GP-13 — 24-hour JWTs with no revocation or refresh mechanism
+- **Severity:** Medium
+- **Description:** `config.py` sets `access_token_expire_minutes: int = 1440` (24h). There is no refresh-token flow and no server-side session table — a stolen token remains valid for a full day with no way to revoke it early, and there's no "log out of all devices" capability (required by Section 12).
+- **Recommended fix:** Add a session/token table (or at minimum a `token_version`/`revoked_at` column on `User` checked on every request), implement "log out everywhere" by bumping that version, and consider shortening access-token lifetime with a refresh-token flow.
+- **Affected files:** `auth.py`, `models.py`, `config.py`
+- **Complexity:** Medium
+- **Blocks submission:** No, but Section 12 explicitly requires "logout from all devices" and "session expiration" — worth resolving before submission for policy alignment, not strictly a Play Store rejection reason
+
+### GP-14 — No MFA for administrators
+- **Severity:** Medium
+- **Description:** Admin login uses the same single-factor email+password flow as every other role.
+- **Recommended fix:** Add TOTP-based MFA for the `admin` role specifically (least invasive: only gate the admin role, not all users).
+- **Affected files:** `auth.py`, `routes/auth.py`, `models.py` (TOTP secret storage)
+- **Complexity:** Medium
+- **Blocks submission:** No
+
+### GP-15 — No crash reporting, error monitoring, or analytics SDK
+- **Severity:** Low–Medium
+- **Description:** No Sentry, Firebase Crashlytics, or equivalent exists. The only production visibility is `docker logs` and the `/health` endpoint.
+- **Risk:** Not a Play Store blocker, but makes Section 19 (observability) and post-launch debugging difficult, and the Data Safety form needs to accurately declare *any* such SDK if one is added later.
+- **Recommended fix:** Add a lightweight crash/error reporting tool if desired. Not urgent for a first submission with a small user base.
+- **Blocks submission:** No
+
+### GP-16 — Verification/trust labeling doesn't exist yet
+- **Severity:** Low
+- **Description:** `email_verified` exists and is enforced (users can't proceed past registration without it). There is no phone verification, no provider identity-verification workflow, and the UI doesn't display any "Email verified" / "Identity pending" badges.
+- **Recommended fix:** At minimum, do not claim any verification the product doesn't perform (the landing page currently says "Cada proveedor pasa por un proceso de verificación antes de ofrecer servicios" — **this claim is not currently true**, since there is no provider verification workflow at all beyond registering with a profession). This is a direct instance of the "do not claim a background check that doesn't exist" rule in Section 7 of the requirements and needs correcting regardless of Play Store timing.
+- **Affected files:** `frontend/index.html` (landing page trust-section copy), eventually a real verification workflow if one is built
+- **Complexity:** Low to fix the copy; Medium–High to build real verification
+- **Blocks submission:** No directly, but the false claim should be corrected regardless
+- **Needs owner input:** Yes — is provider verification planned before launch, or should the landing page copy be softened to match reality for now?
+
+### GP-17 — Confirmed: exact job coordinates are exposed to every online provider before any job is accepted
+- **Severity:** High (upgraded from Medium after direct verification — this is confirmed, not hypothetical)
+- **Description:** `GET /api/provider/board` — visible to *any* online provider browsing open work, not just one who's been matched or has accepted anything — returns `ServiceRequestOut`, which includes `latitude` and `longitude` directly (`schemas.py:313-314`), plus the free-text `location` field. This means exact GPS coordinates for every pending job are broadcast to the entire pool of online providers for that profession, before any relationship between client and provider exists. This directly contradicts the requirement to "share precise job location only when operationally necessary" — necessity only begins once a specific provider is actually engaged with that job.
+- **Evidence:** `routes/provider.py:186` (`@router.get("/board", response_model=List[ServiceRequestOut])`), `schemas.py:298-316` (`ServiceRequestOut` includes `latitude`/`longitude` with no masking).
+- **Risk:** Real user-safety exposure, not just a policy technicality — any registered provider (no verification currently exists, per GP-16) can see the exact location of every open request in their profession, whether or not they ever intend to accept it.
+- **Recommended fix:** Return an approximate location (e.g., rounded coordinates or a neighborhood-level description) in the board listing, and only expose exact `latitude`/`longitude` in `routes/provider.py`'s job-detail response after a provider has accepted the request (i.e., keep precise coordinates in `ServiceRequestDetail`/job-scoped responses, remove them from the board's `ServiceRequestOut` listing).
+- **Affected files:** `schemas.py` (split precise vs. approximate location into separate response models), `routes/provider.py` (board endpoint should use the approximate variant)
+- **Complexity:** Low–Medium
+- **Blocks submission:** No formally, but this should be fixed before submission given it's a concrete, verified privacy exposure, not a theoretical one
+
+### GP-18 — No `docs/` folder or any of the required documentation exists yet
+- **Severity:** Informational
+- **Description:** None of the 10 documents requested in Section 21 of the requirements exist yet (this file is the first). Confirmed via `find` — no `docs/` directory existed before this audit.
+- **Recommended fix:** Addressed by this document and the prioritized plan in Section 9 below; the remaining 9 documents should be produced incrementally alongside the actual implementation work they document (a runbook is only useful once the runbook's procedures actually exist).
+- **Blocks submission:** No (informational)
+
+### GP-19 — No environment separation (local vs. staging vs. production)
+- **Severity:** Low
+- **Description:** Section 20 requires separate local/test/staging/production environments. Currently there is only local dev (SQLite, `DEBUG=true`) and production (the VPS). There's no staging environment that mirrors production for pre-release testing.
+- **Recommended fix:** Not urgent for a first submission given the small scale, but worth a lightweight staging setup (a second, smaller VPS or a Docker Compose profile pointed at a separate database) before doing anything riskier like a payment integration.
+- **Blocks submission:** No
+
+---
+
+## 5. Personal Data Inventory
+
+| Data element | Collected? | Where (table/field) | Shared with third parties? | Encrypted in transit | Encrypted at rest | Notes |
+|---|---|---|---|---|---|---|
+| Email address | Yes | `users.email` | Sent to Hostinger SMTP for delivery of verification/reset emails | Yes (TLS to DB, TLS to SMTP) | No (plaintext column) | Primary identifier, unique |
+| Password | Yes (as hash) | `users.password_hash` | No | Yes | Yes (bcrypt) | Never stored/transmitted in plaintext after hashing |
+| Phone number | Yes (optional field) | `client_profiles.phone`, `mechanic_profiles.phone` | No | Yes | No | Not currently verified (no SMS/OTP flow) |
+| Full name | Yes (optional) | `client_profiles.full_name`, `mechanic_profiles.full_name` | No | Yes | No | |
+| Home/service address | Yes (free text) | `client_profiles.address` | Visible to matched providers (see GP-17 — exact exposure scope needs verification) | Yes | No | |
+| Precise GPS coordinates (one-time, per request) | Yes | `service_requests.latitude/longitude` | Visible to matched/nearby providers via search | Yes | No | |
+| Continuous GPS breadcrumbs (during active job) | Yes | `provider_locations` table | Visible to the client on that specific job only, and the provider themself | Yes | No | Auto-generated every few seconds while a job is `en_route`/active; no explicit stated retention/pruning policy found in code |
+| Vehicle info (make/model/year/plate/VIN/mileage) | Yes (client-provided, optional) | `vehicles` table | Visible to the assigned provider on a job | Yes | No | VIN + plate are more sensitive than typical profile data |
+| Chat messages | Yes | `messages` table | Visible to both job participants + admin (via dispute review) | Yes | No | No message-deletion/edit capability currently exists for users |
+| Job descriptions | Yes | `service_requests.description` | Visible to all providers viewing the open board | Yes | No | |
+| Reviews/ratings | Yes | `reviews` table | Publicly visible on provider profiles | Yes | No | |
+| Dispute descriptions | Yes | `disputes.description` | Visible to admin only | Yes | No | |
+| Profile photo (`avatar_url`) | Field exists, no upload mechanism wired up | `client_profiles.avatar_url`, `mechanic_profiles.avatar_url` | N/A — not actually populated by any current UI flow | N/A | N/A | Confirmed no photo-upload endpoint/UI exists despite the DB column |
+| Notification content | Yes | `notifications` table | No | Yes | No | |
+| IP address | Implicitly, via nginx/Cloudflare access logs and the in-memory rate limiter | Not persisted to the app DB | Passes through Cloudflare (see their own data processing) | Yes | N/A (not stored in app DB) | |
+| Device/session tokens | JWT only, not persisted server-side | N/A (stateless JWT) | No | Yes | N/A | No revocation table exists (GP-13) |
+| Payment information | **Not collected at all** | N/A | N/A | N/A | N/A | No payment processor integrated (GP-10) |
+| Crash logs / analytics | Not collected | N/A | N/A | N/A | N/A | No SDK integrated (GP-15) |
+
+**Retention:** No explicit retention or auto-deletion policy exists for any of the above. This needs an owner decision — see Section 6.
+
+---
+
+## 6. Android Permissions Inventory
+
+| Permission | Currently declared? | Feature that needs it | Currently requested correctly? |
+|---|---|---|---|
+| `INTERNET` | Yes (both apps) | All network calls | Yes — implicit, no runtime prompt needed |
+| `ACCESS_FINE_LOCATION` / `ACCESS_COARSE_LOCATION` | **No** | Live GPS tracking (client watching provider, provider broadcasting) | **Missing — GP-02, must be added and requested contextually, only when a tracking-enabled job screen opens** |
+| Camera | Not declared | Not currently used by any wired-up feature (no photo upload exists) | N/A until photo upload is built |
+| Photo/media access | Not declared | Same as above | N/A until built; when built, prefer the Android Photo Picker per the requirements, which needs no storage permission at all on Android 13+ |
+| `POST_NOTIFICATIONS` (Android 13+) | Not declared | Not needed yet — no push notifications exist (GP-09) | N/A until push is built |
+| Background location | Not declared, correctly | Not used — tracking only happens while a job screen is open in the foreground | Correct as-is; do not add this without a specific, justified need |
+| Contacts / call log / SMS | Not declared, correctly | Not used | Correct as-is |
+
+**Summary:** The app currently under-requests (missing the one permission it actually needs) rather than over-requests, which is a good starting position once GP-02 is fixed — there's no permission-bloat problem to clean up.
+
+---
+
+## 7. Third-Party SDK / Service Inventory
+
+| Service | Purpose | Data it receives |
+|---|---|---|
+| Hostinger SMTP (`smtp.hostinger.com:465`) | Sends verification codes and password-reset emails | Recipient email address, email content (includes verification codes) |
+| OpenStreetMap Nominatim (public API) | Free-text address → lat/lng geocoding | Address text entered by the user; no API key/account, OSM's own privacy policy applies |
+| Cloudflare | DNS, reverse proxy, TLS termination, DDoS protection | All HTTP(S) traffic to the app passes through Cloudflare's edge; see Cloudflare's own data processing terms |
+| GitHub / GitHub Actions | Source control, CI builds | Source code, build logs; not part of the running production data path |
+| Leaflet.js (via CDN) | Map rendering in the frontend | Loads map tiles from `tile.openstreetmap.org` — no user data sent beyond the tile requests themselves (lat/lng of the visible map area) |
+
+**Not present, but worth confirming stays accurate for the Data Safety form:** no analytics SDK, no advertising SDK, no crash-reporting SDK, no payment SDK, no push-notification SDK. If any of GP-09/GP-10/GP-15 are implemented later, this table and the eventual Data Safety form must be updated to match.
+
+---
+
+## 8. Security Findings Summary
+
+(Full detail in each `GP-##` entry above; this is a consolidated view for quick scanning.)
+
+| Finding | Severity |
+|---|---|
+| GP-02 — Missing location permission | Critical |
+| GP-04 — No secrets management for release signing | High |
+| GP-17 — Confirmed precise-location exposure on the open job board | High |
+| GP-13 — 24h tokens, no revocation/refresh | Medium |
+| GP-14 — No admin MFA | Medium |
+| GP-12 — In-memory rate limiting/dispatch state | Medium |
+
+**Already resolved, earlier in this engagement (not re-flagged here):** insecure config fallback defaults (`config.py` now refuses to boot with placeholder secrets when `DEBUG=false`), dead/duplicate `routes/mechanic.py` removed, deprecated `@app.on_event` migrated to `lifespan`, HTTPS/TLS via Cloudflare with a real trusted certificate, origin IP no longer directly reachable, SSH restricted to known sources with a documented VPN-based recovery path.
+
+**Not assessed in this pass (recommend a dedicated follow-up):** SQL injection / XSS / IDOR testing was not performed as a formal penetration test in this audit — the codebase uses SQLAlchemy's ORM (which parameterizes queries by default, reducing but not eliminating SQL injection risk) and the frontend's `escapeHtml()` helper is used for user-controlled content in most places I've reviewed across this engagement, but a dedicated security review pass (Section 21's `docs/security-review.md`) should verify this systematically rather than relying on spot-checks accumulated across unrelated work.
+
+---
+
+## 9. Prioritized Implementation Plan
+
+Ordered by what actually blocks submission first, then by risk.
+
+### Must fix before any Play Store submission attempt
+1. **GP-05 + GP-06** — Privacy Policy + Terms & Conditions (content + real, always-reachable pages + acceptance tracking at registration)
+2. **GP-07** — Account deletion, in-app and web
+3. **GP-08** — Reporting + blocking (moderation infrastructure) — the largest single item
+4. **GP-02** — Location permission fix (small technical fix, but blocks a core feature from working)
+5. **GP-01** — Decide and fix the final Android package ID (must happen before first upload, unblocks nothing else but is irreversible once published)
+6. **GP-03 + GP-04** — Release signing, `.aab` builds, secrets management
+
+### Should fix before submission (policy alignment / correctness, not hard blockers)
+7. **GP-17** — Stop exposing exact job coordinates on the open board (confirmed exposure, low-medium effort to fix)
+8. **GP-16** — Correct the false "providers are verified" claim on the landing page (or build real verification)
+9. **GP-10** — Correct the payment-fee claim, or decide to actually build payments
+
+### Recommended, not blocking
+10. GP-09 (push notifications), GP-13 (token revocation), GP-14 (admin MFA), GP-12 (Redis-backed rate limiting), GP-15 (crash reporting), GP-19 (staging environment)
+
+### Documentation (Section 21), produced alongside the corresponding work above rather than upfront
+- `docs/privacy-data-inventory.md` — expand Section 5 above once GP-05 is underway
+- `docs/android-permissions.md` — expand Section 6 above once GP-02 is fixed
+- `docs/role-access-matrix.md` — needs a dedicated pass through every route's `Depends(require_*)` guard (not done in this audit)
+- `docs/moderation-process.md` — write alongside GP-08
+- `docs/account-deletion-process.md` — write alongside GP-07
+- `docs/reviewer-instructions.md` + reviewer test accounts — last, once the above are functional
+- `docs/release-checklist.md`, `docs/security-review.md`, `docs/production-runbook.md` — write once there's an actual release process and runbook procedures to document
+
+---
+
+## 10. Decisions Needed From the Lever Owner
+
+These cannot be resolved by implementation alone — they need your judgment:
+
+1. **Final Android package ID** (GP-01): keep `com.lever.app` for the client (matches what's already built) and update docs to match, or rename to `com.lever.client` and accept the one-time mechanical change? Either is fine technically; it just needs to be decided once and be permanent.
+2. **Data retention on account deletion** (GP-07): for each data type in Section 5, should it be hard-deleted or anonymized on account deletion? In particular: messages where the *other* party still has an active job, reviews (deleting could corrupt a provider's rating history), and any data tied to an open dispute.
+3. **Privacy Policy / Terms content** (GP-05, GP-06): I can draft technically-accurate first drafts once you confirm the business facts (what data is actually shared with whom, retention periods, your business contact/registered address for the policy, whether you want LOPD-specific language reviewed by an Ecuador-licensed lawyer before publishing — I'd recommend that step given real legal exposure).
+4. **Provider verification claim** (GP-16): is real identity/background verification for providers planned before launch, or should the landing page copy be corrected to not claim it in the meantime?
+5. **Payment model** (GP-10): is the $0.05 scheduling fee still the intended model? Should payment processing be built before launch, or should Lever launch v1 as a pure connection/matching service (no payment facilitation) with the copy corrected accordingly?
+6. **Moderation staffing** (GP-08): once a reporting/moderation queue exists, who reviews it? This affects whether the admin UI needs a lightweight single-admin queue or a more structured multi-moderator workflow with role separation (Section 8 of the requirements mentions a `moderator`/`support agent` role distinct from full admin — worth deciding now rather than retrofitting).
+7. **Launch timeline vs. scope**: several items above (push notifications, admin MFA, staging environment, real payments) are recommended but don't block submission. Given the current user base is 5 clients and 0 providers, is the goal a fast, narrower first submission (blockers only) with the "should fix" and "recommended" items following in updates, or a more complete v1 before ever submitting?
+
+---
+
+## What This Document Does Not Yet Cover
+
+Per the phased approach requested, this is the Phase 1 audit only. Not yet produced: the remaining 9 documents from Section 21, the authorization matrix (Section 8 of the requirements — needs a dedicated route-by-route pass), reviewer test accounts (Section 15), and the store listing content (Section 16). These follow once the blocking items above are resolved, per the prioritized plan in Section 9.
