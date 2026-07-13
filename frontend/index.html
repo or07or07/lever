@@ -837,6 +837,7 @@ var _translations = {
   'nav.reviews': {es:'Rese\u00f1as', en:'Reviews'},
   'nav.users': {es:'Usuarios', en:'Users'},
   'nav.disputes': {es:'Disputas', en:'Disputes'},
+  'nav.reports': {es:'Reportes', en:'Reports'},
   'nav.map': {es:'Mapa', en:'Map'},
   'nav.vehicles': {es:'Mis Vehículos', en:'My Vehicles'},
   'nav.packages': {es:'Paquetes', en:'Packages'},
@@ -1172,6 +1173,30 @@ var _translations = {
   'dispute.submit': {es:'Enviar Reporte', en:'Submit Dispute'},
   'dispute.success': {es:'Tu reporte fue enviado. Un administrador lo revisará pronto.', en:'Your dispute was submitted. An admin will review it soon.'},
   'dispute.alreadyExists': {es:'Ya existe un reporte para este trabajo.', en:'A dispute already exists for this job.'},
+
+  // -- Reports & Blocking (GP-08) --
+  'report.userBtn': {es:'Reportar usuario', en:'Report user'},
+  'report.reviewBtn': {es:'Reportar reseña', en:'Report review'},
+  'report.blockBtn': {es:'Bloquear', en:'Block'},
+  'report.title': {es:'Reportar', en:'Report'},
+  'report.category': {es:'Motivo', en:'Reason'},
+  'report.catSpam': {es:'Spam', en:'Spam'},
+  'report.catHarassment': {es:'Acoso', en:'Harassment'},
+  'report.catFraud': {es:'Fraude', en:'Fraud'},
+  'report.catInappropriate': {es:'Contenido inapropiado', en:'Inappropriate content'},
+  'report.catSafety': {es:'Preocupación de seguridad', en:'Safety concern'},
+  'report.catOther': {es:'Otro', en:'Other'},
+  'report.description': {es:'Detalles (opcional)', en:'Details (optional)'},
+  'report.descPlaceholder': {es:'Cuéntanos qué pasó', en:'Tell us what happened'},
+  'report.submit': {es:'Enviar reporte', en:'Submit report'},
+  'report.success': {es:'Reporte enviado. Un administrador lo revisará.', en:'Report submitted. An admin will review it.'},
+  'block.confirmMsg': {es:'¿Bloquear a este usuario? Ya no verás sus solicitudes ni podrán contactarte.', en:'Block this user? You will no longer see their requests and they will not be able to contact you.'},
+  'block.success': {es:'Usuario bloqueado.', en:'User blocked.'},
+  'block.unblockConfirm': {es:'¿Desbloquear a este usuario?', en:'Unblock this user?'},
+  'block.unblockSuccess': {es:'Usuario desbloqueado.', en:'User unblocked.'},
+  'block.settingsTitle': {es:'Usuarios Bloqueados', en:'Blocked Users'},
+  'block.settingsEmpty': {es:'No has bloqueado a nadie.', en:"You haven't blocked anyone."},
+  'block.unblockBtn': {es:'Desbloquear', en:'Unblock'},
 };
 
 function _t(key) {
@@ -1313,6 +1338,7 @@ var BOTTOM_TABS = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Usuarios',  hash:'#/users'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Solicitudes',hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputas', hash:'#/disputes'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reportes', hash:'#/reports'},
   ],
 };
 
@@ -1396,7 +1422,7 @@ function buildSidebarImproved(role, hash) {
 }
 
 function getPageTitle(hash) {
-  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
+  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
   return titles[hash] || '';
 }
 
@@ -1719,6 +1745,7 @@ var _navLabelMap = {
   '#/reviews': 'nav.reviews',
   '#/users': 'nav.users',
   '#/disputes': 'nav.disputes',
+  '#/reports': 'nav.reports',
   '#/map': 'nav.map',
   '#/vehicles': 'nav.vehicles',
 };
@@ -1753,6 +1780,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Users',       hash:'#/users'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Requests',    hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputes', hash:'#/disputes'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reports', hash:'#/reports'},
   ],
 };
 
@@ -2479,6 +2507,8 @@ async function renderRequestDetail(el, id) {
         ${job.status==='completed'&&!req.review?`<button class="btn btn-success" onclick="showReviewModal(${job.id})">${_t('reqdet.leaveReview')}</button>`:''}
         ${job.status==='completed'&&req.review?`<div class="text-sm" style="display:flex;align-items:center;gap:6px">\u2B50 ${_t('reqdet.youRated')} <span class="stars">${stars(req.review?.rating||0)}</span></div>`:''}
         ${job.status!=='cancelled'?`<button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>`:''}
+        <button class="btn btn-ghost" onclick="showReportModal('user',${job.mechanic_id})">${_t('report.userBtn')}</button>
+        <button class="btn btn-ghost" style="color:var(--danger)" onclick="blockUserWithConfirm(${job.mechanic_id})">${_t('report.blockBtn')}</button>
       </div>
     </div>
     ${renderClientTrackingCard(job.id, job.status, req.latitude, req.longitude)}
@@ -2548,6 +2578,64 @@ async function submitDispute(jobId) {
   } catch(e) {
     const msg = /already exists/i.test(e.message) ? _t('dispute.alreadyExists') : e.message;
     document.getElementById('disp-err').innerHTML = alert_el('error', msg);
+  }
+}
+
+// ---- Reports & Blocking (shared: client + provider) ----
+function showReportModal(entityType, entityId) {
+  showModal(_t('report.title'), `
+    <div class="form-group">
+      <label>${_t('report.category')}</label>
+      <select id="rpt-category">
+        <option value="harassment">${_t('report.catHarassment')}</option>
+        <option value="fraud">${_t('report.catFraud')}</option>
+        <option value="spam">${_t('report.catSpam')}</option>
+        <option value="inappropriate">${_t('report.catInappropriate')}</option>
+        <option value="safety">${_t('report.catSafety')}</option>
+        <option value="other">${_t('report.catOther')}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>${_t('report.description')}</label>
+      <textarea id="rpt-desc" placeholder="${_t('report.descPlaceholder')}"></textarea>
+    </div>
+    <div id="rpt-err"></div>`,
+    `<button class="btn btn-danger btn-full" onclick="submitReport('${entityType}',${entityId})">${_t('report.submit')}</button>`);
+}
+
+async function submitReport(entityType, entityId) {
+  try {
+    await post('/api/reports', {
+      entity_type: entityType,
+      entity_id: entityId,
+      category: document.getElementById('rpt-category').value,
+      description: document.getElementById('rpt-desc').value.trim(),
+    });
+    closeModal();
+    showToast(_t('report.success'), 'success');
+  } catch(e) {
+    document.getElementById('rpt-err').innerHTML = alert_el('error', e.message);
+  }
+}
+
+async function blockUserWithConfirm(userId) {
+  if (!confirm(_t('block.confirmMsg'))) return;
+  try {
+    await post('/api/blocks', {blocked_user_id: userId});
+    showToast(_t('block.success'), 'success');
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function unblockUserWithConfirm(userId) {
+  if (!confirm(_t('block.unblockConfirm'))) return;
+  try {
+    await del('/api/blocks/'+userId);
+    showToast(_t('block.unblockSuccess'), 'success');
+    renderSettings(document.getElementById('content'));
+  } catch(e) {
+    showToast(e.message, 'error');
   }
 }
 
@@ -2747,8 +2835,10 @@ async function saveClientProfile() {
 // ============================================================
 //  SETTINGS PAGE
 // ============================================================
-function renderSettings(el) {
+async function renderSettings(el) {
   var currentLang = _lang;
+  var blocks = [];
+  try { blocks = await get('/api/blocks'); } catch(e) { /* non-fatal */ }
   el.innerHTML =
     pageHeader(_t('settings.title')) +
     '<div class="card" style="max-width:500px">' +
@@ -2771,6 +2861,20 @@ function renderSettings(el) {
         '<a href="' + API + '/terms" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.termsLink') + '</a>' +
         '<a href="' + API + '/support" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.supportLink') + '</a>' +
       '</div>' +
+    '</div>' +
+    '<div class="card" style="max-width:500px;margin-top:16px">' +
+      '<div class="card-header"><div class="card-title">' + _t('block.settingsTitle') + '</div></div>' +
+      (blocks.length===0 ?
+        '<p style="color:var(--gray-600);font-size:.85rem">' + _t('block.settingsEmpty') + '</p>' :
+        '<div style="display:flex;flex-direction:column;gap:10px">' +
+          blocks.map(function(b) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+              '<span style="font-size:.88rem">' + escapeHtml(b.blocked_name || b.blocked_email || ('User #'+b.blocked_id)) + '</span>' +
+              '<button class="btn btn-sm btn-outline" onclick="unblockUserWithConfirm(' + b.blocked_id + ')">' + _t('block.unblockBtn') + '</button>' +
+            '</div>';
+          }).join('') +
+        '</div>'
+      ) +
     '</div>' +
     '<div class="card" style="max-width:500px;margin-top:16px;border:1px solid var(--danger)">' +
       '<div class="card-header"><div class="card-title" style="color:var(--danger)">' + _t('settings.dangerZone') + '</div></div>' +
@@ -3002,12 +3106,15 @@ async function renderJobDetail(el, id) {
         ${nextStates.map(s=>`<button class="btn ${s==='cancelled'?'btn-danger':s==='completed'?'btn-success':'btn-primary'}" onclick="updateJobStatus(${job.id},'${s}')">${statusLabel(s)}</button>`).join('')}
         <button class="btn btn-outline" onclick="route('#/chat/${job.id}')">${_t('jdet.chat')}</button>
         <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
+        <button class="btn btn-ghost" onclick="showReportModal('user',${job.request.client_id})">${_t('report.userBtn')}</button>
+        <button class="btn btn-ghost" style="color:var(--danger)" onclick="blockUserWithConfirm(${job.request.client_id})">${_t('report.blockBtn')}</button>
       </div>
     </div>`:``}
     ${renderProviderTrackingControls(job.id, job.status)}
-    ${job.status==='completed'?`<div class="card" style="text-align:center;display:flex;gap:8px;justify-content:center">
+    ${job.status==='completed'?`<div class="card" style="text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
       <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
+      <button class="btn btn-ghost" onclick="showReportModal('user',${job.request.client_id})">${_t('report.userBtn')}</button>
     </div>`:''}`;
 }
 
@@ -3045,6 +3152,7 @@ async function renderMyReviews(el) {
         <span class="text-sm">${fmtDate(r.created_at)}</span>
       </div>
       ${r.comment?`<p class="text-sm">"${escapeHtml(r.comment)}"</p>`:'<p class="text-sm" style="color:var(--gray-400)">No comment</p>'}
+      <div class="mt-4"><button class="btn btn-ghost" style="font-size:.78rem;padding:4px 10px" onclick="showReportModal('review',${r.id})">${_t('report.reviewBtn')}</button></div>
     </div>`).join('');
 }
 
@@ -3125,8 +3233,23 @@ async function renderMessages(el, jobId) {
   }
 
   const msgs = await get('/api/messages/job/'+jobId);
+  let otherUserId = null;
+  try {
+    if (_user.role === 'mechanic') {
+      const job = await get('/api/provider/jobs/'+jobId);
+      otherUserId = job.request?.client_id ?? null;
+    } else if (_user.role === 'client') {
+      const job = await get('/api/client/jobs/'+jobId);
+      otherUserId = job.mechanic_id ?? null;
+    }
+  } catch(e) { /* non-fatal \u2014 report/block buttons just won't render */ }
+
   el.innerHTML = `
     ${pageHeader('Chat \u2014 Job #'+jobId, `<button class="btn btn-outline" onclick="route('#/messages')">\u2190 Back</button>`)}
+    ${otherUserId!=null?`<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn btn-ghost" style="font-size:.78rem;padding:4px 10px" onclick="showReportModal('user',${otherUserId})">${_t('report.userBtn')}</button>
+      <button class="btn btn-ghost" style="font-size:.78rem;padding:4px 10px;color:var(--danger)" onclick="blockUserWithConfirm(${otherUserId})">${_t('report.blockBtn')}</button>
+    </div>`:''}
     <div class="card" style="padding:0">
       <div class="chat-wrap">
         <div class="chat-messages" id="chat-msgs">
@@ -3168,6 +3291,7 @@ async function adminView(hash, el) {
   if (hash==='#/users')           return renderAdminUsers(el);
   if (hash==='#/requests')        return renderAdminRequests(el);
   if (hash==='#/disputes')        return renderAdminDisputes(el);
+  if (hash==='#/reports')         return renderAdminReports(el);
   el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
 }
 
@@ -3184,6 +3308,7 @@ async function renderAdminDash(el) {
       <div class="stat-card"><div class="stat-num">${stats.active_jobs}</div><div class="stat-label">Active Jobs</div></div>
       <div class="stat-card"><div class="stat-num">${stats.completed_jobs}</div><div class="stat-label">Completed Jobs</div></div>
       <div class="stat-card"><div class="stat-num" style="color:${stats.open_disputes>0?'var(--danger)':'var(--success)'}">${stats.open_disputes}</div><div class="stat-label">Open Disputes</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:${stats.open_reports>0?'var(--danger)':'var(--success)'}">${stats.open_reports}</div><div class="stat-label">Open Reports</div></div>
       <div class="stat-card"><div class="stat-num">${stats.avg_platform_rating.toFixed(1)}</div><div class="stat-label">Avg Rating</div></div>
     </div>`;
 }
@@ -3215,7 +3340,7 @@ async function toggleUser(id, isActive) {
   try {
     await patch('/api/admin/users/'+id, {is_active: !isActive});
     const el = document.getElementById('content');
-    if (el) renderAdminUsers(el);
+    if (el) adminView(location.hash || '#/users', el);
   } catch(e) { alert('Failed to ' + action + ' user: ' + e.message); }
 }
 
@@ -3292,6 +3417,64 @@ async function submitResolveDispute(id) {
     renderAdminDisputes(document.getElementById('content'));
   } catch(e) {
     const errEl = document.getElementById('disp-err');
+    if (errEl) errEl.innerHTML = alert_el('error', e.message);
+    else showToast(e.message, 'error');
+  }
+}
+
+// ---- Admin: Reports (moderation queue, GP-08) ----
+const REPORT_ENTITY_LABEL = {user:'User', message:'Message', review:'Review', service_request:'Service Request'};
+
+async function renderAdminReports(el) {
+  const reports = await get('/api/admin/reports');
+  el.innerHTML = `${pageHeader('Reports')}`;
+  if (reports.length===0) {
+    el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>','No reports','Platform is clean');
+    return;
+  }
+  el.innerHTML += reports.map(r=>`
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Report #${r.id} — ${REPORT_ENTITY_LABEL[r.entity_type]||r.entity_type} — ${r.category}</div>
+          <div class="card-subtitle">Reported user #${r.reported_user_id} by user #${r.reporter_id} · ${fmtDate(r.created_at)}</div>
+        </div>
+        ${badge(r.status)}
+      </div>
+      ${r.description?`<p class="text-sm" style="margin-bottom:10px">${escapeHtml(r.description)}</p>`:''}
+      ${r.admin_notes?`<div class="text-sm" style="color:var(--gray-600)"><strong>Notes:</strong> ${escapeHtml(r.admin_notes)}</div>`:''}
+      ${r.status!=='resolved'&&r.status!=='dismissed'?`
+        <div class="mt-4" style="display:flex;gap:8px;flex-wrap:wrap">
+          ${r.status!=='reviewing'?`<button class="btn btn-outline" onclick="setReportStatus(${r.id},'reviewing')">Mark Reviewing</button>`:''}
+          <button class="btn btn-outline" onclick="setReportStatus(${r.id},'dismissed')">Dismiss</button>
+          <button class="btn btn-success" onclick="resolveReport(${r.id})">Resolve</button>
+          <button class="btn btn-danger" onclick="toggleUser(${r.reported_user_id},true)">Deactivate Reported User</button>
+        </div>`:`<div class="text-sm mt-4" style="color:var(--gray-500)">${r.status==='resolved'?'✅ Resolved':'Dismissed'} ${fmtDate(r.resolved_at)}</div>`}
+    </div>`).join('');
+}
+
+async function setReportStatus(id, status) {
+  try {
+    await patch('/api/admin/reports/'+id, {status});
+    renderAdminReports(document.getElementById('content'));
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+function resolveReport(id) {
+  showModal('Resolve Report #'+id, `
+    <div class="form-group"><label>Admin Notes (optional)</label><textarea id="rpt-resolve-notes"></textarea></div>
+    <div id="rpt-resolve-err"></div>`,
+    `<button class="btn btn-success btn-full" onclick="submitResolveReport(${id})">Confirm Resolve</button>`);
+}
+
+async function submitResolveReport(id) {
+  const notes = document.getElementById('rpt-resolve-notes')?.value.trim();
+  try {
+    await patch('/api/admin/reports/'+id, {status:'resolved', ...(notes&&{admin_notes:notes})});
+    closeModal();
+    renderAdminReports(document.getElementById('content'));
+  } catch(e) {
+    const errEl = document.getElementById('rpt-resolve-err');
     if (errEl) errEl.innerHTML = alert_el('error', e.message);
     else showToast(e.message, 'error');
   }

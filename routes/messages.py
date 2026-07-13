@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from database import get_db
 from models import Job, Message, ServiceRequest, User
+from routes.moderation import is_blocked_pair
 from schemas import MessageCreate, MessageOut
 
 router = APIRouter(prefix="/api/messages", tags=["messages"])
@@ -66,6 +67,10 @@ def send_message(
         or current_user.role == "admin"
     ):
         raise HTTPException(status_code=403, detail="Not authorised for this job")
+
+    other_id = job.mechanic_id if current_user.id != job.mechanic_id else (req.client_id if req else None)
+    if other_id and is_blocked_pair(db, current_user.id, other_id):
+        raise HTTPException(status_code=403, detail="You cannot message this user")
 
     msg = Message(job_id=job_id, sender_id=current_user.id, content=payload.content)
     db.add(msg)

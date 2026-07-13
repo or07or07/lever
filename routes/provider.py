@@ -16,6 +16,7 @@ from auth import require_provider
 from database import get_db
 from models import Job, MechanicProfile, Notification, ServiceRequest, User
 from professions import get_job_statuses
+from routes.moderation import blocked_user_ids_involving, is_blocked_pair
 from schemas import (
     JobDetail,
     JobOut,
@@ -211,6 +212,12 @@ def job_board(
     )
     if urgency:
         q = q.filter(ServiceRequest.urgency == urgency)
+
+    # Never surface requests from a client either side has blocked.
+    blocked_ids = blocked_user_ids_involving(db, current_user.id)
+    if blocked_ids:
+        q = q.filter(ServiceRequest.client_id.notin_(blocked_ids))
+
     return q.order_by(ServiceRequest.created_at.asc()).all()
 
 
@@ -229,6 +236,8 @@ def accept_request(
         raise HTTPException(status_code=404, detail="Service request not found")
     if req.status != "pending":
         raise HTTPException(status_code=409, detail="Request is no longer available")
+    if is_blocked_pair(db, current_user.id, req.client_id):
+        raise HTTPException(status_code=403, detail="You cannot accept a request from this client")
 
     # Verify profession match
     profile = db.query(MechanicProfile).filter(

@@ -27,6 +27,7 @@ from database import get_db
 from geo import bounding_box, haversine_miles, geocode, is_valid_coords
 from models import MechanicProfile, ServiceRequest, User
 from professions import PROFESSION_KEYS
+from routes.moderation import blocked_user_ids_involving
 from schemas import (
     GeocodeRequest,
     GeocodeResponse,
@@ -96,6 +97,11 @@ def search_providers(
     if specialty:
         # For SQLite, JSON contains uses text; for PostgreSQL, use native JSON
         q = q.filter(MechanicProfile.specialties.contains(specialty))
+
+    # Never surface a provider either side has blocked.
+    blocked_ids = blocked_user_ids_involving(db, current_user.id)
+    if blocked_ids:
+        q = q.filter(MechanicProfile.user_id.notin_(blocked_ids))
 
     # Geo: bounding-box pre-filter
     if has_geo:
@@ -199,6 +205,10 @@ def search_nearby_requests(
     if urgency:
         q = q.filter(ServiceRequest.urgency == urgency)
 
+    blocked_ids = blocked_user_ids_involving(db, current_user.id)
+    if blocked_ids:
+        q = q.filter(ServiceRequest.client_id.notin_(blocked_ids))
+
     # Bounding-box pre-filter
     min_lat, max_lat, min_lng, max_lng = bounding_box(latitude, longitude, radius_miles)
     q = q.filter(
@@ -298,6 +308,10 @@ def map_providers(
     if profession:
         q = q.filter(MechanicProfile.profession == profession)
 
+    blocked_ids = blocked_user_ids_involving(db, current_user.id)
+    if blocked_ids:
+        q = q.filter(MechanicProfile.user_id.notin_(blocked_ids))
+
     providers = q.all()
 
     return [
@@ -349,6 +363,10 @@ def map_requests(
         q = q.filter(ServiceRequest.status == status_filter)
     if profession_type:
         q = q.filter(ServiceRequest.profession_type == profession_type)
+
+    blocked_ids = blocked_user_ids_involving(db, current_user.id)
+    if blocked_ids:
+        q = q.filter(ServiceRequest.client_id.notin_(blocked_ids))
 
     requests = q.all()
 

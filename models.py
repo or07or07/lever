@@ -318,6 +318,64 @@ class RequestDispatch(Base):
 
 
 # ---------------------------------------------------------------------------
+# Content moderation: reports + blocking (GP-08)
+# ---------------------------------------------------------------------------
+
+class Report(Base):
+    """A user-submitted report against another user, or a specific piece of
+    content (message, review, service request) that user authored."""
+    __tablename__ = "reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reported_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    entity_type = Column(
+        SAEnum("user", "message", "review", "service_request", name="report_entity_enum"),
+        nullable=False,
+    )
+    entity_id = Column(Integer, nullable=True)  # id of the message/review/request; null for a direct user report
+    category = Column(
+        SAEnum("spam", "harassment", "fraud", "inappropriate", "safety", "other", name="report_category_enum"),
+        nullable=False,
+    )
+    description = Column(Text, default="")
+    status = Column(
+        SAEnum("open", "reviewing", "resolved", "dismissed", name="report_status_enum"),
+        default="open", nullable=False,
+    )
+    admin_notes = Column(Text, default="")
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    reported_user = relationship("User", foreign_keys=[reported_user_id])
+
+    __table_args__ = (
+        Index("ix_reports_status", "status"),
+        Index("ix_reports_reported_user", "reported_user_id"),
+    )
+
+
+class Block(Base):
+    """One-directional block: blocker no longer sees or can be contacted
+    by blocked in matching/discovery/messaging. Enforced symmetrically —
+    either party having blocked the other is enough to hide/restrict."""
+    __tablename__ = "blocks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    blocker_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    blocked_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    blocker = relationship("User", foreign_keys=[blocker_id])
+    blocked = relationship("User", foreign_keys=[blocked_id])
+
+    __table_args__ = (
+        Index("ix_blocks_blocker_blocked", "blocker_id", "blocked_id", unique=True),
+    )
+
+
+# ---------------------------------------------------------------------------
 # GPS Live Tracking (provider location breadcrumbs per active job)
 # ---------------------------------------------------------------------------
 

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from auth import decode_token
 from database import SessionLocal
 from models import Job, Message, ServiceRequest, User, Notification
+from routes.moderation import is_blocked_pair
 from websocket_manager import manager
 
 logger = logging.getLogger("lever.ws")
@@ -94,6 +95,11 @@ async def websocket_messages(
         participants = _get_job_participants(db, job_id)
         if user_id not in participants:
             await websocket.close(code=4003, reason="Not a participant of this job")
+            return
+
+        other_ids = participants - {user_id}
+        if other_ids and any(is_blocked_pair(db, user_id, other_id) for other_id in other_ids):
+            await websocket.close(code=4003, reason="Blocked")
             return
     finally:
         db.close()

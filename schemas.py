@@ -476,6 +476,57 @@ class DisputeOut(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Reports & Blocking (content moderation, GP-08)
+# ---------------------------------------------------------------------------
+
+class ReportCreate(BaseModel):
+    entity_type: str = Field(pattern="^(user|message|review|service_request)$")
+    # For entity_type='user' this IS the reported user's id. For the other
+    # types it's the message/review/request id — the server resolves who
+    # authored it rather than trusting a client-supplied reported_user_id,
+    # so a report can't be filed against the wrong person by mistake or on purpose.
+    entity_id: int
+    category: str = Field(pattern="^(spam|harassment|fraud|inappropriate|safety|other)$")
+    description: str = Field(default="", max_length=2000)
+
+
+class ReportAdminUpdate(BaseModel):
+    status: str = Field(pattern="^(open|reviewing|resolved|dismissed)$")
+    admin_notes: Optional[str] = Field(default=None, max_length=5000)
+
+
+class ReportOut(BaseModel):
+    id: int
+    reporter_id: int
+    reported_user_id: int
+    entity_type: str
+    entity_id: Optional[int]
+    category: str
+    description: str
+    status: str
+    admin_notes: str
+    created_at: datetime
+    resolved_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
+class BlockCreate(BaseModel):
+    blocked_user_id: int
+
+
+class BlockOut(BaseModel):
+    id: int
+    blocker_id: int
+    blocked_id: int
+    blocked_email: Optional[str] = None
+    blocked_name: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Admin / Dashboard
 # ---------------------------------------------------------------------------
 
@@ -489,6 +540,7 @@ class AdminStats(BaseModel):
     active_jobs: int
     completed_jobs: int
     open_disputes: int
+    open_reports: int = 0
     total_reviews: int
     avg_platform_rating: float
 

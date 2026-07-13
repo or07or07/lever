@@ -22,6 +22,7 @@ from professions import PROFESSION_KEYS
 from schemas import (
     ClientProfileOut,
     ClientProfileUpdate,
+    JobOut,
     MechanicCard,
     MessageResponse,
     ReviewCreate,
@@ -290,6 +291,27 @@ def browse_providers(
     if specialty:
         q = q.filter(MechanicProfile.specialties.contains(specialty))
     return q.order_by(MechanicProfile.avg_rating.desc()).all()
+
+
+# ---------------------------------------------------------------------------
+# Jobs (read-only — for the chat header to resolve who the other party is)
+# ---------------------------------------------------------------------------
+
+@router.get("/jobs/{job_id}", response_model=JobOut)
+def get_job(
+    job_id: int,
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    job = (
+        db.query(Job)
+        .options(joinedload(Job.request))
+        .filter(Job.id == job_id)
+        .first()
+    )
+    if not job or not job.request or job.request.client_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 
 # ---------------------------------------------------------------------------

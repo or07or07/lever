@@ -9,13 +9,15 @@ from sqlalchemy.orm import Session
 
 from auth import require_admin
 from database import get_db
-from models import Dispute, Job, MechanicProfile, Review, ServiceRequest, User
+from models import Dispute, Job, MechanicProfile, Report, Review, ServiceRequest, User
 from schemas import (
     AdminStats,
     DisputeAdminUpdate,
     DisputeOut,
     MessageResponse,
     PaginatedUsers,
+    ReportAdminUpdate,
+    ReportOut,
     UserAdminUpdate,
     UserOut,
 )
@@ -56,6 +58,11 @@ def platform_stats(
         .filter(Dispute.status.in_(["open", "reviewing"]))
         .scalar()
     )
+    open_reports = (
+        db.query(func.count(Report.id))
+        .filter(Report.status.in_(["open", "reviewing"]))
+        .scalar()
+    )
     total_reviews = db.query(func.count(Review.id)).scalar()
     avg_rating_row = db.query(func.avg(Review.rating)).scalar()
     avg_rating = round(float(avg_rating_row or 0), 2)
@@ -69,6 +76,7 @@ def platform_stats(
         active_jobs=active_jobs,
         completed_jobs=completed_jobs,
         open_disputes=open_disputes,
+        open_reports=open_reports,
         total_reviews=total_reviews,
         avg_platform_rating=avg_rating,
     )
@@ -209,3 +217,54 @@ def resolve_dispute(
     db.commit()
     db.refresh(d)
     return d
+
+
+# ---------------------------------------------------------------------------
+# Reports (content moderation queue, GP-08)
+# ---------------------------------------------------------------------------
+
+@router.get("/reports", response_model=List[ReportOut])
+def list_reports(
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    q = db.query(Report)
+    if status_filter:
+        q = q.filter(Report.status == status_filter)
+    return q.order_by(Report.created_at.asc()).all()
+
+
+@router.get("/reports/{report_id}", response_model=ReportOut)
+def get_report(
+    report_id: int,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    r = db.get(Report, report_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return r
+
+
+@router.patch("/reports/{report_id}", response_model=ReportOut)
+def resolve_report(
+    report_id: int,
+    payload: ReportAdminUpdate,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    r = db.get(Report, report_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    r.status = payload.status
+    if payload.admin_notes is not None:
+        r.admin_notes = payload.admin_notes
+    if payload.status in ("resolved", "dismissed"):
+        from datetime import datetime, timezone
+        r.resolved_at = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(r)
+    return r
