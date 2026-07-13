@@ -1,0 +1,146 @@
+name: Android Release
+
+# Manually triggered only — this produces signed, upload-ready .aab files,
+# unlike android-build.yml's unsigned debug APKs on every push. Two
+# separate jobs rather than a matrix: GitHub Actions secrets can't be
+# indexed dynamically by a matrix variable, and client/provider each use
+# their own distinct signing key anyway (see docs/release-signing.md).
+on:
+  workflow_dispatch:
+
+jobs:
+  release-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify signing secrets are configured
+        run: |
+          if [ -z "$STORE_B64" ] || [ -z "$STORE_PW" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PW" ]; then
+            echo "::error::One or more ANDROID_CLIENT_* secrets are missing. See docs/release-signing.md."
+            exit 1
+          fi
+        env:
+          STORE_B64: ${{ secrets.ANDROID_CLIENT_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ANDROID_CLIENT_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_CLIENT_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_CLIENT_KEY_PASSWORD }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Sync Capacitor Android project
+        working-directory: apps/client
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x apps/client/android/gradlew
+
+      - name: Decode release keystore
+        run: echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release-client.jks"
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_CLIENT_KEYSTORE_BASE64 }}
+
+      - name: Build signed release .aab
+        working-directory: apps/client/android
+        run: ./gradlew bundleRelease --no-daemon
+        env:
+          LEVER_CLIENT_STORE_FILE: ${{ runner.temp }}/release-client.jks
+          LEVER_CLIENT_STORE_PASSWORD: ${{ secrets.ANDROID_CLIENT_STORE_PASSWORD }}
+          LEVER_CLIENT_KEY_ALIAS: ${{ secrets.ANDROID_CLIENT_KEY_ALIAS }}
+          LEVER_CLIENT_KEY_PASSWORD: ${{ secrets.ANDROID_CLIENT_KEY_PASSWORD }}
+
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release-client.jks"
+
+      - name: Upload signed .aab
+        uses: actions/upload-artifact@v4
+        with:
+          name: lever-client-release-aab
+          path: apps/client/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+  release-provider:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify signing secrets are configured
+        run: |
+          if [ -z "$STORE_B64" ] || [ -z "$STORE_PW" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PW" ]; then
+            echo "::error::One or more ANDROID_PROVIDER_* secrets are missing. See docs/release-signing.md."
+            exit 1
+          fi
+        env:
+          STORE_B64: ${{ secrets.ANDROID_PROVIDER_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ANDROID_PROVIDER_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_PROVIDER_KEY_ALIAS }}
+          KEY_PW: ${{ secrets.ANDROID_PROVIDER_KEY_PASSWORD }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Sync Capacitor Android project
+        working-directory: apps/provider
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x apps/provider/android/gradlew
+
+      - name: Decode release keystore
+        run: echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release-provider.jks"
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_PROVIDER_KEYSTORE_BASE64 }}
+
+      - name: Build signed release .aab
+        working-directory: apps/provider/android
+        run: ./gradlew bundleRelease --no-daemon
+        env:
+          LEVER_PROVIDER_STORE_FILE: ${{ runner.temp }}/release-provider.jks
+          LEVER_PROVIDER_STORE_PASSWORD: ${{ secrets.ANDROID_PROVIDER_STORE_PASSWORD }}
+          LEVER_PROVIDER_KEY_ALIAS: ${{ secrets.ANDROID_PROVIDER_KEY_ALIAS }}
+          LEVER_PROVIDER_KEY_PASSWORD: ${{ secrets.ANDROID_PROVIDER_KEY_PASSWORD }}
+
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release-provider.jks"
+
+      - name: Upload signed .aab
+        uses: actions/upload-artifact@v4
+        with:
+          name: lever-provider-release-aab
+          path: apps/provider/android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error

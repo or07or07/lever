@@ -1,5 +1,24 @@
 apply plugin: 'com.android.application'
 
+// ── Release signing (GP-03/GP-04) ──────────────────────────────────────────
+// Reads apps/client/android/keystore.properties if present (local/manual
+// release builds — the file and the .jks it points to are both gitignored,
+// never committed). CI supplies the same four values as environment
+// variables instead (decoded from a base64 GitHub Actions secret at build
+// time — see .github/workflows/android-release.yml). If neither source is
+// present, the release build type is simply left unsigned, so `assembleDebug`
+// and everyday development are completely unaffected.
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def relStoreFile      = keystoreProps['storeFile']     ?: System.getenv("LEVER_CLIENT_STORE_FILE")
+def relStorePassword  = keystoreProps['storePassword'] ?: System.getenv("LEVER_CLIENT_STORE_PASSWORD")
+def relKeyAlias       = keystoreProps['keyAlias']      ?: System.getenv("LEVER_CLIENT_KEY_ALIAS")
+def relKeyPassword    = keystoreProps['keyPassword']   ?: System.getenv("LEVER_CLIENT_KEY_PASSWORD")
+def hasReleaseSigning = relStoreFile && relStorePassword && relKeyAlias && relKeyPassword
+
 android {
     namespace = "com.lever.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,10 +35,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile rootProject.file(relStoreFile)
+                storePassword relStorePassword
+                keyAlias relKeyAlias
+                keyPassword relKeyPassword
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

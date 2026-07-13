@@ -98,6 +98,8 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Blocks submission:** Yes — a core feature must actually work before submission, and Play's review process actively tests declared functionality
 
 ### GP-03 — No release signing, no `.aab`, no Play App Signing
+- **Status: RESOLVED (code + workflow; you still need to do the one-time key generation)** — added a `signingConfigs.release` block to both `apps/client/android/app/build.gradle` and `apps/provider/android/app/build.gradle` that reads either a local, gitignored `keystore.properties` file or environment variables — never a hardcoded value. If neither is present, the release build type is simply left unsigned rather than failing, so `assembleDebug`/everyday development is completely unaffected. Added `.github/workflows/android-release.yml`, manually triggered (`workflow_dispatch`, not on every push), with two explicit jobs (client, provider — GitHub Actions can't index secrets dynamically by a matrix variable, and the two apps need distinct keys anyway) that decode a base64-encoded keystore secret to a temp file, run `bundleRelease`, upload the signed `.aab`, and delete the decoded keystore afterward. Full instructions — including the exact `keytool` commands, why losing the upload key is unrecoverable, and the full secrets list — are in the new `docs/release-signing.md`.
+  **What I could not verify:** this sandbox's network access couldn't reliably download the Gradle distribution (`Connection reset` partway through `gradle-8.14.3-all.zip`), so I hand-reviewed the Groovy for correctness but never actually ran `./gradlew bundleRelease` against it. The pattern is the standard, extremely well-documented one for Capacitor/Android signing, but please run a real build locally (`docs/release-signing.md` section 2) before relying on the CI workflow for your first submission.
 - **Severity:** Critical
 - **Description:** The only CI build target is `gradlew assembleDebug`, producing a debug-signed `.apk`. Google Play requires an **App Bundle** (`.aab`), signed with a release key, uploaded via Play App Signing.
 - **Evidence:** `.github/workflows/android-build.yml` — `run: ./gradlew assembleDebug --no-daemon`. No `signingConfigs` block exists in either `apps/*/android/app/build.gradle`.
@@ -108,6 +110,7 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Blocks submission:** Yes
 
 ### GP-04 — No secrets-management story for signing keys or API keys
+- **Status: RESOLVED** — GitHub Actions encrypted secrets (8 total: keystore base64 + store password + key alias + key password, per app — see `docs/release-signing.md`). Injected only as environment variables at build time, decoded to a runner-temp file that's deleted immediately after the build (`if: always()` cleanup step), never written into the repo checkout or a build artifact. Local release builds use the same `keystore.properties` mechanism as GP-03, gitignored, with a `.template` file committed instead showing the expected format with placeholder values.
 - **Severity:** High
 - **Description:** There is currently no keystore, no signing password, and no mechanism (GitHub Actions secrets, etc.) wired up to inject them into a release build. This needs to exist before GP-03 can be completed safely.
 - **Risk:** If done carelessly, a keystore or password could end up committed to the repo (which has no `.gitignore` protection specifically for keystores beyond the generic `*.jks`/`*.keystore` patterns already added — those patterns are present and correct, but only prevent accidental commits, they don't provide a place to *store* the secret for CI use).
@@ -351,7 +354,9 @@ Ordered by what actually blocks submission first, then by risk.
 3. ✅ **GP-08** — RESOLVED. Reporting + blocking + admin moderation queue.
 4. ✅ **GP-02** — RESOLVED. Location permission fix.
 5. ✅ **GP-01** — RESOLVED. Package ID decided and corrected.
-6. **GP-03 + GP-04** — Release signing, `.aab` builds, secrets management — only remaining "must fix" item
+6. ✅ **GP-03 + GP-04** — RESOLVED (code + CI workflow + docs). Release signing, `.aab` builds, secrets management. **You still need to do the one-time key generation yourself** — see `docs/release-signing.md` — and I was not able to actually run a Gradle build in this sandbox to verify the config end-to-end, so please test `bundleRelease` locally before your first real submission.
+
+**All "must fix" items are now resolved or code-complete.** What's left before you can actually submit: your review of the legal content (GP-05/06), running the Alembic migrations against production (GP-06's operational note), generating the real release keystores and testing a signed build (GP-03/04 above), and working through the remaining Section 9/10/21 items below at your own pace.
 
 ### Should fix before submission (policy alignment / correctness, not hard blockers)
 7. ✅ **GP-17** — RESOLVED. Exact job coordinates no longer exposed pre-acceptance.
