@@ -140,6 +140,7 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Needs owner/legal input:** Yes — same reasoning as GP-05
 
 ### GP-07 — No account deletion mechanism, in-app or on the web
+- **Status: RESOLVED** — added `DELETE /api/auth/account` (requires re-entering the password, since a bearer token alone shouldn't be able to trigger an irreversible action). Per the owner's confirmed policy, it anonymizes rather than hard-deletes the `User` row: email/password/contact details/avatar/precise location are wiped, the row is deactivated (`is_active=False`, which `get_current_user` already checks — this instantly revokes every existing session with no separate token-blocklist needed), and `ClientProfile`/`MechanicProfile` names are replaced with "Usuario eliminado". Purely private data with no bearing on anyone else's history — `Vehicle`, `Notification`, `ProviderLocation` breadcrumbs — is hard-deleted outright. `Job`, `ServiceRequest`, `Message`, and `Review` rows are left untouched so the other party's job history and rating integrity survive intact, exactly as decided. Added a guard that blocks deletion with a 409 while the user has an open `ServiceRequest`/`Job` (anything not `completed`/`cancelled`), so no one can vanish mid-job and strand the other party. Built both required paths: an in-app `Settings > Danger Zone > Eliminar mi cuenta` flow (password-confirmation modal) and a public `/delete-account` page (`frontend/legal/delete-account.html`) for users without the app, which logs in and calls the same endpoint. Verified end-to-end against a live server and in-browser: wrong password rejected, active-job guard blocks both client- and provider-side deletion and lifts once the job is completed, deletion anonymizes the row correctly (confirmed by direct DB query), the token is immediately rejected afterward, and the other party's job/message/review data is confirmed intact and readable post-deletion. Also found and fixed a real bug during this verification: the standalone page's success message `<div>` was nested inside the `<form>` it hides on success, so the confirmation message never actually appeared — moved it outside the form.
 - **Severity:** Critical
 - **Description:** There is no `DELETE /api/auth/me` or equivalent endpoint, no "Delete Account" UI anywhere in `frontend/index.html`'s settings screen, and no `/delete-account` web page.
 - **Evidence:** `grep` for delete-account/GDPR/LOPD/retention logic across the entire backend returned nothing.
@@ -345,8 +346,8 @@ Ordered by what actually blocks submission first, then by risk.
 
 ### Must fix before any Play Store submission attempt
 1. ✅ **GP-05 + GP-06** — RESOLVED. Privacy Policy + Terms & Conditions (content + real, always-reachable pages + acceptance tracking at registration). Still needs your review of the actual legal content before treating it as final.
-2. **GP-07** — Account deletion, in-app and web
-3. **GP-08** — Reporting + blocking (moderation infrastructure) — the largest single item
+2. ✅ **GP-07** — RESOLVED. Account deletion, in-app and web (anonymize policy).
+3. **GP-08** — Reporting + blocking (moderation infrastructure) — the largest remaining item
 4. ✅ **GP-02** — RESOLVED. Location permission fix.
 5. ✅ **GP-01** — RESOLVED. Package ID decided and corrected.
 6. **GP-03 + GP-04** — Release signing, `.aab` builds, secrets management

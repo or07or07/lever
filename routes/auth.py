@@ -29,8 +29,10 @@ from auth import (
 )
 from database import get_db
 from email_service import create_and_send_verification, verify_user_code
-from models import ClientProfile, MechanicProfile, User
+from models import ClientProfile, Job, MechanicProfile, Notification, ProviderLocation, ServiceRequest, User, Vehicle
 from schemas import (
+    AccountDeleteRequest,
+    AccountDeleteResponse,
     ClientProfileOut,
     MechanicProfileOut,
     PasswordResetRequest,
@@ -317,4 +319,112 @@ def verify_password_reset(
     return PasswordResetResponse(
         success=True,
         message="Password has been reset successfully. You can now log in."
+    )
+
+
+# ---------------------------------------------------------------------------
+# Account deletion (GP-07)
+# ---------------------------------------------------------------------------
+
+DELETED_USER_LABEL = "Usuario eliminado"
+
+
+@router.delete("/account", response_model=AccountDeleteResponse)
+def delete_account(
+    payload: AccountDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete the current user's account.
+
+    Policy (confirmed by the Lever owner): the user's own profile and
+    auth data (email, password, contact details, avatar, precise
+    location) is wiped. Records shared with other users — job history,
+    chat messages, reviews — are kept but stripped of this user's
+    identifying details, so the other party's history and rating
+    integrity are preserved. See docs/google-play-readiness.md GP-07.
+
+    Requires re-entering the password so a stolen/hijacked bearer token
+    alone can't trigger this irreversible action.
+    """
+    if current_user.deleted_at is not None:
+        raise HTTPException(status_code=400, detail="Account already deleted")
+
+    if current_user.password_hash and not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    # Block deletion while an active job would strand the other party.
+    open_request = (
+        db.query(ServiceRequest)
+        .filter(
+            ServiceRequest.client_id == current_user.id,
+            ServiceRequest.status.notin_(["completed", "cancelled"]),
+        )
+        .first()
+    )
+    open_job = (
+        db.query(Job)
+        .filter(
+            Job.mechanic_id == current_user.id,
+            Job.status.notin_(["completed", "cancelled"]),
+        )
+        .first()
+    )
+    if open_request or open_job:
+        raise HTTPException(
+            status_code=409,
+            detail="You have an active service request or job in progress. "
+                   "Please complete or cancel it before deleting your account.",
+        )
+
+    now = datetime.now(timezone.utc)
+
+    # Wipe this user's own private data outright — it isn't needed by anyone else.
+    db.query(Vehicle).filter(Vehicle.client_id == current_user.id).delete(synchronize_session=False)
+    db.query(Notification).filter(Notification.user_id == current_user.id).delete(synchronize_session=False)
+    db.query(ProviderLocation).filter(
+        ProviderLocation.provider_user_id == current_user.id
+    ).delete(synchronize_session=False)
+
+    # Anonymize (not delete) the user row itself: job/message/review records
+    # still reference this id via foreign keys, and other users' job history
+    # and ratings must remain intact. Deactivating immediately revokes every
+    # existing session, since get_current_user rejects inactive users.
+    current_user.email = f"deleted-user-{current_user.id}@deleted.lever.app"
+    current_user.password_hash = None
+    current_user.is_active = False
+    current_user.deleted_at = now
+    current_user.oauth_provider = None
+    current_user.oauth_provider_id = None
+    current_user.verification_token = None
+    current_user.verification_token_expires = None
+    current_user.reset_token = None
+    current_user.reset_token_expires = None
+
+    client_profile = db.query(ClientProfile).filter(ClientProfile.user_id == current_user.id).first()
+    if client_profile:
+        client_profile.full_name = DELETED_USER_LABEL
+        client_profile.phone = ""
+        client_profile.address = ""
+        client_profile.avatar_url = ""
+
+    mechanic_profile = db.query(MechanicProfile).filter(MechanicProfile.user_id == current_user.id).first()
+    if mechanic_profile:
+        mechanic_profile.full_name = DELETED_USER_LABEL
+        mechanic_profile.phone = ""
+        mechanic_profile.bio = ""
+        mechanic_profile.specialties = []
+        mechanic_profile.avatar_url = ""
+        mechanic_profile.location = ""
+        mechanic_profile.latitude = None
+        mechanic_profile.longitude = None
+        mechanic_profile.is_available = False
+        mechanic_profile.is_online = False
+
+    db.commit()
+
+    logger.info(f"Account {current_user.id} deleted (anonymized) at {now.isoformat()}")
+    return AccountDeleteResponse(
+        success=True,
+        message="Your account has been deleted.",
     )

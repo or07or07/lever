@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eliminar cuenta — Lever</title>
+<meta name="robots" content="index, follow">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;color:#0f172a;line-height:1.65;-webkit-font-smoothing:antialiased}
+.wrap{max-width:640px;margin:0 auto;padding:32px 24px 80px}
+header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+header a{display:flex;align-items:center;gap:8px;text-decoration:none;color:#0f172a;font-weight:800;font-size:1.3rem}
+.meta{color:#64748b;font-size:.85rem;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid #e2e8f0}
+h1{font-size:1.6rem;font-weight:800;margin-bottom:8px}
+h2{font-size:1.05rem;font-weight:700;margin:28px 0 10px;color:#4f46e5}
+p,li{color:#334155;font-size:.95rem;margin-bottom:8px}
+ul{padding-left:20px;margin-bottom:12px}
+.back{display:inline-block;margin-bottom:24px;color:#4f46e5;text-decoration:none;font-size:.88rem;font-weight:600}
+a{color:#4f46e5}
+.card{background:#f8fafc;border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.warn{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:14px 16px;font-size:.88rem;margin-bottom:20px}
+form{margin-top:20px}
+label{display:block;font-size:.85rem;font-weight:600;color:#334155;margin-bottom:5px}
+input[type=email],input[type=password]{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:.95rem;margin-bottom:16px}
+input[type=email]:focus,input[type=password]:focus{outline:none;border-color:#6366f1}
+.checkline{display:flex;align-items:flex-start;gap:8px;margin-bottom:20px}
+.checkline input{margin-top:3px;flex-shrink:0;width:16px;height:16px}
+.checkline label{margin:0;font-weight:400;font-size:.88rem;color:#475569}
+button{width:100%;padding:13px;border:none;border-radius:8px;background:#dc2626;color:#fff;font-size:.95rem;font-weight:700;cursor:pointer}
+button:disabled{opacity:.55;cursor:not-allowed}
+button:hover:not(:disabled){background:#b91c1c}
+.msg{border-radius:8px;padding:12px 14px;font-size:.88rem;margin-top:16px;display:none}
+.msg.error{display:block;background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.msg.success{display:block;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+footer{margin-top:48px;padding-top:24px;border-top:1px solid #e2e8f0;font-size:.82rem;color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Volver a Lever</a>
+  <header>
+    <a href="/"><svg width="26" height="26" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg> Lever</a>
+  </header>
+  <h1>Eliminar mi cuenta</h1>
+  <div class="meta">Usa esta página si quieres eliminar tu cuenta de Lever y no tienes acceso a la app. También puedes hacerlo desde Ajustes dentro de la app.</div>
+
+  <div class="card">
+    <h2 style="margin-top:0">¿Qué pasa cuando eliminas tu cuenta?</h2>
+    <ul>
+      <li><strong>Se elimina:</strong> tu correo, contraseña, nombre, teléfono, dirección, foto de perfil y ubicación guardada. Cierras sesión en todos tus dispositivos de inmediato.</li>
+      <li><strong>Se anonimiza:</strong> los mensajes de chat y reseñas que enviaste se conservan sin tu nombre (aparecen como "Usuario eliminado"), para no afectar el historial ni las calificaciones de otros usuarios.</li>
+      <li><strong>No se puede deshacer.</strong> Una vez eliminada, tu cuenta no se puede recuperar.</li>
+    </ul>
+    <p>Más detalles en nuestra <a href="/privacy">Política de Privacidad</a>.</p>
+  </div>
+
+  <div class="warn">⚠ Si tienes una solicitud de servicio o trabajo activo en curso, primero debes completarlo o cancelarlo — no podrás eliminar tu cuenta mientras esté en curso, para no dejar a la otra persona sin respuesta.</div>
+
+  <form id="del-form">
+    <label for="email">Correo electrónico</label>
+    <input type="email" id="email" required autocomplete="email">
+
+    <label for="password">Contraseña</label>
+    <input type="password" id="password" required autocomplete="current-password">
+
+    <div class="checkline">
+      <input type="checkbox" id="confirm" required>
+      <label for="confirm">Entiendo que esta acción es permanente y que mi cuenta y datos personales se eliminarán o anonimizarán según lo descrito arriba.</label>
+    </div>
+
+    <button type="submit" id="submit-btn">Eliminar mi cuenta</button>
+  </form>
+  <div class="msg" id="msg"></div>
+
+  <footer>Lever — Ecuador. ¿Dudas? Escríbenos a <a href="mailto:soporte@leverapp.com">soporte@leverapp.com</a></footer>
+</div>
+<script>
+const form = document.getElementById('del-form');
+const msgEl = document.getElementById('msg');
+const btn = document.getElementById('submit-btn');
+
+function showMsg(text, kind) {
+  msgEl.textContent = text;
+  msgEl.className = 'msg ' + kind;
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+
+  if (!confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
+
+  btn.disabled = true;
+  showMsg('', '');
+  msgEl.className = 'msg';
+
+  try {
+    const loginRes = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) {
+      throw new Error(loginData.detail || 'Correo o contraseña incorrectos.');
+    }
+
+    const delRes = await fetch('/api/auth/account', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + loginData.access_token,
+      },
+      body: JSON.stringify({ password }),
+    });
+    const delData = await delRes.json();
+    if (!delRes.ok) {
+      throw new Error(delData.detail || 'No se pudo eliminar la cuenta.');
+    }
+
+    form.style.display = 'none';
+    showMsg('Tu cuenta ha sido eliminada. Gracias por usar Lever.', 'success');
+  } catch (err) {
+    showMsg(err.message, 'error');
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

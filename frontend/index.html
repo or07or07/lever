@@ -924,6 +924,14 @@ var _translations = {
   'settings.privacyLink': {es:'Pol\u00edtica de Privacidad', en:'Privacy Policy'},
   'settings.termsLink': {es:'T\u00e9rminos y Condiciones', en:'Terms & Conditions'},
   'settings.supportLink': {es:'Centro de Ayuda', en:'Help Center'},
+  'settings.dangerZone': {es:'Zona de Peligro', en:'Danger Zone'},
+  'settings.deleteAccountDesc': {es:'Al eliminar tu cuenta se borran tu correo, contrase\u00f1a y datos de perfil. Tus mensajes y rese\u00f1as se conservan de forma an\u00f3nima para no afectar a otros usuarios. Esta acci\u00f3n no se puede deshacer.', en:'Deleting your account removes your email, password, and profile data. Your messages and reviews are kept anonymized so other users\u2019 history isn\u2019t affected. This cannot be undone.'},
+  'settings.deleteAccountBtn': {es:'Eliminar mi cuenta', en:'Delete my account'},
+  'settings.deleteAccountConfirmTitle': {es:'\u00bfEliminar tu cuenta?', en:'Delete your account?'},
+  'settings.deleteAccountPasswordLabel': {es:'Ingresa tu contrase\u00f1a para confirmar', en:'Enter your password to confirm'},
+  'settings.deleteAccountCancel': {es:'Cancelar', en:'Cancel'},
+  'settings.deleteAccountConfirm': {es:'S\u00ed, eliminar mi cuenta', en:'Yes, delete my account'},
+  'settings.deleteAccountSuccess': {es:'Tu cuenta ha sido eliminada.', en:'Your account has been deleted.'},
 
   // -- Messages --
   'msg.title': {es:'Mensajes', en:'Messages'},
@@ -2763,7 +2771,49 @@ function renderSettings(el) {
         '<a href="' + API + '/terms" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.termsLink') + '</a>' +
         '<a href="' + API + '/support" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.supportLink') + '</a>' +
       '</div>' +
+    '</div>' +
+    '<div class="card" style="max-width:500px;margin-top:16px;border:1px solid var(--danger)">' +
+      '<div class="card-header"><div class="card-title" style="color:var(--danger)">' + _t('settings.dangerZone') + '</div></div>' +
+      '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' + _t('settings.deleteAccountDesc') + '</p>' +
+      '<button class="btn btn-outline" style="border-color:var(--danger);color:var(--danger)" onclick="openDeleteAccountModal()">' + _t('settings.deleteAccountBtn') + '</button>' +
     '</div>';
+}
+
+function openDeleteAccountModal() {
+  showModal(
+    _t('settings.deleteAccountConfirmTitle'),
+    '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:14px">' + _t('settings.deleteAccountDesc') + '</p>' +
+    '<div class="form-group">' +
+      '<label>' + _t('settings.deleteAccountPasswordLabel') + '</label>' +
+      '<input type="password" id="del-acct-pass" autocomplete="current-password">' +
+    '</div>' +
+    '<div id="del-acct-err"></div>',
+    '<div style="display:flex;gap:10px;justify-content:flex-end">' +
+      '<button class="btn btn-outline" onclick="closeModal()">' + _t('settings.deleteAccountCancel') + '</button>' +
+      '<button class="btn btn-danger" id="del-acct-btn" onclick="confirmDeleteAccount()">' + _t('settings.deleteAccountConfirm') + '</button>' +
+    '</div>'
+  );
+}
+
+async function confirmDeleteAccount() {
+  const password = document.getElementById('del-acct-pass').value;
+  const errEl = document.getElementById('del-acct-err');
+  const btn = document.getElementById('del-acct-btn');
+  errEl.innerHTML = '';
+  if (!password) {
+    errEl.innerHTML = alert_el('error', _t('settings.deleteAccountPasswordLabel'));
+    return;
+  }
+  btn.disabled = true;
+  try {
+    await api('DELETE', '/api/auth/account', {password});
+    closeModal();
+    logout();
+    showToast(_t('settings.deleteAccountSuccess'), 'success');
+  } catch(e) {
+    errEl.innerHTML = alert_el('error', e.message);
+    btn.disabled = false;
+  }
 }
 
 function applyLang(lang) {

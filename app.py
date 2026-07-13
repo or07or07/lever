@@ -299,6 +299,11 @@ def serve_support():
     return FileResponse(LEGAL_DIR / "support.html")
 
 
+@app.get("/delete-account", include_in_schema=False)
+def serve_delete_account():
+    return FileResponse(LEGAL_DIR / "delete-account.html")
+
+
 @app.get("/", include_in_schema=False)
 @app.get("/{path:path}", include_in_schema=False)
 def serve_frontend(path: str = ""):

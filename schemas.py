@@ -116,6 +116,17 @@ class UserAdminUpdate(BaseModel):
     role: Optional[str] = Field(default=None, pattern="^(client|mechanic|admin)$")
 
 
+class AccountDeleteRequest(BaseModel):
+    """Requires re-entering the password so a hijacked/stolen bearer token
+    alone cannot trigger this irreversible action (GP-07)."""
+    password: str
+
+
+class AccountDeleteResponse(BaseModel):
+    success: bool
+    message: str
+
+
 # ---------------------------------------------------------------------------
 # Client Profile
 # ---------------------------------------------------------------------------
