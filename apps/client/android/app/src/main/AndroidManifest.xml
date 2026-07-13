@@ -38,4 +38,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Note: the client app does NOT request location. It only watches a
+         provider's shared position via WebSocket relative to the request's
+         already-known coordinates — it never reads the device's own GPS. -->
+
 </manifest>

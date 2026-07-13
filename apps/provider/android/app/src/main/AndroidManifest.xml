@@ -38,4 +38,9 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Live GPS tracking while working an active job (foreground only, requested
+         contextually by the WebView when the tracking screen calls
+         navigator.geolocation — see frontend/index.html startProviderTracking). -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 </manifest>

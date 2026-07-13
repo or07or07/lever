@@ -1,5 +1,5 @@
 {
-  "appId": "com.lever.client",
+  "appId": "com.lever.app",
   "appName": "Lever",
   "webDir": "../../frontend",
   "appFlavor": "client"

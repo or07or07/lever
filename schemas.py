@@ -316,6 +316,35 @@ class ServiceRequestOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ServiceRequestBoardOut(BaseModel):
+    """Open job board listing — deliberately omits precise latitude/longitude.
+
+    A provider browsing the board has no relationship with the client yet
+    (they haven't accepted anything). Exact GPS coordinates are only
+    appropriate once a provider has accepted a request — see JobDetail,
+    which nests the full ServiceRequestOut (with coordinates) for exactly
+    that reason. The free-text `location` field still gives a provider
+    enough to judge distance/relevance without exposing exact coordinates
+    to every online provider for every pending request.
+    """
+    id: int
+    client_id: int
+    vehicle_id: Optional[int]
+    profession_type: str
+    title: str
+    description: str
+    location: str
+    urgency: str
+    scheduled_date: Optional[datetime]
+    budget_min: Optional[float]
+    budget_max: Optional[float]
+    status: str
+    created_at: datetime
+    updated_at: Optional[datetime]
+
+    model_config = {"from_attributes": True}
+
+
 class ServiceRequestDetail(ServiceRequestOut):
     """ServiceRequest with nested vehicle and job info."""
     vehicle: Optional[VehicleOut] = None
@@ -515,8 +544,14 @@ class SearchRequestsNearby(BaseModel):
         return v
 
 
-class ServiceRequestWithDistance(ServiceRequestOut):
-    """Service request with calculated distance."""
+class ServiceRequestWithDistance(ServiceRequestBoardOut):
+    """Service request with calculated distance — used for provider search results.
+
+    Deliberately extends ServiceRequestBoardOut (no precise lat/lng) rather
+    than ServiceRequestOut: a provider searching nearby jobs needs to know
+    how far away something is, not its exact coordinates, before they've
+    accepted it. distance_miles is the privacy-appropriate signal here.
+    """
     distance_miles: Optional[float] = None
 
 

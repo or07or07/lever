@@ -16,6 +16,7 @@ CIA Triad:
 """
 from __future__ import annotations
 
+import random
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -233,8 +234,9 @@ def search_nearby_requests(
             status=req.status,
             created_at=req.created_at,
             updated_at=req.updated_at,
-            latitude=req.latitude,
-            longitude=req.longitude,
+            # Deliberately no latitude/longitude — see ServiceRequestBoardOut's
+            # docstring. Precise coordinates are only appropriate once a
+            # provider has actually accepted the request.
             distance_miles=round(dist, 1),
         ))
 
@@ -314,6 +316,23 @@ def map_providers(
     ]
 
 
+def _jittered(lat: float, lng: float, request_id: int) -> tuple[float, float]:
+    """Offset a coordinate by up to ~300m, stable per request.
+
+    Used only for the map-overview endpoint, where any authenticated user
+    (not just a matched/accepted provider) can see pending-request pins.
+    Seeding the jitter by request_id keeps a given pin visually stable
+    across repeated map loads rather than jumping around randomly, while
+    still not revealing the exact address. Precise coordinates remain
+    available through the normal accept-a-job flow, where they're needed.
+    """
+    rng = random.Random(request_id)
+    return (
+        lat + rng.uniform(-0.003, 0.003),
+        lng + rng.uniform(-0.003, 0.003),
+    )
+
+
 @router.get("/map/requests")
 def map_requests(
     profession_type: Optional[str] = Query(default=None),
@@ -333,19 +352,20 @@ def map_requests(
 
     requests = q.all()
 
-    return [
-        {
+    results = []
+    for r in requests:
+        jlat, jlng = _jittered(r.latitude, r.longitude, r.id)
+        results.append({
             "id": r.id,
             "title": r.title,
             "profession_type": r.profession_type,
             "location": r.location,
-            "latitude": r.latitude,
-            "longitude": r.longitude,
+            "latitude": jlat,
+            "longitude": jlng,
             "urgency": r.urgency,
             "budget_min": r.budget_min,
             "budget_max": r.budget_max,
             "status": r.status,
             "created_at": r.created_at.isoformat(),
-        }
-        for r in requests
-    ]
+        })
+    return results

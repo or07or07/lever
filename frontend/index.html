@@ -152,7 +152,6 @@ input,textarea,select{font-family:inherit}
 .worker-name{font-weight:600;font-size:.9rem}
 .worker-meta{font-size:.8rem;color:var(--gray-600);margin-top:2px}
 .worker-rating{color:#f59e0b;font-weight:600}
-.worker-fee{font-size:.75rem;color:var(--gray-500);margin-top:4px}
 .worker-search-msg{text-align:center;padding:20px;color:var(--gray-500);font-size:.85rem}
 
 /* ---- Stats grid ---- */
@@ -881,7 +880,6 @@ var _translations = {
   'newreq.scheduled': {es:'Programado', en:'Scheduled'},
   'newreq.immediate': {es:'Inmediato', en:'Immediate'},
   'newreq.selectProvider': {es:'Seleccionar Proveedor', en:'Select a Provider'},
-  'newreq.schedFee': {es:'\u2139\ufe0f Se aplica una tarifa de $0.05 para citas programadas', en:'\u2139\ufe0f A $0.05 scheduling fee applies for scheduled bookings'},
   'newreq.selectProfFirst': {es:'Selecciona una profesi\u00f3n y elige "Programado" para ver proveedores', en:'Select a profession and choose "Scheduled" to see available providers'},
   'newreq.budgetMax': {es:'Presupuesto M\u00e1ximo ($)', en:'Budget Max ($)'},
   'newreq.submit': {es:'Enviar Solicitud', en:'Submit Request'},
@@ -1059,7 +1057,6 @@ var _translations = {
   'stlbl.accepted': {es:'Aceptado', en:'Accepted'},
   'ws.noProviders': {es:'No se encontraron proveedores', en:'No providers found for this profession'},
   'ws.jobsDone': {es:'trabajos realizados', en:'jobs done'},
-  'ws.schedFee': {es:'Tarifa de programaci\u00f3n: $0.05', en:'Scheduling fee: $0.05'},
   'ws.error': {es:'Error cargando proveedores', en:'Error loading providers'},
   'pdash.upTo': {es:'hasta', en:'up to'},
 
@@ -1908,7 +1905,6 @@ async function showNewRequest() {
       </div>
       <div id="sr-worker-panel" class="worker-panel">
         <label>${_t('newreq.selectProvider')}</label>
-        <div class="text-sm" style="color:var(--gray-500);margin-bottom:6px">${_t('newreq.schedFee')}</div>
         <div id="sr-worker-list" class="worker-list">
           <div class="worker-search-msg">${_t('newreq.selectProfFirst')}</div>
         </div>
@@ -1986,7 +1982,6 @@ async function loadWorkersForSelection() {
         '<div class="worker-info">' +
           '<div class="worker-name">' + (p.user_name || 'Provider') + '</div>' +
           '<div class="worker-meta"><span class="worker-rating">' + stars + '</span> &middot; ' + jobs + ' jobs done</div>' +
-          '<div class="worker-fee">'+_t('ws.schedFee')+'</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -3869,7 +3864,7 @@ function renderLanding() {
       '<p class="subtitle">Servicio profesional en 3 pasos simples</p>' +
       '<div class="steps-grid">' +
         '<div class="step-card"><div class="step-num">1</div><h3>Describe tu Necesidad</h3><p>Crea una solicitud detallando el servicio que necesitas, tu ubicaci\u00f3n y tu presupuesto.</p></div>' +
-        '<div class="step-card"><div class="step-num">2</div><h3>Recibe un Profesional</h3><p>Un profesional verificado y cercano acepta tu solicitud en minutos.</p></div>' +
+        '<div class="step-card"><div class="step-num">2</div><h3>Recibe un Profesional</h3><p>Un profesional cercano acepta tu solicitud en minutos.</p></div>' +
         '<div class="step-card"><div class="step-num">3</div><h3>Trabajo Garantizado</h3><p>Sigue el progreso en tiempo real, comunica por chat, y califica al terminar.</p></div>' +
       '</div>' +
     '</section>' +
@@ -3877,8 +3872,8 @@ function renderLanding() {
     '<section class="trust-section">' +
       '<h2>Tu Confianza es Nuestra Prioridad</h2>' +
       '<div class="trust-grid">' +
-        '<div class="trust-card"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><h3>Profesionales Verificados</h3><p>Cada proveedor pasa por un proceso de verificaci\u00f3n antes de ofrecer servicios.</p></div>' +
-        '<div class="trust-card"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><h3>Pagos Seguros</h3><p>Transacciones protegidas con encriptaci\u00f3n de extremo a extremo.</p></div>' +
+        '<div class="trust-card"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><h3>Correo Verificado</h3><p>Todos los usuarios confirman su correo electr\u00f3nico antes de usar la plataforma.</p></div>' +
+        '<div class="trust-card"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><h3>Comunicaci\u00f3n Directa</h3><p>Chatea directamente con el profesional antes, durante y despu\u00e9s del trabajo.</p></div>' +
         '<div class="trust-card"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><h3>Calificaciones Reales</h3><p>Sistema de rese\u00f1as transparente basado en trabajos completados.</p></div>' +
       '</div>' +
     '</section>' +
@@ -3905,9 +3900,9 @@ function renderLanding() {
           '<div id="support-faq" class="support-pane">' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo solicito un servicio? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Reg\u00edstrate como cliente, describe lo que necesitas, y un profesional cercano aceptar\u00e1 tu solicitud.</div></div>' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo me registro como profesional? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Haz clic en Registrarse, selecciona Proveedor de Servicios, elige tu profesi\u00f3n y completa tu perfil.</div></div>' +
-            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfCu\u00e1nto cuesta usar Lever? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Registrarse y buscar proveedores es gratis. Solo se cobra $0.05 al programar una cita.</div></div>' +
+            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfCu\u00e1nto cuesta usar Lever? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Registrarse, buscar proveedores y usar Lever es completamente gratis.</div></div>' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfEn qu\u00e9 ciudades est\u00e1n disponibles? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Actualmente operamos en Ecuador: Quito, Guayaquil y Cuenca. Estamos expandiendo.</div></div>' +
-            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo garantizan la calidad? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Verificaci\u00f3n de profesionales + calificaciones y rese\u00f1as de clientes.</div></div>' +
+            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo garantizan la calidad? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Sistema de calificaciones y rese\u00f1as de clientes despu\u00e9s de cada trabajo completado.</div></div>' +
           '</div>' +
           '<div id="support-contact" class="support-pane" style="display:none">' +
             '<div class="contact-grid">' +
@@ -4104,12 +4099,21 @@ function startProviderTracking(jobId) {
         },
         function(err) {
           console.warn('[Tracking] GPS error:', err.message);
-          showToast('GPS error: ' + err.message, 'error');
+          const msg = err.code === err.PERMISSION_DENIED
+            ? (_lang === 'es'
+                ? 'Permiso de ubicación denegado. Actívalo en los ajustes del dispositivo para compartir tu ubicación.'
+                : 'Location permission denied. Enable it in device settings to share your location.')
+            : (_lang === 'es' ? 'Error de GPS: ' : 'GPS error: ') + err.message;
+          showToast(msg, 'error');
+          // Broadcasting without a location is misleading — stop cleanly
+          // instead of leaving the UI stuck on "Starting GPS...".
+          stopProviderTracking();
         },
         { enableHighAccuracy: true, maximumAge: 3000, timeout: 10000 }
       );
     } else {
-      showToast('GPS not available on this device', 'error');
+      showToast(_lang === 'es' ? 'GPS no disponible en este dispositivo' : 'GPS not available on this device', 'error');
+      stopProviderTracking();
     }
   };
 

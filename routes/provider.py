@@ -24,7 +24,7 @@ from schemas import (
     MechanicProfileUpdate,
     MessageResponse,
     ReviewOut,
-    ServiceRequestOut,
+    ServiceRequestBoardOut,
 )
 
 logger = logging.getLogger("lever.provider")
@@ -183,7 +183,7 @@ def heartbeat(
 # Job Board - filtered by provider's profession
 # ---------------------------------------------------------------------------
 
-@router.get("/board", response_model=List[ServiceRequestOut])
+@router.get("/board", response_model=List[ServiceRequestBoardOut])
 def job_board(
     urgency: Optional[str] = Query(default=None),
     current_user: User = Depends(require_provider),
