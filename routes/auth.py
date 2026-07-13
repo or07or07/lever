@@ -17,6 +17,7 @@ ISO 27001 Controls:
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -48,6 +49,11 @@ logger = logging.getLogger("lever.auth")
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+# Bumped whenever /terms or /privacy content changes materially. Existing
+# users are not forced to re-accept retroactively (no re-consent flow
+# exists yet) — this is recorded per-registration going forward.
+CURRENT_TERMS_VERSION = "1.0"
+
 
 # ---------------------------------------------------------------------------
 # Registration — now sends verification email
@@ -74,6 +80,10 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         password_hash=hash_password(payload.password),
         role=payload.role,
         email_verified=False,  # Must verify email before full access
+        # payload.accepted_terms is guaranteed True here — UserCreate's
+        # validator rejects registration otherwise.
+        terms_accepted_version=CURRENT_TERMS_VERSION,
+        terms_accepted_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.flush()

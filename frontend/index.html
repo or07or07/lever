@@ -920,6 +920,10 @@ var _translations = {
   'settings.spanish': {es:'Espa\u00f1ol', en:'Spanish'},
   'settings.english': {es:'Ingl\u00e9s', en:'English'},
   'settings.saved': {es:'\u2713 Ajustes guardados', en:'\u2713 Settings saved'},
+  'settings.legal': {es:'Legal y Soporte', en:'Legal & Support'},
+  'settings.privacyLink': {es:'Pol\u00edtica de Privacidad', en:'Privacy Policy'},
+  'settings.termsLink': {es:'T\u00e9rminos y Condiciones', en:'Terms & Conditions'},
+  'settings.supportLink': {es:'Centro de Ayuda', en:'Help Center'},
 
   // -- Messages --
   'msg.title': {es:'Mensajes', en:'Messages'},
@@ -970,6 +974,11 @@ var _translations = {
   'auth.provider': {es:'Proveedor de Servicios', en:'Service Provider'},
   'auth.profession': {es:'Profesi\u00f3n', en:'Profession'},
   'auth.createAccount': {es:'Crear Cuenta', en:'Create Account'},
+  'auth.acceptTermsPre': {es:'Acepto los ', en:'I accept the '},
+  'auth.acceptTermsLink': {es:'T\u00e9rminos y Condiciones', en:'Terms & Conditions'},
+  'auth.acceptTermsAnd': {es:' y la ', en:' and '},
+  'auth.acceptPrivacyLink': {es:'Pol\u00edtica de Privacidad', en:'Privacy Policy'},
+  'auth.mustAcceptTerms': {es:'Debes aceptar los T\u00e9rminos y la Pol\u00edtica de Privacidad para continuar.', en:'You must accept the Terms and Privacy Policy to continue.'},
   'auth.noAccount': {es:'\u00bfNo tienes cuenta? Reg\u00edstrate', en:"Don't have an account? Register"},
   'auth.hasAccount': {es:'\u00bfYa tienes cuenta? Inicia sesi\u00f3n', en:'Already have an account? Sign In'},
   'auth.tagline': {es:'Servicios Profesionales a tu Alcance', en:'Professional Services at Your Fingertips'},
@@ -2746,6 +2755,14 @@ function renderSettings(el) {
         '</button>' +
       '</div>' +
       '<div id="settings-msg" style="margin-top:12px"></div>' +
+    '</div>' +
+    '<div class="card" style="max-width:500px;margin-top:16px">' +
+      '<div class="card-header"><div class="card-title">' + _t('settings.legal') + '</div></div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<a href="' + API + '/privacy" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.privacyLink') + '</a>' +
+        '<a href="' + API + '/terms" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.termsLink') + '</a>' +
+        '<a href="' + API + '/support" target="_blank" rel="noopener" style="color:var(--brand);font-size:.9rem;text-decoration:none">' + _t('settings.supportLink') + '</a>' +
+      '</div>' +
     '</div>';
 }
 
@@ -3467,6 +3484,10 @@ function renderAuth(initialTab) {
               ${profOptions}
             </select>
           </div>
+          <div class="form-group" style="display:flex;align-items:flex-start;gap:8px">
+            <input type="checkbox" id="r-accept-terms" style="margin-top:3px;flex-shrink:0;width:16px;height:16px">
+            <label for="r-accept-terms" style="flex:1;font-weight:400;text-transform:none;letter-spacing:normal;font-size:.85rem;color:var(--gray-700);line-height:1.5">${_t('auth.acceptTermsPre')}<a href="${API}/terms" target="_blank" rel="noopener">${_t('auth.acceptTermsLink')}</a>${_t('auth.acceptTermsAnd')}<a href="${API}/privacy" target="_blank" rel="noopener">${_t('auth.acceptPrivacyLink')}</a></label>
+          </div>
           <button class="btn btn-primary btn-full" onclick="doRegister()">${_t('auth.createAccount')}</button>
           <div style="text-align:center;margin-top:12px">
             <button class="btn-ghost" style="font-size:.82rem" onclick="switchAuthTab('login')">${_t('auth.hasAccount')}</button>
@@ -3508,8 +3529,13 @@ async function doRegister() {
   const pass  = document.getElementById('r-pass').value;
   const role  = document.getElementById('r-role').value;
   const profession = role === 'mechanic' ? document.getElementById('r-profession').value : undefined;
+  const acceptedTerms = document.getElementById('r-accept-terms').checked;
+  if (!acceptedTerms) {
+    document.getElementById('r-err').innerHTML = alert_el('error', _t('auth.mustAcceptTerms'));
+    return;
+  }
   try {
-    const data = await post('/api/auth/register', {email, password:pass, role, ...(profession && {profession})});
+    const data = await post('/api/auth/register', {email, password:pass, role, accepted_terms: acceptedTerms, ...(profession && {profession})});
     login(data.access_token, {id:data.user_id, email, role:data.role, profession:data.profession||profession||null, email_verified:false});
     await loadProfessions();
     route('#/verify-email');
@@ -3945,9 +3971,9 @@ function renderLanding() {
           '</div>' +
           '<div class="footer-col">' +
             '<h3>Empresa</h3>' +
-            '<a href="#" onclick="document.getElementById(\'support-section\').scrollIntoView({behavior:\'smooth\'});return false">Centro de Ayuda</a>' +
-            '<a href="#">T\u00e9rminos de Servicio</a>' +
-            '<a href="#">Pol\u00edtica de Privacidad</a>' +
+            '<a href="/support">Centro de Ayuda</a>' +
+            '<a href="/terms">T\u00e9rminos de Servicio</a>' +
+            '<a href="/privacy">Pol\u00edtica de Privacidad</a>' +
           '</div>' +
         '</div>' +
         '<div class="footer-bottom">\u00a9 2026 Lever. Todos los derechos reservados.</div>' +

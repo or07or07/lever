@@ -117,6 +117,7 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Blocks submission:** Yes (prerequisite for GP-03)
 
 ### GP-05 — No privacy policy exists anywhere
+- **Status: RESOLVED** — real, always-reachable `/privacy` page added (`frontend/legal/privacy.html`, served via an explicit FastAPI route registered before the SPA catch-all, so it works even if the JS bundle fails to load). Covers every required element: what's collected (with an honest table — explicitly states photos and payments are *not* collected, matching actual app behavior), why, third parties (Hostinger SMTP, OpenStreetMap Nominatim, Cloudflare), retention, user rights, contact. Linked from the registration checkbox and the Settings screen. **Still needs your review** — I drafted accurate, honest content based on the real data inventory, but I'm not a lawyer and this hasn't been reviewed against Ecuador's LOPD by one; treat this as a solid first draft, not a final legal document.
 - **Severity:** Critical
 - **Description:** No privacy policy content exists in the codebase, on the live site, or in the app. `/privacy` silently falls through to the SPA landing page (Section 3).
 - **Risk:** Google Play requires a privacy policy URL for every app that handles personal data (Lever collects email, phone, location, messages, vehicle info — see Section 5). Non-negotiable submission blocker.
@@ -127,6 +128,8 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Needs owner/legal input:** Yes — see Section 10. I can draft the technical scaffolding and a reasonable first draft of the policy text, but the actual legal claims (what's retained, third-party processors, LOPD compliance specifics) need your review before publishing, per Section 22 rule 9 ("Do not make unsupported legal or compliance claims").
 
 ### GP-06 — No terms and conditions exist
+- **Status: RESOLVED** — real, always-reachable `/terms` page added the same way as `/privacy`. Added `terms_accepted_version`/`terms_accepted_at` columns to `User` (migration `0002` — see the important note below), a required `accepted_terms` field on registration (rejected server-side if false or omitted — including a real Pydantic v2 bug I found and fixed where validators silently skip default values unless `validate_default=True` is set, which would have let acceptance be bypassed entirely by just omitting the field), and a required checkbox on the registration form linking to both documents. Verified end-to-end against a live server: omitting/falsifying acceptance is rejected with no DB row created, accepting succeeds and records version+timestamp correctly, and a provider job-detail request afterward is unaffected.
+- **Important operational note:** this app relies on `Base.metadata.create_all()` at startup, which only creates missing tables — it will **not** add these new columns to the already-existing `users` table in production. The Alembic migration must actually run (`alembic upgrade head`) for this to take effect on the live database; simply redeploying the code is not sufficient. `deploy.sh` already calls this after every deploy, but I could not verify locally whether Alembic's version state matches what I assumed (`0001`) — please confirm this succeeds on the next deploy rather than assuming it worked.
 - **Severity:** Critical
 - **Description:** Same situation as GP-05 — `/terms` has no real content, and there is no acceptance-tracking mechanism (no `terms_accepted_at`/`terms_version` field anywhere in `models.py`).
 - **Risk:** Submission blocker; also a real legal exposure gap for a marketplace facilitating real-world services between strangers (liability, dispute handling, prohibited services all currently undocumented).
@@ -248,6 +251,16 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 - **Recommended fix:** Not urgent for a first submission given the small scale, but worth a lightweight staging setup (a second, smaller VPS or a Docker Compose profile pointed at a separate database) before doing anything riskier like a payment integration.
 - **Blocks submission:** No
 
+### GP-20 — Dead footer links found while wiring up GP-05/GP-06 (not in the original scan)
+- **Status: RESOLVED**
+- **Severity:** Low
+- **Description:** The landing page footer's "Términos de Servicio" and "Política de Privacidad" links were `href="#"` — pure placeholders, going nowhere. Found while wiring the new `/terms` and `/privacy` pages into the app. "Centro de Ayuda" only scrolled to an in-page FAQ section rather than linking to a real reachable page.
+- **Evidence:** `frontend/index.html`, landing page footer section.
+- **Recommended fix:** Applied — all three now point to the real `/terms`, `/privacy`, `/support` pages.
+- **Affected files:** `frontend/index.html`
+- **Complexity:** Trivial
+- **Blocks submission:** No, but exactly the kind of "broken button" the requirements explicitly call out — worth having fixed regardless.
+
 ---
 
 ## 5. Personal Data Inventory
@@ -331,17 +344,18 @@ Findings are numbered `GP-01` onward, ordered roughly by severity. Each includes
 Ordered by what actually blocks submission first, then by risk.
 
 ### Must fix before any Play Store submission attempt
-1. **GP-05 + GP-06** — Privacy Policy + Terms & Conditions (content + real, always-reachable pages + acceptance tracking at registration)
+1. ✅ **GP-05 + GP-06** — RESOLVED. Privacy Policy + Terms & Conditions (content + real, always-reachable pages + acceptance tracking at registration). Still needs your review of the actual legal content before treating it as final.
 2. **GP-07** — Account deletion, in-app and web
 3. **GP-08** — Reporting + blocking (moderation infrastructure) — the largest single item
-4. **GP-02** — Location permission fix (small technical fix, but blocks a core feature from working)
-5. **GP-01** — Decide and fix the final Android package ID (must happen before first upload, unblocks nothing else but is irreversible once published)
+4. ✅ **GP-02** — RESOLVED. Location permission fix.
+5. ✅ **GP-01** — RESOLVED. Package ID decided and corrected.
 6. **GP-03 + GP-04** — Release signing, `.aab` builds, secrets management
 
 ### Should fix before submission (policy alignment / correctness, not hard blockers)
-7. **GP-17** — Stop exposing exact job coordinates on the open board (confirmed exposure, low-medium effort to fix)
-8. **GP-16** — Correct the false "providers are verified" claim on the landing page (or build real verification)
-9. **GP-10** — Correct the payment-fee claim, or decide to actually build payments
+7. ✅ **GP-17** — RESOLVED. Exact job coordinates no longer exposed pre-acceptance.
+8. ✅ **GP-16** — RESOLVED. False "providers are verified" claim corrected.
+9. ✅ **GP-10** — RESOLVED. Payment-fee claim corrected; launching fee-free.
+10. ✅ **GP-20** — RESOLVED (found during this pass). Dead footer links fixed.
 
 ### Recommended, not blocking
 10. GP-09 (push notifications), GP-13 (token revocation), GP-14 (admin MFA), GP-12 (Redis-backed rate limiting), GP-15 (crash reporting), GP-19 (staging environment)

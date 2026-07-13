@@ -48,6 +48,14 @@ class User(Base):
     oauth_provider = Column(String(50), nullable=True)            # 'google', 'microsoft', or None
     oauth_provider_id = Column(String(255), nullable=True)        # Unique ID from provider
 
+    # ── Terms & Privacy Policy acceptance (Google Play readiness, GP-05/GP-06) ──
+    # Terms and Privacy are versioned together since they're revised in lockstep.
+    terms_accepted_version = Column(String(20), nullable=True)
+    terms_accepted_at = Column(DateTime, nullable=True)
+
+    # ── Account deletion (GP-07) ──
+    deleted_at = Column(DateTime, nullable=True)  # Soft-delete marker; anonymized, not hard-removed
+
     # Relationships
     client_profile = relationship("ClientProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mechanic_profile = relationship("MechanicProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

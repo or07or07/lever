@@ -274,6 +274,29 @@ app.include_router(tracking_router)       # GPS Live Tracking
 # ---------------------------------------------------------------------------
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
+LEGAL_DIR = FRONTEND_DIR / "legal"
+
+
+# ---------------------------------------------------------------------------
+# Public legal / support pages — real, static, always reachable without
+# authentication and without depending on the SPA's JS bundle loading
+# correctly. Registered before the SPA catch-all below so they take
+# priority over it. (See docs/google-play-readiness.md, GP-05/GP-06.)
+# ---------------------------------------------------------------------------
+
+@app.get("/privacy", include_in_schema=False)
+def serve_privacy():
+    return FileResponse(LEGAL_DIR / "privacy.html")
+
+
+@app.get("/terms", include_in_schema=False)
+def serve_terms():
+    return FileResponse(LEGAL_DIR / "terms.html")
+
+
+@app.get("/support", include_in_schema=False)
+def serve_support():
+    return FileResponse(LEGAL_DIR / "support.html")
 
 
 @app.get("/", include_in_schema=False)

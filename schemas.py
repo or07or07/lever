@@ -23,6 +23,12 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: str = Field(pattern="^(client|mechanic)$")
     profession: Optional[str] = Field(default=None)
+    accepted_terms: bool = Field(
+        default=False,
+        validate_default=True,  # Pydantic v2 skips validators on defaults otherwise —
+        # without this, simply omitting the field bypasses the "must accept" check entirely.
+        description="Must be true — user must accept the current Terms & Privacy Policy to register.",
+    )
 
     @field_validator("password")
     @classmethod
@@ -31,6 +37,13 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one uppercase letter")
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
+        return v
+
+    @field_validator("accepted_terms")
+    @classmethod
+    def must_accept_terms(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("You must accept the Terms & Conditions and Privacy Policy to create an account.")
         return v
 
     @model_validator(mode="after")
