@@ -77,6 +77,16 @@ class User(Base):
     mfa_secret = Column(String(64), nullable=True)  # base32 TOTP secret; set once, unconfirmed until mfa_enabled flips true
     mfa_backup_codes = Column(JSON, nullable=True)  # list of bcrypt-hashed single-use recovery codes
 
+    # ── Provider verification (Phase 3 — service catalog) ──
+    # "none" is the default for everyone. A provider can only select a
+    # catalog service flagged verification_required="enhanced" (electrical,
+    # construction, home_security — see services_catalog.py) once this is
+    # "enhanced". There's no self-serve upload flow yet (decision D5 in
+    # service-catalog-ux-audit.md is still open) — for now an admin sets
+    # this manually after reviewing identity documents sent out-of-band
+    # (email/WhatsApp), via the existing PATCH /api/admin/users/{id}.
+    verification_level = Column(String(20), default="none", nullable=False)
+
     # Relationships
     client_profile = relationship("ClientProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mechanic_profile = relationship("MechanicProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -148,6 +158,32 @@ class MechanicProfile(Base):
     __table_args__ = (
         # Spatial index for bounding-box pre-filter queries
         Index("ix_mechanic_profiles_geo", "latitude", "longitude"),
+    )
+
+
+class ProviderService(Base):
+    """A specific catalog service (services_catalog.py) a provider offers,
+    within their single profession/category (Phase 3 — service catalog).
+
+    Configuring at least one row switches that provider from "offers
+    everything in my profession" (the pre-existing, zero-config default —
+    see find_eligible_providers in dispatch.py and GET /api/provider/board)
+    to "offers only what I've explicitly selected and haven't paused".
+    """
+    __tablename__ = "provider_services"
+
+    id = Column(Integer, primary_key=True, index=True)
+    provider_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    service_key = Column(String(80), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)  # False = paused, not deleted
+    price = Column(Float, nullable=True)  # optional override; meaning depends on the service's pricing_type
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    provider = relationship("User", foreign_keys=[provider_user_id])
+
+    __table_args__ = (
+        Index("ix_provider_services_unique", "provider_user_id", "service_key", unique=True),
     )
 
 

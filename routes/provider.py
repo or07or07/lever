@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import require_provider
 from database import get_db
-from models import Job, MechanicProfile, Notification, ServiceRequest, User
+from models import Job, MechanicProfile, Notification, ProviderService, ServiceRequest, User
 from professions import DEFAULT_PROFESSION, get_job_statuses
 from routes.moderation import blocked_user_ids_involving, is_blocked_pair
 from schemas import (
@@ -24,6 +24,9 @@ from schemas import (
     MechanicProfileOut,
     MechanicProfileUpdate,
     MessageResponse,
+    ProviderServiceOut,
+    ProviderServiceToggle,
+    ProviderServicesUpdate,
     ReviewOut,
     ServiceRequestBoardOut,
 )
@@ -127,6 +130,133 @@ def update_profile(
 
 
 # ---------------------------------------------------------------------------
+# Service selection (Phase 3 — service catalog)
+#
+# A provider is still tied to exactly one profession/category (v1 scope —
+# see docs/service-catalog-ux-audit.md). Within that category they can pick
+# which specific catalog services they actually offer, pause individual
+# ones, and set a price. If a provider has never configured anything here
+# (no rows at all), they're treated as offering every service in their
+# profession — the pre-existing, zero-config behavior — so this feature is
+# purely additive and doesn't break anyone who ignores it.
+# ---------------------------------------------------------------------------
+
+def _catalog_services_for_profession(profession: str) -> list[dict]:
+    from services_catalog import ALL_SERVICES
+    return [s for s in ALL_SERVICES if s["category"] == profession and s["is_active"]]
+
+
+@router.get("/services", response_model=List[ProviderServiceOut])
+def list_my_services(
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    profile = db.query(MechanicProfile).filter(MechanicProfile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    catalog_services = _catalog_services_for_profession(profile.profession)
+    selections = {
+        ps.service_key: ps
+        for ps in db.query(ProviderService).filter(ProviderService.provider_user_id == current_user.id).all()
+    }
+    out = []
+    for svc in catalog_services:
+        sel = selections.get(svc["key"])
+        selectable = svc["verification_required"] == "none" or current_user.verification_level == "enhanced"
+        out.append(ProviderServiceOut(
+            service_key=svc["key"],
+            name_es=svc["name_es"],
+            name_en=svc["name_en"],
+            icon=svc["icon"],
+            category=svc["category"],
+            pricing_type=svc["pricing_type"],
+            verification_required=svc["verification_required"],
+            is_active=sel.is_active if sel else False,
+            price=sel.price if sel else None,
+            selectable=selectable,
+        ))
+    return out
+
+
+@router.put("/services", response_model=List[ProviderServiceOut])
+def set_my_services(
+    payload: ProviderServicesUpdate,
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """Replace the provider's full service selection in one call."""
+    profile = db.query(MechanicProfile).filter(MechanicProfile.user_id == current_user.id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    from services_catalog import SERVICES_BY_KEY
+    valid_keys = {s["key"] for s in _catalog_services_for_profession(profile.profession)}
+
+    requested = {item.service_key: item for item in payload.services}
+    unknown = [k for k in requested if k not in valid_keys]
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"Not services in your profession: {unknown}")
+
+    blocked = [
+        k for k in requested
+        if SERVICES_BY_KEY[k]["verification_required"] == "enhanced" and current_user.verification_level != "enhanced"
+    ]
+    if blocked:
+        raise HTTPException(
+            status_code=403,
+            detail=f"These services require additional verification before you can offer them: {blocked}. "
+                   f"Contact support to get verified.",
+        )
+
+    existing = {
+        ps.service_key: ps
+        for ps in db.query(ProviderService).filter(ProviderService.provider_user_id == current_user.id).all()
+    }
+    for key, item in requested.items():
+        if key in existing:
+            existing[key].is_active = True
+            existing[key].price = item.price
+        else:
+            db.add(ProviderService(provider_user_id=current_user.id, service_key=key, is_active=True, price=item.price))
+    # Anything previously selected but not in this submission is paused, not deleted —
+    # preserves the provider's price/history if they re-enable it later.
+    for key, ps in existing.items():
+        if key not in requested:
+            ps.is_active = False
+
+    db.commit()
+    return list_my_services(current_user, db)
+
+
+@router.patch("/services/{service_key}", response_model=ProviderServiceOut)
+def toggle_my_service(
+    service_key: str,
+    payload: ProviderServiceToggle,
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """Pause/resume a single service without touching the rest of the selection."""
+    ps = db.query(ProviderService).filter(
+        ProviderService.provider_user_id == current_user.id,
+        ProviderService.service_key == service_key,
+    ).first()
+    if not ps:
+        raise HTTPException(status_code=404, detail="You haven't selected this service")
+
+    if payload.is_active:
+        from services_catalog import SERVICES_BY_KEY
+        svc = SERVICES_BY_KEY.get(service_key)
+        if svc and svc["verification_required"] == "enhanced" and current_user.verification_level != "enhanced":
+            raise HTTPException(status_code=403, detail="This service requires additional verification")
+
+    ps.is_active = payload.is_active
+    db.commit()
+    results = list_my_services(current_user, db)
+    return next(r for r in results if r.service_key == service_key)
+
+
+# ---------------------------------------------------------------------------
 # Active Status Toggle
 # ---------------------------------------------------------------------------
 
@@ -218,7 +348,26 @@ def job_board(
     if blocked_ids:
         q = q.filter(ServiceRequest.client_id.notin_(blocked_ids))
 
+    # If this provider has configured specific services (Phase 3), only
+    # show requests for services they've actually enabled. Providers who've
+    # never touched this feature keep seeing everything in their profession.
+    active_keys = _active_service_keys(db, current_user.id)
+    if active_keys is not None:
+        q = q.filter(
+            (ServiceRequest.service_key.is_(None)) | (ServiceRequest.service_key.in_(active_keys))
+        )
+
     return q.order_by(ServiceRequest.created_at.asc()).all()
+
+
+def _active_service_keys(db: Session, provider_user_id: int) -> Optional[set[str]]:
+    """None means "no selection configured — show everything" (backward
+    compatible default). An empty set means "configured but paused
+    everything" — correctly shows nothing."""
+    rows = db.query(ProviderService).filter(ProviderService.provider_user_id == provider_user_id).all()
+    if not rows:
+        return None
+    return {r.service_key for r in rows if r.is_active}
 
 
 # ---------------------------------------------------------------------------
@@ -238,6 +387,10 @@ def accept_request(
         raise HTTPException(status_code=409, detail="Request is no longer available")
     if is_blocked_pair(db, current_user.id, req.client_id):
         raise HTTPException(status_code=403, detail="You cannot accept a request from this client")
+    if req.service_key:
+        active_keys = _active_service_keys(db, current_user.id)
+        if active_keys is not None and req.service_key not in active_keys:
+            raise HTTPException(status_code=400, detail="You haven't enabled this specific service")
 
     # Verify profession match
     profile = db.query(MechanicProfile).filter(

@@ -54,6 +54,26 @@ def find_eligible_providers(
     )
     candidates = q.all()
 
+    # If the request names a specific catalog service (Phase 3) and a
+    # candidate has configured their own service selection, only offer it
+    # to them if they've actually enabled that service. Providers who've
+    # never touched the selection feature keep receiving everything in
+    # their profession (see routes/provider.py's _active_service_keys for
+    # the same "None = unconfigured, offer everything" convention).
+    if request.service_key:
+        from models import ProviderService
+        provider_ids = [p.user_id for p in candidates]
+        rows = db.query(ProviderService).filter(ProviderService.provider_user_id.in_(provider_ids)).all()
+        configured: dict[int, set[str]] = {}
+        for r in rows:
+            configured.setdefault(r.provider_user_id, set())
+            if r.is_active:
+                configured[r.provider_user_id].add(r.service_key)
+        candidates = [
+            p for p in candidates
+            if p.user_id not in configured or request.service_key in configured[p.user_id]
+        ]
+
     # Score and sort candidates
     scored = []
     for provider in candidates:

@@ -148,6 +148,7 @@ class UserOut(BaseModel):
     role: str
     is_active: bool
     email_verified: bool = False
+    verification_level: str = "none"
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -156,6 +157,9 @@ class UserOut(BaseModel):
 class UserAdminUpdate(BaseModel):
     is_active: Optional[bool] = None
     role: Optional[str] = Field(default=None, pattern="^(client|mechanic|admin)$")
+    # Manual verification (Phase 3, decision D5 still open — no self-serve
+    # document upload yet; admin sets this after reviewing ID out-of-band).
+    verification_level: Optional[str] = Field(default=None, pattern="^(none|enhanced)$")
 
 
 class AccountDeleteRequest(BaseModel):
@@ -236,6 +240,39 @@ class MechanicProfileUpdate(BaseModel):
     avatar_url: Optional[str] = Field(default=None, max_length=500)
     latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
+
+
+# ---------------------------------------------------------------------------
+# Provider service selection (Phase 3 — service catalog)
+# ---------------------------------------------------------------------------
+
+class ProviderServiceIn(BaseModel):
+    service_key: str
+    price: Optional[float] = Field(default=None, ge=0)
+
+
+class ProviderServicesUpdate(BaseModel):
+    """Replaces the provider's full service selection in one call — the
+    frontend always sends the complete desired set (simpler mental model
+    than incremental add/remove, and this list realistically stays small)."""
+    services: List[ProviderServiceIn] = Field(default_factory=list, max_length=100)
+
+
+class ProviderServiceOut(BaseModel):
+    service_key: str
+    name_es: str
+    name_en: str
+    icon: str
+    category: str
+    pricing_type: str
+    verification_required: str
+    is_active: bool
+    price: Optional[float] = None
+    selectable: bool  # False if this provider lacks the verification this service requires
+
+
+class ProviderServiceToggle(BaseModel):
+    is_active: bool
 
 
 class MechanicCard(BaseModel):
