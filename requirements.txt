@@ -6,12 +6,16 @@ pydantic-settings>=2.1.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 bcrypt>=3.2.2,<4.0.0
-
-# TOTP (admin MFA, GP-14)
-pyotp>=2.9.0
 python-multipart>=0.0.6
 python-dotenv>=1.0.0
 aiofiles>=23.2.1
+
+# TOTP (admin MFA, GP-14)
+pyotp>=2.9.0
+
+# Rate limiting (GP-12) — optional: only used if REDIS_URL is configured,
+# otherwise rate limiting stays in-memory and this is simply unused.
+redis>=5.0.0
 
 # PostgreSQL driver (used when DATABASE_URL starts with postgresql://)
 psycopg2-binary>=2.9.9

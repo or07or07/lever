@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     login_rate_window_minutes: int = 15
     register_rate_limit: int = 5
     register_rate_window_minutes: int = 15
+    # GP-12: when set, rate limiting is backed by Redis (shared across all
+    # app instances, survives restarts) instead of per-process memory.
+    # Empty string (the default) keeps the original in-memory behavior —
+    # nothing changes for local dev or single-instance deployments unless
+    # this is explicitly configured.
+    redis_url: str = ""
 
     class Config:
         env_file = ".env"

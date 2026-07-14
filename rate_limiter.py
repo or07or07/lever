@@ -1,4 +1,4 @@
-"""Lever — In-memory rate limiting middleware.
+"""Lever — Rate limiting middleware (GP-12).
 
 CIA Triad Alignment:
   Confidentiality: Prevents credential stuffing / account enumeration via rate limits
@@ -11,14 +11,26 @@ ISO 27001 Controls:
   A.12.4.1  Event logging (rate limit violations logged)
 
 Implementation:
-  Sliding window counter using a dict of {ip: [(timestamp, count)]} buckets.
-  No external dependency (Redis-free for dev simplicity).
-  For production at scale, swap to Redis-backed implementation.
+  Sliding window counter, same algorithm either way — the store backing
+  it is chosen once at import time based on settings.redis_url:
+    - unset (the default): per-process in-memory dict, zero external
+      dependencies, exactly the original behavior.
+    - set: Redis-backed via a sorted set per key, atomic through a Lua
+      script (avoids TOCTOU races between the read-count and write-entry
+      steps under concurrent requests). Needed once there's more than one
+      app instance behind a load balancer — an in-memory limiter lets
+      each instance count independently, so the effective limit is
+      (configured limit) x (instance count), and every limiter resets on
+      every deploy/restart.
+  If redis_url is set but the server is unreachable at startup, this
+  logs a warning and falls back to the in-memory store rather than
+  crashing the app over a rate-limiter dependency.
 """
 from __future__ import annotations
 
 import logging
 import time
+import uuid
 from collections import defaultdict
 from threading import Lock
 from typing import Dict, List, Tuple
@@ -88,8 +100,90 @@ class _SlidingWindowStore:
             self._store.clear()
 
 
+# ---------------------------------------------------------------------------
+# Sliding window rate limiter (Redis-backed)
+# ---------------------------------------------------------------------------
+
+# Same sliding-window semantics as the in-memory store, implemented with a
+# sorted set per key (score = request timestamp) so ZREMRANGEBYSCORE can
+# prune everything outside the window in one call. Wrapped in a Lua script
+# so the prune-count-and-maybe-add sequence is atomic — without that,
+# concurrent requests against the same key could each read the count
+# before any of them writes their own entry, letting more requests through
+# than the configured limit.
+_REDIS_SLIDING_WINDOW_SCRIPT = """
+local key = KEYS[1]
+local now = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local max_requests = tonumber(ARGV[3])
+local member = ARGV[4]
+
+redis.call('ZREMRANGEBYSCORE', key, '-inf', now - window)
+local count = redis.call('ZCARD', key)
+
+if count >= max_requests then
+    local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
+    local retry_after = math.ceil(window)
+    if oldest[2] then
+        retry_after = math.ceil(tonumber(oldest[2]) + window - now) + 1
+    end
+    return {0, 0, retry_after}
+end
+
+redis.call('ZADD', key, now, member)
+redis.call('EXPIRE', key, math.ceil(window))
+local remaining = max_requests - count - 1
+if remaining < 0 then remaining = 0 end
+return {1, remaining, 0}
+"""
+
+
+class _RedisSlidingWindowStore:
+    """Same interface as _SlidingWindowStore, backed by Redis so every app
+    instance shares one counter instead of counting independently."""
+
+    def __init__(self, client):
+        self._client = client
+        self._script = client.register_script(_REDIS_SLIDING_WINDOW_SCRIPT)
+
+    def is_allowed(self, key: str, max_requests: int, window_seconds: float) -> Tuple[bool, int, int]:
+        now = time.time()
+        # Unique per call even within the same millisecond, so ZADD always
+        # inserts a new member rather than overwriting one with a matching
+        # score+member pair.
+        member = f"{now}:{uuid.uuid4().hex}"
+        allowed, remaining, retry_after = self._script(
+            keys=[f"ratelimit:{key}"],
+            args=[now, window_seconds, max_requests, member],
+        )
+        return bool(allowed), int(remaining), int(retry_after)
+
+    def clear(self):
+        """No-op — Redis keys expire on their own via EXPIRE; clearing
+        everything on demand isn't needed outside of the in-memory store's
+        test usage."""
+        pass
+
+
+def _build_store():
+    """Pick the rate-limit store once at import time. Falls back to
+    in-memory (with a warning) if redis_url is set but unreachable, so a
+    Redis outage degrades rate-limit sharing rather than crashing the app."""
+    if not settings.redis_url:
+        return _SlidingWindowStore()
+    try:
+        import redis as redis_lib
+        client = redis_lib.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=3)
+        client.ping()
+        logger.info("Rate limiting: using Redis-backed store")
+        return _RedisSlidingWindowStore(client)
+    except Exception as exc:
+        logger.warning(f"REDIS_URL is set but Redis is unreachable ({exc}); falling back to in-memory rate limiting")
+        return _SlidingWindowStore()
+
+
 # Global store instance
-_store = _SlidingWindowStore()
+_store = _build_store()
 
 
 # ---------------------------------------------------------------------------
