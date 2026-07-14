@@ -108,7 +108,8 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     if payload.role == "client":
         db.add(ClientProfile(user_id=user.id))
     elif payload.role == "mechanic":
-        profession = payload.profession or "mechanic"
+        from professions import DEFAULT_PROFESSION
+        profession = payload.profession or DEFAULT_PROFESSION
         db.add(MechanicProfile(user_id=user.id, profession=profession))
 
     db.commit()

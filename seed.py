@@ -81,7 +81,7 @@ CLIENTS = [
 PROVIDERS = [
     # --- Mechanics ---
     {
-        "email": "mike@demo.com", "password": "Mike1234!", "profession": "mechanic",
+        "email": "mike@demo.com", "password": "Mike1234!", "profession": "automotive",
         "profile": {
             "full_name": "Mike Chen", "phone": "555-0401",
             "bio": "ASE-certified master technician with 12 years experience. Specialise in Asian imports and hybrid/EV systems.",
@@ -92,7 +92,7 @@ PROVIDERS = [
         },
     },
     {
-        "email": "sarah@demo.com", "password": "Sarah123!", "profession": "mechanic",
+        "email": "sarah@demo.com", "password": "Sarah123!", "profession": "automotive",
         "profile": {
             "full_name": "Sarah Nguyen", "phone": "555-0402",
             "bio": "Mobile mechanic covering the greater Austin area. Quick turnaround on brake, suspension, and A/C jobs.",
@@ -103,7 +103,7 @@ PROVIDERS = [
         },
     },
     {
-        "email": "james@demo.com", "password": "James123!", "profession": "mechanic",
+        "email": "james@demo.com", "password": "James123!", "profession": "automotive",
         "profile": {
             "full_name": "James Okafor", "phone": "555-0403",
             "bio": "European car specialist — BMW, Mercedes, Audi. Factory-trained with access to OEM diagnostic tools.",
@@ -115,7 +115,7 @@ PROVIDERS = [
     },
     # --- HVAC ---
     {
-        "email": "david@demo.com", "password": "David123!", "profession": "hvac",
+        "email": "david@demo.com", "password": "David123!", "profession": "appliance_repair",
         "profile": {
             "full_name": "David Park", "phone": "555-0501",
             "bio": "EPA-certified HVAC technician. 10+ years in residential and light commercial systems.",
@@ -126,7 +126,7 @@ PROVIDERS = [
         },
     },
     {
-        "email": "maria@demo.com", "password": "Maria123!", "profession": "hvac",
+        "email": "maria@demo.com", "password": "Maria123!", "profession": "appliance_repair",
         "profile": {
             "full_name": "Maria Gonzalez", "phone": "555-0502",
             "bio": "Specializing in energy-efficient HVAC installations and heat pump systems.",
@@ -138,7 +138,7 @@ PROVIDERS = [
     },
     # --- Electricians ---
     {
-        "email": "kevin@demo.com", "password": "Kevin123!", "profession": "electrician",
+        "email": "kevin@demo.com", "password": "Kevin123!", "profession": "electrical",
         "profile": {
             "full_name": "Kevin Brooks", "phone": "555-0601",
             "bio": "Licensed master electrician. Residential and commercial wiring, panel upgrades, and EV charger installs.",
@@ -149,7 +149,7 @@ PROVIDERS = [
         },
     },
     {
-        "email": "lisa@demo.com", "password": "Lisa1234!", "profession": "electrician",
+        "email": "lisa@demo.com", "password": "Lisa1234!", "profession": "electrical",
         "profile": {
             "full_name": "Lisa Tran", "phone": "555-0602",
             "bio": "Smart home and lighting specialist. Making homes safer and more efficient.",
@@ -184,7 +184,7 @@ PROVIDERS = [
     },
     # --- Car Wash ---
     {
-        "email": "jasmine@demo.com", "password": "Jazz1234!", "profession": "carwash",
+        "email": "jasmine@demo.com", "password": "Jazz1234!", "profession": "automotive",
         "profile": {
             "full_name": "Jasmine Lee", "phone": "555-0801",
             "bio": "Professional mobile detailer. Ceramic coatings, paint correction, and full interior details.",
@@ -195,7 +195,7 @@ PROVIDERS = [
         },
     },
     {
-        "email": "marcus@demo.com", "password": "Marcus12!", "profession": "carwash",
+        "email": "marcus@demo.com", "password": "Marcus12!", "profession": "automotive",
         "profile": {
             "full_name": "Marcus Johnson", "phone": "555-0802",
             "bio": "Fleet washing and mobile car wash expert. Eco-friendly products and waterless wash options.",
@@ -251,7 +251,7 @@ def seed(db):
 
     # --- COMPLETED MECHANIC JOB: Alice -> Mike ---
     sr1 = ServiceRequest(
-        client_id=clients[0].id, vehicle_id=alice_car.id, profession_type="mechanic",
+        client_id=clients[0].id, vehicle_id=alice_car.id, profession_type="automotive",
         title="Engine oil change + brake inspection",
         description="Due for 45k service. Check brake pads while you are at it.",
         location="123 Main St, Austin, TX", urgency="scheduled",
@@ -279,7 +279,7 @@ def seed(db):
 
     # --- ACTIVE MECHANIC JOB: Bob -> Sarah ---
     sr2 = ServiceRequest(
-        client_id=clients[1].id, vehicle_id=bob_truck.id, profession_type="mechanic",
+        client_id=clients[1].id, vehicle_id=bob_truck.id, profession_type="automotive",
         title="Brake pads squealing - urgent fix needed",
         description="F-150 has a high-pitched squeal from the front left wheel when braking.",
         location="456 Oak Ave, Austin, TX", urgency="immediate",
@@ -298,7 +298,7 @@ def seed(db):
 
     # --- PENDING MECHANIC REQUEST: Carol ---
     db.add(ServiceRequest(
-        client_id=clients[2].id, vehicle_id=carol_bmw.id, profession_type="mechanic",
+        client_id=clients[2].id, vehicle_id=carol_bmw.id, profession_type="automotive",
         title="BMW 3 Series - check engine light + transmission jerk",
         description="CEL came on yesterday (code P0420). Jerk when shifting 2nd to 3rd. Need BMW specialist.",
         location="789 Pine Rd, Austin, TX", urgency="scheduled",
@@ -309,7 +309,7 @@ def seed(db):
 
     # --- PENDING HVAC REQUEST ---
     db.add(ServiceRequest(
-        client_id=clients[0].id, profession_type="hvac",
+        client_id=clients[0].id, profession_type="appliance_repair",
         title="AC not cooling - blowing warm air",
         description="Central AC unit is running but blowing warm air. Thermostat set to 72 but house is at 82. Unit is 8 years old.",
         location="123 Main St, Austin, TX", urgency="immediate",
@@ -319,7 +319,7 @@ def seed(db):
 
     # --- PENDING ELECTRICIAN REQUEST ---
     db.add(ServiceRequest(
-        client_id=clients[1].id, profession_type="electrician",
+        client_id=clients[1].id, profession_type="electrical",
         title="Panel upgrade needed - breakers tripping",
         description="Main breaker keeps tripping when running AC and dryer at the same time. House built in 1985 with 100A panel.",
         location="456 Oak Ave, Austin, TX", urgency="scheduled",
@@ -341,7 +341,7 @@ def seed(db):
 
     # --- PENDING CAR WASH REQUEST ---
     db.add(ServiceRequest(
-        client_id=clients[0].id, vehicle_id=alice_car.id, profession_type="carwash",
+        client_id=clients[0].id, vehicle_id=alice_car.id, profession_type="automotive",
         title="Full detail - interior and exterior",
         description="Toyota Camry needs a full detail. Dog hair in the back seat, some minor scratches on the hood.",
         location="123 Main St, Austin, TX", urgency="scheduled",
@@ -351,7 +351,7 @@ def seed(db):
 
     # --- DISPUTE on completed mechanic job ---
     sr5 = ServiceRequest(
-        client_id=clients[1].id, vehicle_id=bob_truck.id, profession_type="mechanic",
+        client_id=clients[1].id, vehicle_id=bob_truck.id, profession_type="automotive",
         title="Alternator replacement",
         description="Headlights flickering, battery warning light.",
         location="456 Oak Ave, Austin, TX", urgency="scheduled", status="completed",

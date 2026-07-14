@@ -114,7 +114,7 @@ class MechanicProfile(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    profession = Column(String(50), default="mechanic", nullable=False, index=True)
+    profession = Column(String(50), default="handyman", nullable=False, index=True)
     full_name = Column(String(200), default="")
     phone = Column(String(30), default="")
     bio = Column(Text, default="")
@@ -176,7 +176,7 @@ class ServiceRequest(Base):
     id = Column(Integer, primary_key=True, index=True)
     client_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     vehicle_id = Column(Integer, ForeignKey("vehicles.id", ondelete="SET NULL"), nullable=True)
-    profession_type = Column(String(50), default="mechanic", nullable=False, index=True)
+    profession_type = Column(String(50), default="handyman", nullable=False, index=True)
     title = Column(String(300), nullable=False)
     description = Column(Text, nullable=False)
     location = Column(String(500), nullable=False)

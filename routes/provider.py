@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, joinedload
 from auth import require_provider
 from database import get_db
 from models import Job, MechanicProfile, Notification, ServiceRequest, User
-from professions import get_job_statuses
+from professions import DEFAULT_PROFESSION, get_job_statuses
 from routes.moderation import blocked_user_ids_involving, is_blocked_pair
 from schemas import (
     JobDetail,
@@ -205,7 +205,7 @@ def job_board(
             detail="You must go online to view available job requests. Use POST /api/provider/go-online first."
         )
 
-    profession = profile.profession if profile else "mechanic"
+    profession = profile.profession if profile else DEFAULT_PROFESSION
     q = db.query(ServiceRequest).filter(
         ServiceRequest.status == "pending",
         ServiceRequest.profession_type == profession,
@@ -362,7 +362,7 @@ def update_job_status(
 
     # Get profession-specific job statuses for validation
     req = db.query(ServiceRequest).filter(ServiceRequest.id == job.request_id).first()
-    profession_type = req.profession_type if req else "mechanic"
+    profession_type = req.profession_type if req else DEFAULT_PROFESSION
     statuses = get_job_statuses(profession_type)
 
     # Build allowed transitions dynamically from profession's status flow

@@ -188,10 +188,22 @@ tr:hover td{background:var(--gray-50)}
 
 /* Profession badges */
 .badge-prof{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.76rem;font-weight:600}
-.badge-prof-mechanic{background:#dcfce7;color:#166534}
-.badge-prof-hvac{background:#cffafe;color:#155e75}
-.badge-prof-electrician{background:#fef3c7;color:#92400e}
+.badge-prof-home_cleaning{background:#e0f2fe;color:#075985}
+.badge-prof-handyman{background:#fef3c7;color:#92400e}
+.badge-prof-plumbing{background:#dbeafe;color:#1e40af}
+.badge-prof-electrical{background:#fef9c3;color:#854d0e}
+.badge-prof-painting{background:#fae8ff;color:#86198f}
 .badge-prof-construction{background:#fed7aa;color:#9a3412}
+.badge-prof-gardening{background:#dcfce7;color:#166534}
+.badge-prof-appliance_repair{background:#cffafe;color:#155e75}
+.badge-prof-tech_support{background:#e0e7ff;color:#3730a3}
+.badge-prof-beauty{background:#fce7f3;color:#9d174d}
+.badge-prof-automotive{background:#d1fae5;color:#065f46}
+.badge-prof-moving{background:#f3e8ff;color:#6b21a8}
+/* Legacy keys — any unmigrated data still renders with a color */
+.badge-prof-mechanic{background:#d1fae5;color:#065f46}
+.badge-prof-hvac{background:#cffafe;color:#155e75}
+.badge-prof-electrician{background:#fef9c3;color:#854d0e}
 .badge-prof-carwash{background:#d1fae5;color:#065f46}
 
 /* ---- Profession filter bar ---- */
@@ -1103,46 +1115,24 @@ var _translations = {
   'ws.error': {es:'Error cargando proveedores', en:'Error loading providers'},
   'pdash.upTo': {es:'hasta', en:'up to'},
 
-  // -- Profession Labels --
-  // -- Home Trades --
-  'prof.plumber': {es:'Plomero', en:'Plumber'},
-  'prof.electrician': {es:'Electricista', en:'Electrician'},
-  'prof.hvac': {es:'T\u00e9cnico HVAC', en:'HVAC Technician'},
-  'prof.painter': {es:'Pintor', en:'Painter'},
-  'prof.carpenter': {es:'Carpintero', en:'Carpenter'},
-  'prof.roofer': {es:'Techador', en:'Roofer'},
-  'prof.locksmith': {es:'Cerrajero', en:'Locksmith'},
-  'prof.glazier': {es:'Vidriero', en:'Glazier'},
-  'prof.flooring': {es:'Pisos', en:'Flooring Specialist'},
-  'prof.tiler': {es:'Azulejista', en:'Tiler'},
-  'prof.welder': {es:'Soldador', en:'Welder'},
-  'prof.mason': {es:'Alba\u00f1il', en:'Mason'},
-  // -- Property Services --
-  'prof.landscaper': {es:'Jardinero/Paisajista', en:'Landscaper'},
-  'prof.pest_control': {es:'Control de Plagas', en:'Pest Control'},
-  'prof.cleaning': {es:'Limpieza Profesional', en:'Professional Cleaning'},
-  'prof.pool_tech': {es:'T\u00e9cnico de Piscinas', en:'Pool Technician'},
-  'prof.pressure_washing': {es:'Lavado a Presi\u00f3n', en:'Pressure Washing'},
-  'prof.handyman': {es:'Manitas/Todero', en:'Handyman'},
-  'prof.moving': {es:'Mudanzas', en:'Moving Service'},
-  'prof.junk_removal': {es:'Retiro de Escombros', en:'Junk Removal'},
-  // -- Auto & Equipment --
-  'prof.mechanic': {es:'Mec\u00e1nico', en:'Mechanic'},
-  'prof.carwash': {es:'Lavado de Autos', en:'Car Wash'},
-  'prof.auto_electrician': {es:'Electricista Automotriz', en:'Auto Electrician'},
-  'prof.tire_alignment': {es:'Alineaci\u00f3n y Llantas', en:'Tire & Alignment'},
-  // -- Specialty --
-  'prof.solar': {es:'Energ\u00eda Solar', en:'Solar Installation'},
-  'prof.security': {es:'Sistemas de Seguridad', en:'Security Systems'},
+  // -- Profession Labels (the 12-category service catalog) --
+  'prof.home_cleaning': {es:'Limpieza del Hogar', en:'Home Cleaning'},
+  'prof.handyman': {es:'Mantenimiento General', en:'Handyman'},
+  'prof.plumbing': {es:'Plomer\u00eda', en:'Plumbing'},
+  'prof.electrical': {es:'Electricidad', en:'Electrical Work'},
+  'prof.painting': {es:'Pintura y Drywall', en:'Painting & Drywall'},
+  'prof.construction': {es:'Construcci\u00f3n', en:'Construction Labor'},
+  'prof.gardening': {es:'Jardiner\u00eda', en:'Gardening'},
   'prof.appliance_repair': {es:'Reparaci\u00f3n de Electrodom\u00e9sticos', en:'Appliance Repair'},
-  'prof.furniture_assembly': {es:'Ensamblaje de Muebles', en:'Furniture Assembly'},
-  // -- Legacy --
-  'prof.construction': {es:'Construcci\u00f3n', en:'Construction Professional'},
-  // -- Category Labels --
-  'cat.home_trades': {es:'Oficios del Hogar', en:'Home Trades'},
-  'cat.property_services': {es:'Servicios de Propiedad', en:'Property Services'},
-  'cat.auto_equipment': {es:'Auto y Equipos', en:'Auto & Equipment'},
-  'cat.specialty': {es:'Especialidad', en:'Specialty'},
+  'prof.tech_support': {es:'Soporte Tecnol\u00f3gico', en:'Technology Support'},
+  'prof.beauty': {es:'Belleza a Domicilio', en:'Beauty at Home'},
+  'prof.automotive': {es:'Servicios Automotrices', en:'Automotive Services'},
+  'prof.moving': {es:'Mudanzas y Fletes', en:'Moving Assistance'},
+  // -- Legacy keys (kept so any unmigrated data still renders a label) --
+  'prof.mechanic': {es:'Mec\u00e1nico', en:'Mechanic'},
+  'prof.hvac': {es:'T\u00e9cnico HVAC', en:'HVAC Technician'},
+  'prof.electrician': {es:'Electricista', en:'Electrician'},
+  'prof.carwash': {es:'Lavado de Autos', en:'Car Wash'},
   // -- Status Tracker --
   'tracker.title': {es:'Estado de tu Solicitud', en:'Your Request Status'},
   'tracker.submitted': {es:'Solicitud Enviada', en:'Request Submitted'},
@@ -1584,10 +1574,12 @@ async function loadProfessions() {
     });
   } catch(e) {
     console.warn('Could not load professions:', e.message);
+    // Offline fallback — a subset of the real catalog so core flows still render
     _professions = {
-      mechanic:    {key:'mechanic',    label:'Mechanic',          icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'},
-      electrician: {key:'electrician', label:'Electrician',        icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'},
-      plumber:     {key:'plumber',     label:'Plumber',            icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'},
+      home_cleaning: {key:'home_cleaning', label:'Home Cleaning', icon:'🧹'},
+      handyman:      {key:'handyman',      label:'Handyman',      icon:'🛠️'},
+      plumbing:      {key:'plumbing',      label:'Plumbing',      icon:'🚰'},
+      electrical:    {key:'electrical',    label:'Electrical',    icon:'⚡'},
     };
   }
 }
@@ -2688,7 +2680,11 @@ async function renderMapView(el) {
 
     const provUrl = '/api/search/map/providers' + (_providerFilter ? '?profession='+_providerFilter : '');
     const providers = await get(provUrl);
-    const profColors = {mechanic:'#6366f1',hvac:'#0891b2',electrician:'#d97706',construction:'#ea580c',carwash:'#16a34a'};
+    const profColors = {
+      home_cleaning:'#0284c7', handyman:'#d97706', plumbing:'#2563eb', electrical:'#ca8a04',
+      painting:'#c026d3', construction:'#ea580c', gardening:'#16a34a', appliance_repair:'#0891b2',
+      tech_support:'#6366f1', beauty:'#db2777', automotive:'#059669', moving:'#9333ea',
+    };
 
     providers.forEach(p => {
       const color = profColors[p.profession] || '#6b7280';
@@ -4279,7 +4275,7 @@ function renderLanding() {
     '<div class="landing-body">' +
       '<section class="hero-section">' +
         '<h1>Servicios Profesionales<br>a tu Alcance</h1>' +
-        '<p>Encuentra profesionales de confianza en Ecuador para mec\u00e1nica, climatizaci\u00f3n, electricidad, construcci\u00f3n, lavado de autos y pintura.</p>' +
+        '<p>Encuentra profesionales de confianza en Ecuador para limpieza, plomer\u00eda, electricidad, jardiner\u00eda, reparaciones, belleza a domicilio y m\u00e1s.</p>' +
         '<div class="hero-cta">' +
           '<button class="btn-hero-primary" onclick="route(\'#/signup\')">' +
             '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>' +
@@ -4313,7 +4309,7 @@ function renderLanding() {
       '<p class="subtitle">Historias reales de clientes y profesionales</p>' +
       '<div class="testimonial-grid">' +
         '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Encontr\u00e9 un electricista en menos de 10 minutos. Trabajo excelente y precio justo.</p><div class="tc-author">Mar\u00eda L.</div><div class="tc-role">Cliente en Quito</div></div>' +
-        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Como mec\u00e1nico, Lever me ayud\u00f3 a duplicar mis clientes en el primer mes.</p><div class="tc-author">Carlos R.</div><div class="tc-role">Mec\u00e1nico en Guayaquil</div></div>' +
+        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Como plomero, Lever me ayud\u00f3 a duplicar mis clientes en el primer mes.</p><div class="tc-author">Carlos R.</div><div class="tc-role">Plomero en Guayaquil</div></div>' +
         '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">La app es f\u00e1cil de usar y el seguimiento en tiempo real me da tranquilidad.</p><div class="tc-author">Andrea M.</div><div class="tc-role">Cliente en Cuenca</div></div>' +
       '</div>' +
     '</section>' +

@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-from professions import PROFESSION_KEYS, PROFESSION_PATTERN, PROFESSIONS
+from professions import DEFAULT_PROFESSION, PROFESSION_KEYS, PROFESSION_PATTERN, PROFESSIONS
 
 
 # ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ class UserCreate(BaseModel):
     def validate_profession(self) -> "UserCreate":
         if self.role == "mechanic":
             if not self.profession:
-                self.profession = "mechanic"
+                self.profession = DEFAULT_PROFESSION
             if self.profession not in PROFESSION_KEYS:
                 raise ValueError(f"Invalid profession. Valid: {PROFESSION_KEYS}")
         return self
@@ -319,7 +319,7 @@ class VehicleOut(BaseModel):
 
 class ServiceRequestCreate(BaseModel):
     vehicle_id: Optional[int] = None
-    profession_type: str = Field(default="mechanic")
+    profession_type: str = Field(default=DEFAULT_PROFESSION)
     title: str = Field(min_length=5, max_length=300)
     description: str = Field(min_length=10)
     location: str = Field(min_length=3, max_length=500)
