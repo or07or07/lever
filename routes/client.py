@@ -185,12 +185,35 @@ def create_request(
         if not v:
             raise HTTPException(status_code=400, detail="Vehicle not found or not yours")
 
-    req = ServiceRequest(client_id=current_user.id, **payload.model_dump())
+    # ── Authoritative Guayaquil service-area enforcement ──
+    # This is the gate the frontend cannot bypass: no matter what the client
+    # sends, a request is only created (and only dispatched to professionals)
+    # if the address validates into an active market. market_code is assigned
+    # here, server-side — never taken from the payload.
+    from market import validate_service_location
+    result = validate_service_location(
+        country_code=payload.country_code,
+        province=payload.province,
+        city=payload.city,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+    )
+    if not result.get("supported"):
+        raise HTTPException(status_code=422, detail=result.get("reason", "ADDRESS_OUTSIDE_GUAYAQUIL"))
+
+    data = payload.model_dump()
+    # Strip validation-only fields that aren't columns on ServiceRequest.
+    for k in ("city", "province", "country_code"):
+        data.pop(k, None)
+
+    req = ServiceRequest(client_id=current_user.id, market_code=result["market_code"], **data)
     db.add(req)
     db.commit()
     db.refresh(req)
 
-    # Trigger dispatch — find online providers and start 30-second offer rotation
+    # Matching only begins AFTER the request is validated and persisted —
+    # unsupported addresses never reach this line, so professionals are
+    # never notified about them.
     from dispatch import start_dispatch
     try:
         loop = asyncio.get_running_loop()

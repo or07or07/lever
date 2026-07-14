@@ -366,6 +366,12 @@ class ServiceRequestCreate(BaseModel):
     budget_max: Optional[float] = Field(default=None, ge=0)
     latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
+    # Structured location for market/service-area validation (Guayaquil
+    # launch). The backend validates these; market_code is NEVER accepted
+    # from the client — it's assigned server-side by validate_service_location.
+    city: Optional[str] = Field(default=None, max_length=120)
+    province: Optional[str] = Field(default=None, max_length=120)
+    country_code: Optional[str] = Field(default=None, max_length=60)
     # Catalog fields (Phase 2). Optional: requests can still be created the
     # legacy way (profession + free text) — nothing existing breaks.
     service_key: Optional[str] = Field(default=None, max_length=80)
@@ -433,6 +439,7 @@ class ServiceRequestOut(BaseModel):
     longitude: Optional[float] = None
     service_key: Optional[str] = None
     answers: Optional[dict] = None
+    market_code: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

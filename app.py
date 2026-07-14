@@ -281,6 +281,63 @@ def catalog_search(q: str = "", lang: str = "es"):
 
 
 # ---------------------------------------------------------------------------
+# Active market / service-area coverage (public — the landing page and the
+# request flow read this so the launch city isn't hard-coded in the UI)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/market", tags=["market"])
+def get_market():
+    """The currently active market (Guayaquil at launch). Public + cacheable."""
+    from market import active_market
+    m = active_market()
+    return {
+        "code": m["code"], "city": m["city"], "province": m["province"],
+        "country_name": m["country_name"], "currency": m["currency"],
+        "locale": m["locale"], "status": m["status"],
+    }
+
+
+@app.post("/api/market/check-location", tags=["market"])
+def check_location(payload: dict):
+    """Advisory address check for the coverage section / request flow. The
+    authoritative check still runs server-side at request creation — this
+    just lets the UI guide the user early."""
+    from market import validate_service_location
+    return validate_service_location(
+        country_code=payload.get("country_code"),
+        province=payload.get("province"),
+        city=payload.get("city"),
+        latitude=payload.get("latitude"),
+        longitude=payload.get("longitude"),
+    )
+
+
+@app.post("/api/city-interest", tags=["market"], status_code=201)
+def register_city_interest(payload: dict):
+    """Capture interest from a visitor outside the active market. Stored only
+    when the user gives explicit consent (checkbox enforced client-side; the
+    server still requires a city). No marketing list, just planning data."""
+    from database import SessionLocal
+    from models import CityInterest
+    city = (payload.get("city") or "").strip()[:120]
+    if not city:
+        return JSONResponse({"detail": "city is required"}, status_code=422)
+    db = SessionLocal()
+    try:
+        row = CityInterest(
+            city=city,
+            province=(payload.get("province") or "").strip()[:120],
+            service_category=(payload.get("service_category") or "").strip()[:80],
+            contact=(payload.get("contact") or "").strip()[:255],
+        )
+        db.add(row)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
 # API Routers
 # ---------------------------------------------------------------------------
 

@@ -116,7 +116,7 @@ def test_auth():
     r = anon.post("/api/auth/register", json={
         "email": f"testclient_{uid}@test.com",
         "password": "Test1234!",
-        "role": "client"
+        "role": "client", "accepted_terms": True
     })
     check("Client registration returns 201", r.status_code == 201, r.text)
     token_data = r.json()
@@ -127,7 +127,7 @@ def test_auth():
     r2 = anon.post("/api/auth/register", json={
         "email": f"testclient_{uid}@test.com",
         "password": "Test1234!",
-        "role": "client"
+        "role": "client", "accepted_terms": True
     })
     check("Duplicate registration rejected (409)", r2.status_code == 409, r2.text)
 
@@ -135,7 +135,7 @@ def test_auth():
     r3 = anon.post("/api/auth/register", json={
         "email": f"weak_{uid}@test.com",
         "password": "weak",
-        "role": "client"
+        "role": "client", "accepted_terms": True
     })
     check("Weak password rejected (422)", r3.status_code == 422, r3.text)
 
@@ -175,7 +175,7 @@ def test_full_orchestration():
     client_r = anon.post("/api/auth/register", json={
         "email": f"client_{uid}@test.com",
         "password": "Client123!",
-        "role": "client"
+        "role": "client", "accepted_terms": True
     })
     check("Register fresh client", client_r.status_code == 201)
     client = Session(client_r.json()["access_token"])
@@ -183,7 +183,7 @@ def test_full_orchestration():
     mech_r = anon.post("/api/auth/register", json={
         "email": f"mech_{uid}@test.com",
         "password": "Mech1234!",
-        "role": "mechanic"
+        "role": "mechanic", "accepted_terms": True
     })
     check("Register fresh provider", mech_r.status_code == 201)
     mech = Session(mech_r.json()["access_token"])
@@ -208,7 +208,8 @@ def test_full_orchestration():
     r = client.post("/api/client/requests", json={
         "title": "Strange knocking sound from engine",
         "description": "Knocking every time I accelerate above 40mph. Started 3 days ago.",
-        "location": "100 Test Street, Austin TX",
+        "location": "Av. Francisco de Orellana, Kennedy Norte, Guayaquil",
+        "city": "Guayaquil", "province": "Guayas", "country_code": "EC",
         "urgency": "immediate",
         "vehicle_id": vehicle_id,
         "budget_max": 400.0,
@@ -477,13 +478,13 @@ def test_message_isolation():
     uid = str(uuid.uuid4())[:8]
 
     c1_r = anon.post("/api/auth/register", json={
-        "email": f"c1_{uid}@test.com", "password": "C1234567!", "role": "client"
+        "email": f"c1_{uid}@test.com", "password": "C1234567!", "role": "client", "accepted_terms": True
     })
     c2_r = anon.post("/api/auth/register", json={
-        "email": f"c2_{uid}@test.com", "password": "C2234567!", "role": "client"
+        "email": f"c2_{uid}@test.com", "password": "C2234567!", "role": "client", "accepted_terms": True
     })
     m1_r = anon.post("/api/auth/register", json={
-        "email": f"m1_{uid}@test.com", "password": "M1234567!", "role": "mechanic"
+        "email": f"m1_{uid}@test.com", "password": "M1234567!", "role": "mechanic", "accepted_terms": True
     })
     c1 = Session(c1_r.json()["access_token"])
     c2 = Session(c2_r.json()["access_token"])
@@ -493,7 +494,8 @@ def test_message_isolation():
     sr = c1.post("/api/client/requests", json={
         "title": "Test isolation request",
         "description": "This is a test to verify message isolation between job participants",
-        "location": "Test Address",
+        "location": "Urdesa Central, Guayaquil",
+        "city": "Guayaquil", "province": "Guayas", "country_code": "EC",
         "urgency": "scheduled",
     })
     job_a_r = m1.post(f"/api/provider/board/{sr.json()['id']}/accept")
@@ -519,6 +521,61 @@ def test_message_isolation():
 # Main
 # ──────────────────────────────────────────────
 
+def test_guayaquil_market():
+    """Guayaquil-only launch: market config + authoritative service-area
+    enforcement on request creation."""
+    print(f"\n{INFO} TEST: Guayaquil market restriction")
+
+    # Public market endpoint reports Guayaquil active.
+    r = requests.get(f"{BASE}/api/market")
+    check("Active market endpoint (200)", r.status_code == 200, r.text)
+    check("Active market is Guayaquil", r.json().get("city") == "Guayaquil", r.text)
+    check("Market code is GYE", r.json().get("code") == "GYE")
+
+    # Advisory location check.
+    r = requests.post(f"{BASE}/api/market/check-location", json={"city": "Guayaquil"})
+    check("Guayaquil city supported", r.json().get("supported") is True, r.text)
+    r = requests.post(f"{BASE}/api/market/check-location", json={"city": "Quito"})
+    check("Quito city not supported", r.json().get("supported") is False, r.text)
+    r = requests.post(f"{BASE}/api/market/check-location", json={"latitude": -2.19, "longitude": -79.88})
+    check("Guayaquil coords supported", r.json().get("supported") is True, r.text)
+    r = requests.post(f"{BASE}/api/market/check-location", json={"latitude": -0.18, "longitude": -78.47})
+    check("Quito coords not supported", r.json().get("supported") is False, r.text)
+
+    # Real enforcement on request creation.
+    uid = uuid.uuid4().hex[:8]
+    c = requests.Session()
+    reg = c.post(f"{BASE}/api/auth/register", json={
+        "email": f"gye_{uid}@test.com", "password": "Passw0rd!", "role": "client", "accepted_terms": True,
+    })
+    tok = reg.json()["access_token"]
+    h = {"Authorization": f"Bearer {tok}"}
+
+    ok = c.post(f"{BASE}/api/client/requests", headers=h, json={
+        "service_key": "faucet_leak_repair", "title": "Fuga de agua en la cocina",
+        "description": "La llave de la cocina gotea constantemente desde ayer",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas", "country_code": "EC",
+    })
+    check("Guayaquil request accepted (201)", ok.status_code == 201, ok.text)
+    check("Request assigned market_code GYE", ok.json().get("market_code") == "GYE", ok.text)
+
+    bad = c.post(f"{BASE}/api/client/requests", headers=h, json={
+        "service_key": "faucet_leak_repair", "title": "Fuga de agua en la cocina",
+        "description": "La llave de la cocina gotea constantemente desde ayer",
+        "location": "Quito", "city": "Quito", "province": "Pichincha", "country_code": "EC",
+    })
+    check("Non-Guayaquil request rejected (422)", bad.status_code == 422, bad.text)
+    check("Rejection reason is out-of-area", "GUAYAQUIL" in bad.text.upper(), bad.text)
+
+    # Client can't smuggle in a market_code — server assigns it.
+    tamper = c.post(f"{BASE}/api/client/requests", headers=h, json={
+        "service_key": "faucet_leak_repair", "title": "Fuga de agua en la cocina",
+        "description": "La llave de la cocina gotea constantemente desde ayer",
+        "location": "Quito", "city": "Quito", "market_code": "GYE",
+    })
+    check("Client-supplied market_code cannot bypass (422)", tamper.status_code == 422, tamper.text)
+
+
 def run_all():
     print("\n" + "="*60)
     print("  MechFix Integration Test Suite")
@@ -533,6 +590,7 @@ def run_all():
         test_mechanic_flows,
         test_admin_flows,
         test_message_isolation,
+        test_guayaquil_market,
     ]
 
     for test_fn in tests:
@@ -577,3 +635,4 @@ def test_pytest_client():     test_client_flows()
 def test_pytest_mechanic():   test_mechanic_flows()
 def test_pytest_admin():      test_admin_flows()
 def test_pytest_isolation():  test_message_isolation()
+def test_pytest_guayaquil():  test_guayaquil_market()

@@ -236,6 +236,11 @@ class ServiceRequest(Base):
     service_key = Column(String(80), nullable=True, index=True)
     answers = Column(JSON, nullable=True)  # responses to the service's dynamic-form questions
 
+    # ── Market / service area (Guayaquil launch) ──
+    # Set server-side by validate_service_location() at creation — never
+    # trusted from the client. NULL only on pre-launch legacy rows.
+    market_code = Column(String(10), nullable=True, index=True)
+
     client = relationship("User", back_populates="service_requests", foreign_keys=[client_id])
     vehicle = relationship("Vehicle", back_populates="service_requests")
     job = relationship("Job", back_populates="request", uselist=False, cascade="all, delete-orphan")
@@ -343,6 +348,19 @@ class Notification(Base):
     __table_args__ = (
         Index("ix_notifications_user_unread", "user_id", "is_read"),
     )
+
+
+class CityInterest(Base):
+    """A visitor outside the active market asking for Lever in their city.
+    Feeds future-market planning; only stored with explicit consent."""
+    __tablename__ = "city_interest"
+
+    id = Column(Integer, primary_key=True, index=True)
+    city = Column(String(120), nullable=False)
+    province = Column(String(120), default="")
+    service_category = Column(String(80), default="")
+    contact = Column(String(255), default="")  # email or phone the user chose to share
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 # ---------------------------------------------------------------------------
