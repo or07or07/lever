@@ -56,6 +56,14 @@ class User(Base):
     # ── Account deletion (GP-07) ──
     deleted_at = Column(DateTime, nullable=True)  # Soft-delete marker; anonymized, not hard-removed
 
+    # ── Token revocation (GP-13) ──
+    # Embedded as the "ver" claim in every JWT issued for this user.
+    # get_current_user rejects any token whose "ver" doesn't match the
+    # current value. Bumping this instantly invalidates every previously
+    # issued token — used for "log out of all devices" and automatically
+    # on password reset, without needing a server-side session table.
+    token_version = Column(Integer, default=0, nullable=False)
+
     # Relationships
     client_profile = relationship("ClientProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mechanic_profile = relationship("MechanicProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

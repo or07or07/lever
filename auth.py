@@ -33,9 +33,17 @@ def verify_password(plain: str, hashed: str) -> bool:
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def create_access_token(user_id: int, role: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(
+    user_id: int,
+    role: str,
+    token_version: int = 0,
+    expires_delta: Optional[timedelta] = None,
+) -> str:
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
-    payload = {"sub": str(user_id), "role": role, "exp": expire}
+    # "ver" ties this token to the user's current token_version (GP-13) —
+    # bumping that column instantly invalidates every token issued before
+    # the bump, without needing a server-side session/blocklist table.
+    payload = {"sub": str(user_id), "role": role, "ver": token_version, "exp": expire}
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
@@ -58,12 +66,19 @@ def get_current_user(
     try:
         payload = decode_token(token)
         user_id = int(payload.get("sub"))
+        token_ver = payload.get("ver", 0)
     except (JWTError, TypeError, ValueError):
         raise credentials_exc
 
     from models import User
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
+        raise credentials_exc
+    # Tokens issued before this claim existed carry no "ver" and are
+    # treated as version 0, matching every user's default token_version —
+    # so this check only starts rejecting tokens once something actually
+    # bumps the version (logout-everywhere, password reset).
+    if token_ver != user.token_version:
         raise credentials_exc
     return user
 

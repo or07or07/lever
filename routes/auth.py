@@ -35,6 +35,7 @@ from schemas import (
     AccountDeleteResponse,
     ClientProfileOut,
     MechanicProfileOut,
+    MessageResponse,
     PasswordResetRequest,
     PasswordResetResponse,
     PasswordResetVerify,
@@ -112,7 +113,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         if profile:
             profession = profile.profession
 
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.token_version)
     return Token(
         access_token=token,
         role=user.role,
@@ -146,7 +147,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
         if profile:
             profession = profile.profession
 
-    token = create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role, user.token_version)
     return Token(
         access_token=token,
         role=user.role,
@@ -252,6 +253,27 @@ def my_profile(
 
 
 # ---------------------------------------------------------------------------
+# Logout everywhere (GP-13)
+# ---------------------------------------------------------------------------
+
+@router.post("/logout-all", response_model=MessageResponse)
+def logout_all_devices(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Invalidate every access token issued for this account, including the
+    one used to make this request — bumping token_version instantly fails
+    the "ver" check in get_current_user for all of them. The caller (and
+    every other logged-in device) must sign in again afterward.
+
+    ISO 27001 A.9.4.2 — Section 12 "log out of all devices" requirement.
+    """
+    current_user.token_version += 1
+    db.commit()
+    return MessageResponse(message="You have been logged out of all devices.")
+
+
+# ---------------------------------------------------------------------------
 # Password Reset (Day 30 addition)
 # ---------------------------------------------------------------------------
 
@@ -313,6 +335,9 @@ def verify_password_reset(
     # Auto-verify email on successful password reset
     if not user.email_verified:
         user.email_verified = True
+    # A password reset is exactly the "someone else may have my old
+    # password" scenario — kill every session logged in under it (GP-13).
+    user.token_version += 1
     db.commit()
 
     logger.info(f"Password reset completed for user {user.id}")

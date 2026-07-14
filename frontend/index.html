@@ -933,6 +933,10 @@ var _translations = {
   'settings.deleteAccountCancel': {es:'Cancelar', en:'Cancel'},
   'settings.deleteAccountConfirm': {es:'S\u00ed, eliminar mi cuenta', en:'Yes, delete my account'},
   'settings.deleteAccountSuccess': {es:'Tu cuenta ha sido eliminada.', en:'Your account has been deleted.'},
+  'settings.security': {es:'Seguridad', en:'Security'},
+  'settings.logoutAllDesc': {es:'Cierra la sesión en todos los dispositivos donde hayas iniciado sesión, incluido este. Úsalo si crees que alguien más tiene acceso a tu cuenta.', en:"Sign out everywhere you're logged in, including this device. Use this if you think someone else has access to your account."},
+  'settings.logoutAllBtn': {es:'Cerrar sesión en todos los dispositivos', en:'Log out of all devices'},
+  'settings.logoutAllConfirm': {es:'¿Cerrar sesión en todos los dispositivos? Tendrás que volver a iniciar sesión aquí también.', en:"Log out of all devices? You'll need to sign in again here too."},
 
   // -- Messages --
   'msg.title': {es:'Mensajes', en:'Messages'},
@@ -2876,11 +2880,27 @@ async function renderSettings(el) {
         '</div>'
       ) +
     '</div>' +
+    '<div class="card" style="max-width:500px;margin-top:16px">' +
+      '<div class="card-header"><div class="card-title">' + _t('settings.security') + '</div></div>' +
+      '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' + _t('settings.logoutAllDesc') + '</p>' +
+      '<button class="btn btn-outline" onclick="logoutAllDevices()">' + _t('settings.logoutAllBtn') + '</button>' +
+    '</div>' +
     '<div class="card" style="max-width:500px;margin-top:16px;border:1px solid var(--danger)">' +
       '<div class="card-header"><div class="card-title" style="color:var(--danger)">' + _t('settings.dangerZone') + '</div></div>' +
       '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' + _t('settings.deleteAccountDesc') + '</p>' +
       '<button class="btn btn-outline" style="border-color:var(--danger);color:var(--danger)" onclick="openDeleteAccountModal()">' + _t('settings.deleteAccountBtn') + '</button>' +
     '</div>';
+}
+
+async function logoutAllDevices() {
+  if (!confirm(_t('settings.logoutAllConfirm'))) return;
+  try {
+    await post('/api/auth/logout-all');
+  } catch(e) {
+    // Even if the request fails after already invalidating server-side,
+    // logging out locally is still the safe outcome for the user.
+  }
+  logout();
 }
 
 function openDeleteAccountModal() {
