@@ -170,6 +170,54 @@ PROFESSIONS = {
         "vehicle_required": False,
         "job_statuses": ["accepted", "en_route", "working", "completed", "cancelled"],
     },
+    "home_security": {
+        "label": "Home Security",
+        "icon": "\U0001f512",  # lock
+        "description": "Security cameras, alarms, smart locks and access control",
+        "specialties": [
+            "Cámaras de Seguridad", "Alarmas", "Cerraduras Inteligentes",
+            "Videoporteros", "Sensores de Movimiento", "Control de Acceso",
+        ],
+        "service_noun": "installation",
+        "vehicle_required": False,
+        "job_statuses": ["accepted", "en_route", "inspecting", "working", "completed", "cancelled"],
+    },
+    "pets": {
+        "label": "Pet Services",
+        "icon": "\U0001f436",  # dog
+        "description": "Dog walking, pet sitting, grooming and pet care (non-veterinary)",
+        "specialties": [
+            "Paseo de Perros", "Cuidado de Mascotas", "Baño de Mascotas",
+            "Peluquería Básica", "Transporte de Mascotas", "Visitas a Domicilio",
+        ],
+        "service_noun": "visit",
+        "vehicle_required": False,
+        "job_statuses": ["accepted", "en_route", "working", "completed", "cancelled"],
+    },
+    "events": {
+        "label": "Event Support",
+        "icon": "\U0001f389",  # party popper
+        "description": "Event setup, waitstaff, photography, sound and decoration",
+        "specialties": [
+            "Montaje de Eventos", "Meseros", "Fotografía", "DJ y Sonido",
+            "Decoración", "Limpieza de Eventos",
+        ],
+        "service_noun": "event",
+        "vehicle_required": False,
+        "job_statuses": ["accepted", "en_route", "prepping", "working", "completed", "cancelled"],
+    },
+    "business_support": {
+        "label": "Business & Admin Support",
+        "icon": "\U0001f4bc",  # briefcase
+        "description": "Typing, data entry, design, social media and small-business help",
+        "specialties": [
+            "Digitación de Documentos", "Ingreso de Datos", "Diseño Gráfico Básico",
+            "Redes Sociales", "Fotografía de Productos", "Asistencia Virtual",
+        ],
+        "service_noun": "task",
+        "vehicle_required": False,
+        "job_statuses": ["accepted", "working", "completed", "cancelled"],
+    },
 }
 
 # Convenience: list of valid profession keys

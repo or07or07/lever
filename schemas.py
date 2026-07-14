@@ -329,6 +329,10 @@ class ServiceRequestCreate(BaseModel):
     budget_max: Optional[float] = Field(default=None, ge=0)
     latitude: Optional[float] = Field(default=None, ge=-90.0, le=90.0)
     longitude: Optional[float] = Field(default=None, ge=-180.0, le=180.0)
+    # Catalog fields (Phase 2). Optional: requests can still be created the
+    # legacy way (profession + free text) — nothing existing breaks.
+    service_key: Optional[str] = Field(default=None, max_length=80)
+    answers: Optional[dict] = None
 
     @field_validator("profession_type")
     @classmethod
@@ -342,6 +346,18 @@ class ServiceRequestCreate(BaseModel):
         if self.budget_min is not None and self.budget_max is not None:
             if self.budget_min > self.budget_max:
                 raise ValueError("budget_min must be <= budget_max")
+        return self
+
+    @model_validator(mode="after")
+    def validate_service_key(self) -> "ServiceRequestCreate":
+        if self.service_key is not None:
+            from services_catalog import SERVICES_BY_KEY
+            svc = SERVICES_BY_KEY.get(self.service_key)
+            if svc is None:
+                raise ValueError("Unknown service_key")
+            # The service dictates the profession the request dispatches to —
+            # don't trust the client to keep them consistent.
+            self.profession_type = svc["profession"]
         return self
 
 
@@ -378,6 +394,8 @@ class ServiceRequestOut(BaseModel):
     updated_at: Optional[datetime]
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    service_key: Optional[str] = None
+    answers: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
@@ -407,6 +425,9 @@ class ServiceRequestBoardOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: Optional[datetime]
+    # Catalog context is job-relevant and contains no location/identity data
+    service_key: Optional[str] = None
+    answers: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 

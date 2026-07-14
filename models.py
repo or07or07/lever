@@ -195,6 +195,11 @@ class ServiceRequest(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
 
+    # ── Service catalog (Phase 2) ──
+    # NULL = legacy/free-text request created before the catalog existed.
+    service_key = Column(String(80), nullable=True, index=True)
+    answers = Column(JSON, nullable=True)  # responses to the service's dynamic-form questions
+
     client = relationship("User", back_populates="service_requests", foreign_keys=[client_id])
     vehicle = relationship("Vehicle", back_populates="service_requests")
     job = relationship("Job", back_populates="request", uselist=False, cascade="all, delete-orphan")

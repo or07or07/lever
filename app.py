@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import List
 
 from sqlalchemy import text
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -252,6 +252,32 @@ def list_professions():
         }
         for key, p in PROFESSIONS.items()
     ]
+
+
+# ---------------------------------------------------------------------------
+# Service catalog (public – guests browse before authenticating; see
+# docs/service-catalog-ux-audit.md §9. Source of truth: services_catalog.py)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/catalog", tags=["catalog"])
+def get_catalog(response: Response):
+    """Categories + every active service, both languages. Public and cacheable."""
+    from services_catalog import ALL_SERVICES
+    response.headers["Cache-Control"] = "public, max-age=300"
+    categories = [
+        {"key": key, "label": p["label"], "icon": p["icon"], "description": p["description"]}
+        for key, p in PROFESSIONS.items()
+    ]
+    return {"categories": categories, "services": [s for s in ALL_SERVICES if s["is_active"]]}
+
+
+@app.get("/api/catalog/search", tags=["catalog"])
+def catalog_search(q: str = "", lang: str = "es"):
+    """Search services by name, description and es-EC keyword synonyms."""
+    from services_catalog import search_services
+    if len(q) > 100:
+        q = q[:100]
+    return search_services(q, lang="en" if lang == "en" else "es", limit=20)
 
 
 # ---------------------------------------------------------------------------

@@ -245,15 +245,26 @@ a commit, and a changed-files + open-issues report (per spec).
 
 ## 9. Owner decisions required before Phase 2
 
-| # | Decision | Recommendation |
-|---|---|---|
-| **D1** | Adopt all 16 categories (adds Security, Pets, Events, Business Support) or stay at the 12 just shipped? | Adopt 16 — catalog is data-driven, marginal cost is seed data only |
-| **D2** | Matching model: keep auto-dispatch for everything, or hybrid (instant-book keeps dispatch; estimate services get offers/comparison)? | Hybrid — it's what the spec describes and it's additive, not a rewrite |
-| **D3** | Photo storage: local Docker volume (simple, single-server) vs S3-compatible object storage (scales, offsite)? | Local volume for v1 with an interface that can swap to S3 later |
-| **D4** | Payments: keep "pago directo al profesional" (no processor, price transparency UI only) for v1, or integrate a processor now (which one operates in Ecuador — e.g. PayPhone, Kushki, DataFast)? | Keep direct payment v1; build the price-breakdown UI honestly labeled; processor is its own project |
-| **D5** | Provider verification for high-risk services: what does "enhanced verification" actually mean operationally (cédula photo + admin review? references?) and who reviews it? | Cédula + selfie upload reviewed in the existing admin panel; gate high-risk services on approval |
-| **D6** | Frontend: split `index.html` into static modules (still no build step) before Phase 3 grows it further? | Yes — split CSS + ~6 JS modules; mechanical change, do it at the start of Phase 3 |
-| **D7** | Analytics: self-hosted events table (recommended, zero third parties) vs external tool? | Self-hosted table + simple admin chart |
+| # | Decision | Recommendation | **Owner decision (2026-07-13)** |
+|---|---|---|---|
+| **D1** | Adopt all 16 categories (adds Security, Pets, Events, Business Support) or stay at the 12 just shipped? | Adopt 16 — catalog is data-driven, marginal cost is seed data only | ✅ **All 16** |
+| **D2** | Matching model: keep auto-dispatch for everything, or hybrid (instant-book keeps dispatch; estimate services get offers/comparison)? | Hybrid — it's what the spec describes and it's additive, not a rewrite | ✅ **Hybrid** |
+| **D3** | Photo storage: local Docker volume (simple, single-server) vs S3-compatible object storage (scales, offsite)? | Local volume for v1 with an interface that can swap to S3 later | ⏳ Deferred to Phase 3 kickoff |
+| **D4** | Payments: keep "pago directo al profesional" (no processor, price transparency UI only) for v1, or integrate a processor now (which one operates in Ecuador — e.g. PayPhone, Kushki, DataFast)? | Keep direct payment v1; build the price-breakdown UI honestly labeled; processor is its own project | ✅ **Direct payment v1** |
+| **D5** | Provider verification for high-risk services: what does "enhanced verification" actually mean operationally (cédula photo + admin review? references?) and who reviews it? | Cédula + selfie upload reviewed in the existing admin panel; gate high-risk services on approval | ⏳ Deferred to Phase 3 kickoff |
+| **D6** | Frontend: split `index.html` into static modules (still no build step) before Phase 3 grows it further? | Yes — split CSS + ~6 JS modules; mechanical change, do it at the start of Phase 3 | ✅ **Split at Phase 3 start** |
+| **D7** | Analytics: self-hosted events table (recommended, zero third parties) vs external tool? | Self-hosted table + simple admin chart | ⏳ Deferred to Phase 5 kickoff |
+
+**Phase 2 implementation note on the catalog store**: categories stay in the
+existing code registry (`professions.py`) — they already carry code-coupled
+config (job-status flows, badge classes) and adding a DB table would create a
+second source of truth. Services live in a version-controlled structured data
+file (`services_catalog.py`) served through the API, mirroring how professions
+already work (string keys, not FKs — same pattern as
+`service_requests.profession_type`). This satisfies the spec's "database or
+structured configuration as the source of truth" rule with the simpler of the
+two allowed options; a DB table remains a straightforward later refactor if
+runtime editing is ever needed.
 
 ---
 

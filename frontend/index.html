@@ -200,6 +200,47 @@ tr:hover td{background:var(--gray-50)}
 .badge-prof-beauty{background:#fce7f3;color:#9d174d}
 .badge-prof-automotive{background:#d1fae5;color:#065f46}
 .badge-prof-moving{background:#f3e8ff;color:#6b21a8}
+.badge-prof-home_security{background:#e2e8f0;color:#1e293b}
+.badge-prof-pets{background:#ffedd5;color:#9a3412}
+.badge-prof-events{background:#ffe4e6;color:#9f1239}
+.badge-prof-business_support{background:#e0f2fe;color:#0c4a6e}
+/* ── Guest flow / service catalog (Phase 2) ── */
+.gpage{max-width:640px;margin:0 auto;padding:16px 16px 96px;min-height:100vh;background:#fff}
+.ghead{display:flex;align-items:center;gap:10px;padding:8px 0 16px}
+.ghead .gback{border:none;background:var(--gray-100);border-radius:10px;width:38px;height:38px;font-size:1.1rem;cursor:pointer;flex-shrink:0}
+.ghead .gtitle{font-weight:800;font-size:1.05rem;flex:1;letter-spacing:-.3px}
+.ghead .glogin{font-size:.85rem;color:var(--brand);background:none;border:none;font-weight:700;cursor:pointer;padding:8px}
+.gsearch{display:flex;align-items:center;gap:8px;background:var(--gray-100);border-radius:12px;padding:12px 14px;margin-bottom:18px}
+.gsearch input{flex:1;border:none;background:transparent;font-size:1rem;outline:none;color:var(--gray-900)}
+.gcat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.gcat-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:14px 6px;cursor:pointer;text-align:center;transition:.12s;min-height:88px;justify-content:center}
+.gcat-card:hover{border-color:var(--brand);box-shadow:0 2px 8px rgba(99,102,241,.12)}
+.gcat-card .gc-icon{font-size:1.6rem;line-height:1}
+.gcat-card .gc-name{font-size:.72rem;font-weight:600;color:var(--gray-700);line-height:1.2}
+.gsvc-row{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid var(--gray-100);cursor:pointer}
+.gsvc-row:hover{background:var(--gray-50)}
+.gsvc-row .gs-icon{font-size:1.3rem;flex-shrink:0}
+.gsvc-row .gs-body{flex:1;min-width:0}
+.gsvc-row .gs-name{font-weight:600;font-size:.92rem;color:var(--gray-900)}
+.gsvc-row .gs-desc{font-size:.78rem;color:var(--gray-500);margin-top:2px}
+.gsvc-row .gs-arrow{color:var(--gray-300);flex-shrink:0}
+.gnotice{background:var(--brand-50);border:1px solid var(--brand-100);color:var(--gray-700);border-radius:12px;padding:10px 14px;font-size:.8rem;margin:14px 0}
+.gprogress{display:flex;gap:6px;margin:4px 0 18px}
+.gprogress span{flex:1;height:4px;border-radius:2px;background:var(--gray-200)}
+.gprogress span.done{background:var(--brand)}
+.gchip-row{display:flex;flex-wrap:wrap;gap:8px}
+.gchip{border:1.5px solid var(--gray-200);background:#fff;border-radius:999px;padding:10px 16px;font-size:.88rem;cursor:pointer;color:var(--gray-700);min-height:44px}
+.gchip.sel{border-color:var(--brand);background:var(--brand-50);color:var(--brand);font-weight:700}
+.gsum-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100);font-size:.9rem}
+.gsum-row .k{color:var(--gray-500)}
+.gsum-row .v{font-weight:600;text-align:right;max-width:60%;word-break:break-word}
+.gsum-row .e{color:var(--brand);font-size:.8rem;font-weight:700;cursor:pointer;background:none;border:none;flex-shrink:0}
+.gbtn-primary{width:100%;padding:15px;border:none;border-radius:12px;background:var(--brand);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;min-height:50px}
+.gbtn-primary:disabled{opacity:.55}
+.gbtn-ghost{width:100%;padding:13px;border:none;border-radius:12px;background:none;color:var(--gray-600);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:6px}
+.gskel{background:linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);background-size:200% 100%;animation:gskel 1.2s infinite;border-radius:10px}
+@keyframes gskel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media(prefers-reduced-motion:reduce){.gskel{animation:none}}
 /* Legacy keys — any unmigrated data still renders with a color */
 .badge-prof-mechanic{background:#d1fae5;color:#065f46}
 .badge-prof-hvac{background:#cffafe;color:#155e75}
@@ -1128,6 +1169,78 @@ var _translations = {
   'prof.beauty': {es:'Belleza a Domicilio', en:'Beauty at Home'},
   'prof.automotive': {es:'Servicios Automotrices', en:'Automotive Services'},
   'prof.moving': {es:'Mudanzas y Fletes', en:'Moving Assistance'},
+  'prof.home_security': {es:'Seguridad del Hogar', en:'Home Security'},
+  'prof.pets': {es:'Mascotas', en:'Pet Services'},
+  'prof.events': {es:'Eventos', en:'Event Support'},
+  'prof.business_support': {es:'Apoyo Administrativo', en:'Business Support'},
+
+  // -- Guest flow / service catalog (Phase 2) --
+  'guest.searchPlaceholder': {es:'¿Qué servicio necesitas?', en:'What service do you need?'},
+  'guest.homeTitle': {es:'Servicios a domicilio en Ecuador', en:'Home services in Ecuador'},
+  'guest.categories': {es:'Categorías', en:'Categories'},
+  'guest.popular': {es:'Servicios populares', en:'Popular services'},
+  'guest.notice': {es:'Puedes preparar tu solicitud sin registrarte. Te pediremos iniciar sesión solamente cuando estés listo para enviarla.', en:"You can prepare your request without signing up. We'll only ask you to sign in when you're ready to send it."},
+  'guest.requestService': {es:'Solicitar un servicio', en:'Request a service'},
+  'guest.signIn': {es:'Ingresar', en:'Sign in'},
+  'guest.noResults': {es:'No encontramos servicios para tu búsqueda.', en:'We found no services for your search.'},
+  'guest.noResultsSub': {es:'Intenta con otras palabras o explora las categorías.', en:'Try different words or browse the categories.'},
+  'guest.selectService': {es:'Elige el servicio', en:'Choose the service'},
+  'guest.requestThis': {es:'Solicitar este servicio', en:'Request this service'},
+  'guest.estimateNote': {es:'Los profesionales revisarán tu solicitud y te darán su cotización.', en:'Professionals will review your request and give you their quote.'},
+  'guest.instantNote': {es:'Este servicio se agenda directamente con el profesional disponible.', en:'This service is booked directly with an available professional.'},
+  'guest.durationApprox': {es:'Duración aproximada', en:'Approximate duration'},
+  'guest.describeTitle': {es:'Describe lo que necesitas', en:'Describe what you need'},
+  'guest.descPlaceholder': {es:'Cuéntanos qué necesitas con el mayor detalle posible', en:'Tell us what you need in as much detail as possible'},
+  'guest.scheduleTitle': {es:'¿Cuándo necesitas el servicio?', en:'When do you need the service?'},
+  'guest.asap': {es:'Lo antes posible', en:'As soon as possible'},
+  'guest.later': {es:'Programar para después', en:'Schedule for later'},
+  'guest.pickDate': {es:'Fecha preferida', en:'Preferred date'},
+  'guest.pickWindow': {es:'Horario preferido', en:'Preferred time'},
+  'guest.morning': {es:'Mañana (8:00–12:00)', en:'Morning (8:00–12:00)'},
+  'guest.afternoon': {es:'Tarde (12:00–17:00)', en:'Afternoon (12:00–17:00)'},
+  'guest.evening': {es:'Final del día (17:00–20:00)', en:'Evening (17:00–20:00)'},
+  'guest.locationTitle': {es:'Ubicación aproximada', en:'Approximate location'},
+  'guest.locationNote': {es:'Solo necesitamos tu zona por ahora. La dirección exacta se pide al enviar la solicitud.', en:'We only need your general area for now. The exact address is asked when you send the request.'},
+  'guest.city': {es:'Ciudad', en:'City'},
+  'guest.sector': {es:'Sector o barrio', en:'Neighborhood or area'},
+  'guest.sectorPlaceholder': {es:'Ej: La Carolina, Norte de Quito', en:'E.g. La Carolina, North Quito'},
+  'guest.continue': {es:'Continuar', en:'Continue'},
+  'guest.back': {es:'Atrás', en:'Back'},
+  'guest.reviewTitle': {es:'Resumen de tu solicitud', en:'Your request summary'},
+  'guest.notSentYet': {es:'Todavía no se enviará tu solicitud.', en:'Your request will not be sent yet.'},
+  'guest.continueToSend': {es:'Continuar para enviar', en:'Continue to send'},
+  'guest.edit': {es:'Editar', en:'Edit'},
+  'guest.discardDraft': {es:'Descartar borrador', en:'Discard draft'},
+  'guest.discardConfirm': {es:'¿Descartar esta solicitud? Se borrará todo lo que llenaste.', en:'Discard this request? Everything you filled in will be deleted.'},
+  'guest.service': {es:'Servicio', en:'Service'},
+  'guest.description': {es:'Descripción', en:'Description'},
+  'guest.when': {es:'Cuándo', en:'When'},
+  'guest.where': {es:'Zona', en:'Area'},
+  'guest.pricing': {es:'Método de precio', en:'Pricing method'},
+  'guest.gateTitle': {es:'Tu solicitud está lista', en:'Your request is ready'},
+  'guest.gateSub': {es:'Inicia sesión para enviarla, recibir respuesta de profesionales y seguir el progreso del servicio.', en:'Sign in to send it, hear back from professionals and track the progress of the service.'},
+  'guest.gateSaved': {es:'Guardaremos tu solicitud mientras creas tu cuenta.', en:"We'll keep your request saved while you create your account."},
+  'guest.gateLogin': {es:'Iniciar sesión', en:'Sign in'},
+  'guest.gateRegister': {es:'Crear cuenta', en:'Create account'},
+  'guest.gateBack': {es:'Volver y editar', en:'Go back and edit'},
+  'guest.finishTitle': {es:'Confirma y envía tu solicitud', en:'Confirm and send your request'},
+  'guest.fullAddress': {es:'Dirección exacta del servicio', en:'Exact service address'},
+  'guest.addressPlaceholder': {es:'Calle, número, referencia', en:'Street, number, reference'},
+  'guest.budgetOptional': {es:'Presupuesto máximo (opcional)', en:'Maximum budget (optional)'},
+  'guest.send': {es:'Enviar solicitud', en:'Send request'},
+  'guest.sending': {es:'Enviando…', en:'Sending…'},
+  'guest.sendFailed': {es:'No se pudo enviar la solicitud. Revisa tu conexión e inténtalo nuevamente. Tu solicitud sigue guardada.', en:"The request couldn't be sent. Check your connection and try again. Your request is still saved."},
+  'guest.draftRestored': {es:'Tu solicitud guardada está lista para enviar.', en:'Your saved request is ready to send.'},
+  'guest.pt.fixed': {es:'Precio fijo', en:'Fixed price'},
+  'guest.pt.starting_at': {es:'Precio desde', en:'Starting price'},
+  'guest.pt.hourly': {es:'Por hora', en:'Hourly'},
+  'guest.pt.per_m2': {es:'Por metro cuadrado', en:'Per square meter'},
+  'guest.pt.per_room': {es:'Por ambiente', en:'Per room'},
+  'guest.pt.per_item': {es:'Por unidad', en:'Per item'},
+  'guest.pt.inspection_fee': {es:'Visita de diagnóstico', en:'Inspection visit'},
+  'guest.pt.estimate_required': {es:'Cotización del profesional', en:'Professional quote'},
+  'guest.yes': {es:'Sí', en:'Yes'},
+  'guest.no': {es:'No', en:'No'},
   // -- Legacy keys (kept so any unmigrated data still renders a label) --
   'prof.mechanic': {es:'Mec\u00e1nico', en:'Mechanic'},
   'prof.hvac': {es:'T\u00e9cnico HVAC', en:'HVAC Technician'},
@@ -1694,13 +1807,29 @@ async function render() {
     if (_hash === '#/browse') { renderGuestBrowse(); return; }
     if (_hash === '#/support') { renderSupport(); return; }
     if (_hash === '#/reset-password') { renderResetPassword(); return; }
-    // Native app: skip the marketing landing page, open straight to sign-in.
-    if (IS_NATIVE) { renderAuth('login'); return; }
+    // Guest service discovery + request preview (deferred auth — Phase 2)
+    if (isGuestFlowHash(_hash)) { renderGuestFlowRoute(_hash); return; }
+    // Native provider app: providers must sign in first. The CLIENT native
+    // app opens into guest discovery instead of forcing a login screen.
+    if (IS_NATIVE) {
+      if (APP_FLAVOR_ROLE === 'client') { renderGuestFlowRoute('#/services'); return; }
+      renderAuth('login'); return;
+    }
     renderLanding(); return;
   }
   // Verification gate — ISO 27001 A.9.4.2: email ownership required before access
   if (_user && _user.email_verified === false) {
     renderVerification(); return;
+  }
+  // Authenticated users can use the catalog/request funnel too (clients only)
+  if (isGuestFlowHash(_hash)) {
+    if (_user?.role === 'client') { renderGuestFlowRoute(_hash); return; }
+    route('#/'); return;
+  }
+  // A finished draft waiting to be sent takes priority over the dashboard —
+  // the user can still discard it from the confirmation screen.
+  if (_user?.role === 'client' && (_hash === '#/' || _hash === '#') && guestDraftReady()) {
+    route('#/finish-request'); return;
   }
   const hash = window.location.hash || '#/';
   const role = _user?.role;
@@ -1891,7 +2020,7 @@ async function renderClientDash(el) {
   const open   = reqs.filter(r=>['pending','assigned','in_progress'].includes(r.status)).length;
   const done   = reqs.filter(r=>r.status==='completed').length;
   el.innerHTML = `
-    ${pageHeader(_t('dash.title'),'<button class="btn btn-primary" onclick="showNewRequest()">' + _t('dash.newRequest') + '</button>')}
+    ${pageHeader(_t('dash.title'),'<button class="btn btn-outline" onclick="route(\'#/services\')" style="margin-right:8px">' + (_lang==='es'?'Explorar servicios':'Browse services') + '</button><button class="btn btn-primary" onclick="showNewRequest()">' + _t('dash.newRequest') + '</button>')}
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-num">${reqs.length}</div><div class="stat-label">${_t('dash.totalRequests')}</div></div>
       <div class="stat-card"><div class="stat-num">${open}</div><div class="stat-label">${_t('dash.active')}</div></div>
@@ -2684,6 +2813,7 @@ async function renderMapView(el) {
       home_cleaning:'#0284c7', handyman:'#d97706', plumbing:'#2563eb', electrical:'#ca8a04',
       painting:'#c026d3', construction:'#ea580c', gardening:'#16a34a', appliance_repair:'#0891b2',
       tech_support:'#6366f1', beauty:'#db2777', automotive:'#059669', moving:'#9333ea',
+      home_security:'#475569', pets:'#f97316', events:'#e11d48', business_support:'#0369a1',
     };
 
     providers.forEach(p => {
@@ -4253,13 +4383,433 @@ if (IS_NATIVE) {
 // ============================================================
 //  LANDING PAGE
 // ============================================================
+// ============================================================
+//  GUEST FLOW + SERVICE CATALOG (Phase 2)
+//  Guests browse the catalog and build a request draft locally;
+//  authentication is only required at submission. The draft lives
+//  in localStorage — nothing touches the backend until the user
+//  explicitly presses "Enviar solicitud" after signing in.
+// ============================================================
+
+let _catalog = null;          // {categories:[], services:[]} from /api/catalog
+const GUEST_DRAFT_KEY = 'lever_guest_draft';
+const GUEST_DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const POPULAR_SERVICE_KEYS = ['standard_cleaning','faucet_leak_repair','furniture_assembly','grass_cutting','ac_maintenance','computer_diagnosis','mens_haircut','car_wash'];
+
+async function loadCatalog() {
+  if (_catalog) return _catalog;
+  // Serve a cached copy instantly (offline-friendly), refresh in background
+  try {
+    const cached = JSON.parse(localStorage.getItem('lever_catalog_cache') || 'null');
+    if (cached && cached.services && cached.services.length) _catalog = cached;
+  } catch(e) { /* corrupt cache — ignore */ }
+  try {
+    const fresh = await api('GET', '/api/catalog', undefined, true);
+    _catalog = fresh;
+    try { localStorage.setItem('lever_catalog_cache', JSON.stringify(fresh)); } catch(e) {}
+  } catch(e) {
+    if (!_catalog) throw e; // no cache and no network — caller shows error state
+  }
+  return _catalog;
+}
+function svcByKey(key) { return (_catalog?.services || []).find(s => s.key === key) || null; }
+function svcName(s) { return _lang === 'en' ? s.name_en : s.name_es; }
+function svcDesc(s) { return _lang === 'en' ? s.description_en : s.description_es; }
+function catByKey(key) { return (_catalog?.categories || []).find(c => c.key === key) || null; }
+function catName(key) { const t = _t('prof.' + key); return t !== 'prof.' + key ? t : (catByKey(key)?.label || key); }
+
+// ---- Guest draft store ----
+function getGuestDraft() {
+  try {
+    const d = JSON.parse(localStorage.getItem(GUEST_DRAFT_KEY) || 'null');
+    if (!d) return null;
+    if (d.expiresAt && Date.now() > d.expiresAt) { localStorage.removeItem(GUEST_DRAFT_KEY); return null; }
+    return d;
+  } catch(e) { return null; }
+}
+function saveGuestDraft(patch) {
+  const now = Date.now();
+  const d = Object.assign(getGuestDraft() || {v:1, createdAt: now, status:'guest_draft', answers:{}}, patch);
+  d.updatedAt = now;
+  d.expiresAt = now + GUEST_DRAFT_TTL_MS;
+  localStorage.setItem(GUEST_DRAFT_KEY, JSON.stringify(d));
+  return d;
+}
+function clearGuestDraft() { localStorage.removeItem(GUEST_DRAFT_KEY); }
+function guestDraftReady() { const d = getGuestDraft(); return !!(d && d.status === 'ready' && d.serviceKey); }
+
+// ---- Route dispatcher ----
+function isGuestFlowHash(h) {
+  return h === '#/services' || h.startsWith('#/services/') || h.startsWith('#/service/') ||
+         h === '#/request/new' || h === '#/request/review' || h === '#/auth-gate' || h === '#/finish-request';
+}
+async function renderGuestFlowRoute(hash) {
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="gpage"><div class="gskel" style="height:44px;margin-bottom:14px"></div><div class="gskel" style="height:120px;margin-bottom:10px"></div><div class="gskel" style="height:120px"></div></div>';
+  try { await loadCatalog(); }
+  catch(e) {
+    app.innerHTML = '<div class="gpage"><div class="empty"><div class="empty-icon">📡</div><h3>' + _t('guest.sendFailed').split('.')[1] + '</h3><button class="gbtn-primary" style="max-width:280px;margin:16px auto 0" onclick="render()">' + (_lang==='es'?'Reintentar':'Retry') + '</button></div></div>';
+    return;
+  }
+  if (hash === '#/services') return renderGuestHome();
+  if (hash.startsWith('#/services/')) return renderGuestCategory(hash.split('/')[2]);
+  if (hash.startsWith('#/service/')) return renderGuestServiceDetail(hash.split('/')[2]);
+  if (hash === '#/request/new') return renderRequestWizard();
+  if (hash === '#/request/review') return renderGuestReview();
+  if (hash === '#/auth-gate') return renderAuthGate2();
+  if (hash === '#/finish-request') return renderFinishRequest();
+  renderGuestHome();
+}
+
+function gHeader(backHash, title) {
+  return '<div class="ghead">' +
+    (backHash ? '<button class="gback" onclick="route(\'' + backHash + '\')" aria-label="' + _t('guest.back') + '">←</button>' : '') +
+    '<div class="gtitle">' + title + '</div>' +
+    (!_token ? '<button class="glogin" onclick="route(\'#/login\')">' + _t('guest.signIn') + '</button>'
+             : '<button class="glogin" onclick="route(\'#/\')">' + (_lang==='es'?'Mi cuenta':'My account') + '</button>') +
+    '</div>';
+}
+
+// ---- Guest home: search + category grid + popular ----
+function renderGuestHome() {
+  const cats = _catalog.categories.map(c =>
+    '<div class="gcat-card" role="button" tabindex="0" onclick="route(\'#/services/' + c.key + '\')" onkeydown="if(event.key===\'Enter\')route(\'#/services/' + c.key + '\')">' +
+      '<div class="gc-icon" aria-hidden="true">' + c.icon + '</div><div class="gc-name">' + escapeHtml(catName(c.key)) + '</div></div>'
+  ).join('');
+  const popular = POPULAR_SERVICE_KEYS.map(k => svcByKey(k)).filter(Boolean).map(s => gSvcRow(s)).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' +
+      gHeader(_token ? null : '#/', '<span style="display:inline-flex;align-items:center;gap:5px"><svg width="20" height="20" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg>ever</span>') +
+      '<h2 style="font-size:1.35rem;font-weight:800;letter-spacing:-.5px;margin-bottom:14px">' + _t('guest.homeTitle') + '</h2>' +
+      '<div class="gsearch"><span aria-hidden="true">🔍</span><input id="gsearch-input" placeholder="' + _t('guest.searchPlaceholder') + '" aria-label="' + _t('guest.searchPlaceholder') + '" oninput="onGuestSearch(this.value)"></div>' +
+      '<div id="gsearch-results"></div>' +
+      '<div id="ghome-sections">' +
+        (guestDraftReady() && !_token ? '<div class="gnotice" style="cursor:pointer" onclick="route(\'#/request/review\')">📝 ' + _t('guest.draftRestored') + ' <strong>→</strong></div>' : '') +
+        '<h3 style="font-size:.95rem;font-weight:700;margin:6px 0 10px">' + _t('guest.categories') + '</h3>' +
+        '<div class="gcat-grid">' + cats + '</div>' +
+        '<h3 style="font-size:.95rem;font-weight:700;margin:22px 0 4px">' + _t('guest.popular') + '</h3>' +
+        '<div>' + popular + '</div>' +
+        (!_token ? '<div class="gnotice">' + _t('guest.notice') + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  setTimeout(() => document.getElementById('gsearch-input')?.focus(), 60);
+}
+function gSvcRow(s) {
+  return '<div class="gsvc-row" role="button" tabindex="0" onclick="route(\'#/service/' + s.key + '\')" onkeydown="if(event.key===\'Enter\')route(\'#/service/' + s.key + '\')">' +
+    '<span class="gs-icon" aria-hidden="true">' + s.icon + '</span>' +
+    '<span class="gs-body"><div class="gs-name">' + escapeHtml(svcName(s)) + '</div><div class="gs-desc">' + escapeHtml(svcDesc(s)) + '</div></span>' +
+    '<span class="gs-arrow" aria-hidden="true">›</span></div>';
+}
+let _gsearchTimer = null;
+function onGuestSearch(q) {
+  clearTimeout(_gsearchTimer);
+  const resEl = document.getElementById('gsearch-results');
+  const sections = document.getElementById('ghome-sections');
+  if (!q.trim()) { resEl.innerHTML = ''; if (sections) sections.style.display = ''; return; }
+  _gsearchTimer = setTimeout(async () => {
+    try {
+      const results = await api('GET', '/api/catalog/search?q=' + encodeURIComponent(q.trim()) + '&lang=' + _lang, undefined, true);
+      if (sections) sections.style.display = 'none';
+      resEl.innerHTML = results.length
+        ? results.map(gSvcRow).join('')
+        : '<div class="empty" style="padding:32px 8px"><div class="empty-icon">🔍</div><h3>' + _t('guest.noResults') + '</h3><p>' + _t('guest.noResultsSub') + '</p></div>';
+    } catch(e) { /* network hiccup — keep whatever is shown */ }
+  }, 250);
+}
+
+// ---- Category screen ----
+function renderGuestCategory(catKey) {
+  const cat = catByKey(catKey);
+  if (!cat) { route('#/services'); return; }
+  const rows = _catalog.services.filter(s => s.category === catKey).map(gSvcRow).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/services', cat.icon + ' ' + escapeHtml(catName(catKey))) +
+    '<div>' + rows + '</div></div>';
+}
+
+// ---- Service detail ----
+function renderGuestServiceDetail(key) {
+  const s = svcByKey(key);
+  if (!s) { route('#/services'); return; }
+  const durH = Math.round(s.duration_min / 60 * 10) / 10, durH2 = Math.round(s.duration_max / 60 * 10) / 10;
+  const dur = s.duration_max < 60 ? s.duration_min + '–' + s.duration_max + ' min' : durH + '–' + durH2 + ' h';
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/services/' + s.category, escapeHtml(catName(s.category))) +
+    '<div style="font-size:2.2rem;margin:6px 0">' + s.icon + '</div>' +
+    '<h2 style="font-size:1.3rem;font-weight:800;letter-spacing:-.4px">' + escapeHtml(svcName(s)) + '</h2>' +
+    '<p style="color:var(--gray-600);font-size:.92rem;margin:8px 0 16px">' + escapeHtml(svcDesc(s)) + '</p>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.durationApprox') + '</span><span class="v">' + dur + '</span></div>' +
+    '<div class="gnotice">' + (s.booking_type === 'estimate' ? _t('guest.estimateNote') : _t('guest.instantNote')) + '</div>' +
+    '<button class="gbtn-primary" onclick="startServiceRequest(\'' + s.key + '\')">' + _t('guest.requestThis') + '</button>' +
+    (!_token ? '<div class="gnotice" style="margin-top:10px">' + _t('guest.notice') + '</div>' : '') +
+    '</div>';
+}
+function startServiceRequest(key) {
+  const s = svcByKey(key);
+  if (!s) return;
+  const existing = getGuestDraft();
+  if (!existing || existing.serviceKey !== key) {
+    clearGuestDraft();
+    saveGuestDraft({serviceKey: key, categoryKey: s.category, description: '', answers: {}, urgency: null, date: null, timeWindow: null, city: '', sector: '', step: 'details', status: 'guest_draft'});
+  }
+  route('#/request/new');
+}
+
+// ---- Request wizard (details → schedule → location) ----
+const WIZARD_STEPS = ['details', 'schedule', 'location'];
+function renderRequestWizard() {
+  const d = getGuestDraft();
+  if (!d || !d.serviceKey || !svcByKey(d.serviceKey)) { route('#/services'); return; }
+  const s = svcByKey(d.serviceKey);
+  const stepIdx = Math.max(0, WIZARD_STEPS.indexOf(d.step));
+  const progress = '<div class="gprogress" aria-hidden="true">' + WIZARD_STEPS.map((st, i) => '<span class="' + (i <= stepIdx ? 'done' : '') + '"></span>').join('') + '</div>';
+  const backHash = stepIdx === 0 ? '#/service/' + s.key : null;
+  let body = '';
+
+  if (d.step === 'details') {
+    const qs = (s.questions || []).filter(q => q.id !== 'description' && q.id !== 'notes' && q.id !== 'problem');
+    body =
+      '<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:4px">' + _t('guest.describeTitle') + '</h2>' +
+      '<p style="color:var(--gray-500);font-size:.85rem;margin-bottom:14px">' + s.icon + ' ' + escapeHtml(svcName(s)) + '</p>' +
+      '<div class="form-group"><label for="gw-desc">' + _t('guest.description') + '</label>' +
+      '<textarea id="gw-desc" placeholder="' + _t('guest.descPlaceholder') + '" style="min-height:110px">' + escapeHtml(d.description || '') + '</textarea></div>' +
+      qs.map(q => gwQuestionHtml(q, d.answers[q.id])).join('') +
+      '<div id="gw-err"></div>' +
+      '<button class="gbtn-primary" onclick="gwSaveDetails()">' + _t('guest.continue') + '</button>';
+  } else if (d.step === 'schedule') {
+    const today = new Date().toISOString().slice(0, 10);
+    body =
+      '<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:14px">' + _t('guest.scheduleTitle') + '</h2>' +
+      '<div class="gchip-row" role="radiogroup" aria-label="' + _t('guest.scheduleTitle') + '">' +
+        '<button class="gchip' + (d.urgency === 'asap' ? ' sel' : '') + '" onclick="gwSetUrgency(\'asap\')">' + _t('guest.asap') + '</button>' +
+        '<button class="gchip' + (d.urgency === 'later' ? ' sel' : '') + '" onclick="gwSetUrgency(\'later\')">' + _t('guest.later') + '</button>' +
+      '</div>' +
+      '<div id="gw-schedule-extra" style="margin-top:16px;' + (d.urgency === 'later' ? '' : 'display:none') + '">' +
+        '<div class="form-group"><label for="gw-date">' + _t('guest.pickDate') + '</label><input type="date" id="gw-date" min="' + today + '" value="' + (d.date || '') + '"></div>' +
+        '<label style="font-size:.8rem;font-weight:600;color:var(--gray-700)">' + _t('guest.pickWindow') + '</label>' +
+        '<div class="gchip-row" style="margin-top:8px">' +
+          ['morning','afternoon','evening'].map(w => '<button class="gchip' + (d.timeWindow === w ? ' sel' : '') + '" onclick="gwSetWindow(\'' + w + '\')">' + _t('guest.' + w) + '</button>').join('') +
+        '</div>' +
+      '</div>' +
+      '<div id="gw-err" style="margin-top:10px"></div>' +
+      '<div style="margin-top:18px"><button class="gbtn-primary" onclick="gwSaveSchedule()">' + _t('guest.continue') + '</button>' +
+      '<button class="gbtn-ghost" onclick="gwBack(\'details\')">' + _t('guest.back') + '</button></div>';
+  } else { // location
+    body =
+      '<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:6px">' + _t('guest.locationTitle') + '</h2>' +
+      '<p style="color:var(--gray-500);font-size:.85rem;margin-bottom:14px">' + _t('guest.locationNote') + '</p>' +
+      '<div class="form-group"><label for="gw-city">' + _t('guest.city') + '</label>' +
+      '<select id="gw-city">' + ['Quito','Guayaquil','Cuenca'].map(c => '<option' + (d.city === c ? ' selected' : '') + '>' + c + '</option>').join('') + '<option value="otra"' + (d.city && !['Quito','Guayaquil','Cuenca'].includes(d.city) ? ' selected' : '') + '>' + (_lang==='es'?'Otra ciudad':'Other city') + '</option></select></div>' +
+      '<div class="form-group"><label for="gw-sector">' + _t('guest.sector') + '</label>' +
+      '<input id="gw-sector" placeholder="' + _t('guest.sectorPlaceholder') + '" value="' + escapeHtml(d.sector || '') + '"></div>' +
+      '<div id="gw-err"></div>' +
+      '<button class="gbtn-primary" onclick="gwSaveLocation()">' + _t('guest.continue') + '</button>' +
+      '<button class="gbtn-ghost" onclick="gwBack(\'schedule\')">' + _t('guest.back') + '</button>';
+  }
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader(backHash, escapeHtml(svcName(s))) + progress + body + '</div>';
+}
+function gwQuestionHtml(q, val) {
+  const label = _lang === 'en' ? q.en : q.es;
+  if (q.type === 'select') {
+    return '<div class="form-group"><label for="gwq-' + q.id + '">' + escapeHtml(label) + (q.required ? ' *' : '') + '</label>' +
+      '<select id="gwq-' + q.id + '" data-qid="' + q.id + '"><option value="">—</option>' +
+      q.options.map(o => '<option value="' + o.v + '"' + (val === o.v ? ' selected' : '') + '>' + escapeHtml(_lang === 'en' ? o.en : o.es) + '</option>').join('') + '</select></div>';
+  }
+  if (q.type === 'bool') {
+    return '<div class="form-group"><label for="gwq-' + q.id + '">' + escapeHtml(label) + '</label>' +
+      '<select id="gwq-' + q.id + '" data-qid="' + q.id + '"><option value="">—</option><option value="yes"' + (val === 'yes' ? ' selected' : '') + '>' + _t('guest.yes') + '</option><option value="no"' + (val === 'no' ? ' selected' : '') + '>' + _t('guest.no') + '</option></select></div>';
+  }
+  if (q.type === 'textarea') {
+    return '<div class="form-group"><label for="gwq-' + q.id + '">' + escapeHtml(label) + (q.required ? ' *' : '') + '</label><textarea id="gwq-' + q.id + '" data-qid="' + q.id + '">' + escapeHtml(val || '') + '</textarea></div>';
+  }
+  return '<div class="form-group"><label for="gwq-' + q.id + '">' + escapeHtml(label) + (q.required ? ' *' : '') + '</label><input id="gwq-' + q.id + '" data-qid="' + q.id + '" value="' + escapeHtml(val || '') + '"></div>';
+}
+function gwBack(step) { saveGuestDraft({step}); renderRequestWizard(); }
+function gwSaveDetails() {
+  const d = getGuestDraft(); if (!d) return route('#/services');
+  const s = svcByKey(d.serviceKey);
+  const desc = document.getElementById('gw-desc').value.trim();
+  if (desc.length < 10) {
+    document.getElementById('gw-err').innerHTML = alert_el('error', _lang === 'es' ? 'Cuéntanos un poco más (mínimo 10 caracteres).' : 'Tell us a bit more (at least 10 characters).');
+    return;
+  }
+  const answers = Object.assign({}, d.answers);
+  let missing = null;
+  (s.questions || []).forEach(q => {
+    const el = document.getElementById('gwq-' + q.id);
+    if (!el) return;
+    const v = el.value.trim();
+    if (q.required && !v && !missing) missing = q;
+    answers[q.id] = v;
+  });
+  if (missing) {
+    document.getElementById('gw-err').innerHTML = alert_el('error', (_lang === 'es' ? 'Falta responder: ' : 'Please answer: ') + escapeHtml(_lang === 'en' ? missing.en : missing.es));
+    return;
+  }
+  saveGuestDraft({description: desc, answers, step: 'schedule'});
+  renderRequestWizard();
+}
+function gwSetUrgency(u) {
+  saveGuestDraft({urgency: u});
+  const extra = document.getElementById('gw-schedule-extra');
+  if (extra) extra.style.display = u === 'later' ? '' : 'none';
+  document.querySelectorAll('.gchip-row')[0].querySelectorAll('.gchip').forEach((c, i) => c.classList.toggle('sel', (i === 0) === (u === 'asap')));
+}
+function gwSetWindow(w) {
+  const dateVal = document.getElementById('gw-date')?.value || null;
+  saveGuestDraft({timeWindow: w, date: dateVal});
+  renderRequestWizard();
+}
+function gwSaveSchedule() {
+  const d = getGuestDraft(); if (!d) return route('#/services');
+  if (!d.urgency) {
+    document.getElementById('gw-err').innerHTML = alert_el('error', _lang === 'es' ? 'Elige cuándo necesitas el servicio.' : 'Choose when you need the service.');
+    return;
+  }
+  const patch = {step: 'location'};
+  if (d.urgency === 'later') {
+    const dateVal = document.getElementById('gw-date').value;
+    if (!dateVal) {
+      document.getElementById('gw-err').innerHTML = alert_el('error', _lang === 'es' ? 'Elige una fecha.' : 'Pick a date.');
+      return;
+    }
+    patch.date = dateVal;
+  } else { patch.date = null; patch.timeWindow = null; }
+  saveGuestDraft(patch);
+  renderRequestWizard();
+}
+function gwSaveLocation() {
+  const city = document.getElementById('gw-city').value;
+  const sector = document.getElementById('gw-sector').value.trim();
+  if (!sector) {
+    document.getElementById('gw-err').innerHTML = alert_el('error', _lang === 'es' ? 'Indica tu sector o barrio.' : 'Enter your neighborhood or area.');
+    return;
+  }
+  saveGuestDraft({city, sector, step: 'location', status: 'ready'});
+  route('#/request/review');
+}
+
+// ---- Guest review (pre-auth summary) ----
+function renderGuestReview() {
+  const d = getGuestDraft();
+  if (!d || !d.serviceKey || !svcByKey(d.serviceKey)) { route('#/services'); return; }
+  const s = svcByKey(d.serviceKey);
+  const when = d.urgency === 'asap' ? _t('guest.asap')
+    : (d.date || '') + (d.timeWindow ? ' · ' + _t('guest.' + d.timeWindow) : '');
+  const answerRows = (s.questions || []).filter(q => d.answers[q.id]).map(q => {
+    let v = d.answers[q.id];
+    if (q.type === 'select') { const o = (q.options || []).find(o => o.v === v); if (o) v = _lang === 'en' ? o.en : o.es; }
+    if (q.type === 'bool') v = v === 'yes' ? _t('guest.yes') : _t('guest.no');
+    return '<div class="gsum-row"><span class="k">' + escapeHtml(_lang === 'en' ? q.en : q.es) + '</span><span class="v">' + escapeHtml(v) + '</span></div>';
+  }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/request/new', _t('guest.reviewTitle')) +
+    '<div class="gnotice" role="status">ℹ️ ' + _t('guest.notSentYet') + '</div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.service') + '</span><span class="v">' + s.icon + ' ' + escapeHtml(svcName(s)) + '</span><button class="e" onclick="route(\'#/service/' + s.key + '\')">' + _t('guest.edit') + '</button></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.description') + '</span><span class="v">' + escapeHtml(d.description) + '</span><button class="e" onclick="gwBack(\'details\');route(\'#/request/new\')">' + _t('guest.edit') + '</button></div>' +
+    answerRows +
+    '<div class="gsum-row"><span class="k">' + _t('guest.when') + '</span><span class="v">' + when + '</span><button class="e" onclick="gwBack(\'schedule\');route(\'#/request/new\')">' + _t('guest.edit') + '</button></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.where') + '</span><span class="v">' + escapeHtml(d.sector + ', ' + d.city) + '</span><button class="e" onclick="gwBack(\'location\');route(\'#/request/new\')">' + _t('guest.edit') + '</button></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
+    '<div style="margin-top:20px">' +
+      '<button class="gbtn-primary" onclick="' + (_token ? 'route(\'#/finish-request\')' : 'route(\'#/auth-gate\')') + '">' + _t('guest.continueToSend') + '</button>' +
+      '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
+    '</div></div>';
+}
+function discardGuestDraft() {
+  if (!confirm(_t('guest.discardConfirm'))) return;
+  clearGuestDraft();
+  route('#/services');
+}
+
+// ---- Authentication gate ----
+function renderAuthGate2() {
+  if (_token) { route('#/finish-request'); return; }
+  if (!guestDraftReady()) { route('#/services'); return; }
+  document.getElementById('app').innerHTML =
+    '<div class="gpage" style="display:flex;flex-direction:column;justify-content:center;max-width:440px">' +
+    '<div style="text-align:center;font-size:2.6rem;margin-bottom:10px">✅</div>' +
+    '<h2 style="font-size:1.4rem;font-weight:800;text-align:center;letter-spacing:-.4px">' + _t('guest.gateTitle') + '</h2>' +
+    '<p style="color:var(--gray-600);font-size:.92rem;text-align:center;margin:10px 0 6px">' + _t('guest.gateSub') + '</p>' +
+    '<p style="color:var(--gray-500);font-size:.82rem;text-align:center;margin-bottom:22px">🔒 ' + _t('guest.gateSaved') + '</p>' +
+    '<button class="gbtn-primary" onclick="route(\'#/login\')">' + _t('guest.gateLogin') + '</button>' +
+    '<button class="gbtn-primary" style="background:var(--gray-900);margin-top:10px" onclick="route(\'#/signup\')">' + _t('guest.gateRegister') + '</button>' +
+    '<button class="gbtn-ghost" onclick="route(\'#/request/review\')">' + _t('guest.gateBack') + '</button>' +
+    '</div>';
+}
+
+// ---- Final confirmation (auth required) + submission ----
+let _submittingRequest = false;
+function renderFinishRequest() {
+  if (!_token) { route('#/auth-gate'); return; }
+  if (_user?.role !== 'client') { route('#/'); return; }
+  const d = getGuestDraft();
+  if (!d || !d.serviceKey || !svcByKey(d.serviceKey)) { route('#/'); return; }
+  const s = svcByKey(d.serviceKey);
+  const when = d.urgency === 'asap' ? _t('guest.asap') : (d.date || '') + (d.timeWindow ? ' · ' + _t('guest.' + d.timeWindow) : '');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/request/review', _t('guest.finishTitle')) +
+    '<div class="gsum-row"><span class="k">' + _t('guest.service') + '</span><span class="v">' + s.icon + ' ' + escapeHtml(svcName(s)) + '</span></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.description') + '</span><span class="v">' + escapeHtml(d.description) + '</span></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.when') + '</span><span class="v">' + when + '</span></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.where') + '</span><span class="v">' + escapeHtml(d.sector + ', ' + d.city) + '</span></div>' +
+    '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
+    '<div class="form-group" style="margin-top:18px"><label for="gf-address">' + _t('guest.fullAddress') + ' *</label>' +
+    '<input id="gf-address" placeholder="' + _t('guest.addressPlaceholder') + '" autocomplete="street-address"></div>' +
+    '<div class="form-group"><label for="gf-budget">' + _t('guest.budgetOptional') + '</label>' +
+    '<input id="gf-budget" type="number" min="0" placeholder="USD"></div>' +
+    '<div id="gf-err"></div>' +
+    '<button class="gbtn-primary" id="gf-submit" onclick="submitCatalogRequest()">' + _t('guest.send') + '</button>' +
+    '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
+    '</div>';
+}
+async function submitCatalogRequest() {
+  if (_submittingRequest) return;               // double-tap protection
+  const d = getGuestDraft(); if (!d) return route('#/');
+  const s = svcByKey(d.serviceKey); if (!s) return route('#/');
+  const address = document.getElementById('gf-address').value.trim();
+  const errEl = document.getElementById('gf-err');
+  if (address.length < 3) {
+    errEl.innerHTML = alert_el('error', _lang === 'es' ? 'Ingresa la dirección exacta del servicio.' : 'Enter the exact service address.');
+    return;
+  }
+  const budget = parseFloat(document.getElementById('gf-budget').value);
+  const btn = document.getElementById('gf-submit');
+  _submittingRequest = true;
+  btn.disabled = true; btn.textContent = _t('guest.sending');
+  const answers = Object.assign({}, d.answers, {_approx_area: d.sector + ', ' + d.city, _time_window: d.timeWindow || null});
+  const payload = {
+    service_key: d.serviceKey,
+    title: svcName(s).slice(0, 300),
+    description: d.description,
+    location: address + ' — ' + d.sector + ', ' + d.city,
+    urgency: d.urgency === 'asap' ? 'immediate' : 'scheduled',
+    answers,
+    ...(d.urgency === 'later' && d.date ? {scheduled_date: d.date + 'T09:00:00'} : {}),
+    ...(budget > 0 ? {budget_max: budget} : {}),
+  };
+  try {
+    const req = await post('/api/client/requests', payload);
+    clearGuestDraft();
+    showToast(_lang === 'es' ? 'Solicitud #' + req.id + ' enviada ✓' : 'Request #' + req.id + ' sent ✓', 'success');
+    route('#/request/' + req.id);   // existing tracker = matching/status experience
+  } catch(e) {
+    errEl.innerHTML = alert_el('error', _t('guest.sendFailed'));
+    btn.disabled = false; btn.textContent = _t('guest.send');
+  } finally {
+    _submittingRequest = false;
+  }
+}
+
 function renderLanding() {
   var profKeys = Object.keys(_professions);
   var profCards = profKeys.map(function(k) {
-    return '<div class="prof-card-landing"><div class="prof-icon-lg">' + profIcon(k) + '</div><div class="prof-name-lg">' + profLabel(k) + '</div></div>';
+    return '<div class="prof-card-landing" style="cursor:pointer" role="button" tabindex="0" onclick="route(\'#/services/' + k + '\')" onkeydown="if(event.key===\'Enter\')route(\'#/services/' + k + '\')"><div class="prof-icon-lg">' + profIcon(k) + '</div><div class="prof-name-lg">' + profLabel(k) + '</div></div>';
   }).join('');
   var serviceLinks = profKeys.map(function(k) {
-    return '<a href="#">' + profIcon(k) + ' ' + profLabel(k) + '</a>';
+    return '<a href="#/services/' + k + '">' + profIcon(k) + ' ' + profLabel(k) + '</a>';
   }).join('\n            ');
 
   document.getElementById('app').innerHTML =
@@ -4277,11 +4827,11 @@ function renderLanding() {
         '<h1>Servicios Profesionales<br>a tu Alcance</h1>' +
         '<p>Encuentra profesionales de confianza en Ecuador para limpieza, plomer\u00eda, electricidad, jardiner\u00eda, reparaciones, belleza a domicilio y m\u00e1s.</p>' +
         '<div class="hero-cta">' +
-          '<button class="btn-hero-primary" onclick="route(\'#/signup\')">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>' +
-            'Comenzar' +
+          '<button class="btn-hero-primary" onclick="route(\'#/services\')">' +
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+            'Solicitar un servicio' +
           '</button>' +
-          '<p class="hero-subtext">Reg\u00edstrate o inicia sesi\u00f3n para continuar</p>' +
+          '<p class="hero-subtext">Puedes preparar tu solicitud sin registrarte. Te pediremos iniciar sesi\u00f3n solamente cuando est\u00e9s listo para enviarla.</p>' +
         '</div>' +
       '</section>' +
       
