@@ -938,6 +938,27 @@ var _translations = {
   'settings.logoutAllBtn': {es:'Cerrar sesión en todos los dispositivos', en:'Log out of all devices'},
   'settings.logoutAllConfirm': {es:'¿Cerrar sesión en todos los dispositivos? Tendrás que volver a iniciar sesión aquí también.', en:"Log out of all devices? You'll need to sign in again here too."},
 
+  // -- Admin MFA (GP-14) --
+  'mfa.challengeTitle': {es:'Ingresa tu código de verificación', en:'Enter your verification code'},
+  'mfa.codeLabel': {es:'Código de la app de autenticación o código de respaldo', en:'Code from your authenticator app, or a backup code'},
+  'mfa.verifyBtn': {es:'Verificar', en:'Verify'},
+  'mfa.settingsTitle': {es:'Autenticación de Dos Factores', en:'Two-Factor Authentication'},
+  'mfa.enabledDesc': {es:'La autenticación de dos factores está activa en tu cuenta.', en:'Two-factor authentication is active on your account.'},
+  'mfa.disabledDesc': {es:'Agrega una capa extra de seguridad exigiendo un código de tu app de autenticación (Google Authenticator, Authy, etc.) además de tu contraseña.', en:'Add an extra layer of security by requiring a code from your authenticator app (Google Authenticator, Authy, etc.) in addition to your password.'},
+  'mfa.enableBtn': {es:'Activar 2FA', en:'Enable 2FA'},
+  'mfa.disableBtn': {es:'Desactivar 2FA', en:'Disable 2FA'},
+  'mfa.backupCodesRemaining': {es:'códigos de respaldo restantes', en:'backup codes remaining'},
+  'mfa.setupTitle': {es:'Configura tu app de autenticación', en:'Set up your authenticator app'},
+  'mfa.setupStep1': {es:'Ingresa esta clave manualmente en tu app de autenticación (Google Authenticator, Authy, etc.):', en:'Enter this key manually in your authenticator app (Google Authenticator, Authy, etc.):'},
+  'mfa.setupStep2': {es:'Luego ingresa el código de 6 dígitos que genera la app para confirmar:', en:'Then enter the 6-digit code it generates to confirm:'},
+  'mfa.confirmBtn': {es:'Confirmar y activar', en:'Confirm and enable'},
+  'mfa.backupCodesTitle': {es:'Guarda tus códigos de respaldo', en:'Save your backup codes'},
+  'mfa.backupCodesDesc': {es:'Si pierdes acceso a tu app de autenticación, puedes usar uno de estos códigos (de un solo uso) para entrar. Guárdalos en un lugar seguro — no se mostrarán de nuevo.', en:"If you lose access to your authenticator app, you can use one of these single-use codes to sign in. Save them somewhere safe — they won't be shown again."},
+  'mfa.backupCodesDone': {es:'Ya los guardé', en:"I've saved them"},
+  'mfa.enableSuccess': {es:'Autenticación de dos factores activada.', en:'Two-factor authentication enabled.'},
+  'mfa.disableConfirm': {es:'Ingresa tu contraseña para desactivar 2FA', en:'Enter your password to disable 2FA'},
+  'mfa.disableSuccess': {es:'Autenticación de dos factores desactivada.', en:'Two-factor authentication disabled.'},
+
   // -- Messages --
   'msg.title': {es:'Mensajes', en:'Messages'},
   'msg.noConversations': {es:'Sin conversaciones a\u00fan', en:'No conversations yet'},
@@ -1343,6 +1364,7 @@ var BOTTOM_TABS = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Solicitudes',hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputas', hash:'#/disputes'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reportes', hash:'#/reports'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Ajustes', hash:'#/settings'},
   ],
 };
 
@@ -1785,6 +1807,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Requests',    hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputes', hash:'#/disputes'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reports', hash:'#/reports'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings', hash:'#/settings'},
   ],
 };
 
@@ -2843,6 +2866,10 @@ async function renderSettings(el) {
   var currentLang = _lang;
   var blocks = [];
   try { blocks = await get('/api/blocks'); } catch(e) { /* non-fatal */ }
+  var mfaStatus = null;
+  if (_user && _user.role === 'admin') {
+    try { mfaStatus = await get('/api/auth/mfa/status'); } catch(e) { /* non-fatal */ }
+  }
   el.innerHTML =
     pageHeader(_t('settings.title')) +
     '<div class="card" style="max-width:500px">' +
@@ -2885,6 +2912,19 @@ async function renderSettings(el) {
       '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' + _t('settings.logoutAllDesc') + '</p>' +
       '<button class="btn btn-outline" onclick="logoutAllDevices()">' + _t('settings.logoutAllBtn') + '</button>' +
     '</div>' +
+    (mfaStatus ?
+      '<div class="card" style="max-width:500px;margin-top:16px">' +
+        '<div class="card-header"><div class="card-title">' + _t('mfa.settingsTitle') + '</div></div>' +
+        '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' +
+          (mfaStatus.enabled ?
+            _t('mfa.enabledDesc') + ' (' + mfaStatus.backup_codes_remaining + ' ' + _t('mfa.backupCodesRemaining') + ')' :
+            _t('mfa.disabledDesc')) +
+        '</p>' +
+        (mfaStatus.enabled ?
+          '<button class="btn btn-outline" style="border-color:var(--danger);color:var(--danger)" onclick="openMfaDisableModal()">' + _t('mfa.disableBtn') + '</button>' :
+          '<button class="btn btn-primary" onclick="startMfaSetup()">' + _t('mfa.enableBtn') + '</button>') +
+      '</div>' : ''
+    ) +
     '<div class="card" style="max-width:500px;margin-top:16px;border:1px solid var(--danger)">' +
       '<div class="card-header"><div class="card-title" style="color:var(--danger)">' + _t('settings.dangerZone') + '</div></div>' +
       '<p style="color:var(--gray-600);font-size:.85rem;margin-bottom:16px">' + _t('settings.deleteAccountDesc') + '</p>' +
@@ -2901,6 +2941,74 @@ async function logoutAllDevices() {
     // logging out locally is still the safe outcome for the user.
   }
   logout();
+}
+
+// ---- Admin MFA management (GP-14) ----
+let _mfaSetupBackupCodes = null;
+
+async function startMfaSetup() {
+  try {
+    const data = await post('/api/auth/mfa/setup');
+    _mfaSetupBackupCodes = data.backup_codes;
+    showModal(_t('mfa.setupTitle'), `
+      <p style="color:var(--gray-600);font-size:.85rem;margin-bottom:10px">${_t('mfa.setupStep1')}</p>
+      <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:12px;font-family:monospace;font-size:1rem;letter-spacing:2px;text-align:center;margin-bottom:16px;word-break:break-all">${data.secret}</div>
+      <p style="color:var(--gray-600);font-size:.85rem;margin-bottom:10px">${_t('mfa.setupStep2')}</p>
+      <div class="form-group"><input type="text" id="mfa-setup-code" placeholder="123456" autocomplete="one-time-code" style="text-align:center;font-size:1.3rem;letter-spacing:2px"></div>
+      <div id="mfa-setup-err"></div>`,
+      `<button class="btn btn-primary btn-full" onclick="confirmMfaSetup()">${_t('mfa.confirmBtn')}</button>`);
+  } catch(e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function confirmMfaSetup() {
+  const code = document.getElementById('mfa-setup-code').value.trim();
+  const errEl = document.getElementById('mfa-setup-err');
+  try {
+    await post('/api/auth/mfa/confirm', {code});
+    showMfaBackupCodes();
+  } catch(e) {
+    errEl.innerHTML = alert_el('error', e.message);
+  }
+}
+
+function showMfaBackupCodes() {
+  const codes = _mfaSetupBackupCodes || [];
+  showModal(_t('mfa.backupCodesTitle'), `
+    <p style="color:var(--gray-600);font-size:.85rem;margin-bottom:14px">${_t('mfa.backupCodesDesc')}</p>
+    <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:14px;font-family:monospace;font-size:.95rem;line-height:2;text-align:center">${codes.map(escapeHtml).join('<br>')}</div>`,
+    `<button class="btn btn-primary btn-full" onclick="closeMfaSetup()">${_t('mfa.backupCodesDone')}</button>`);
+}
+
+function closeMfaSetup() {
+  _mfaSetupBackupCodes = null;
+  closeModal();
+  showToast(_t('mfa.enableSuccess'), 'success');
+  renderSettings(document.getElementById('content'));
+}
+
+function openMfaDisableModal() {
+  showModal(_t('mfa.disableBtn'), `
+    <div class="form-group">
+      <label>${_t('mfa.disableConfirm')}</label>
+      <input type="password" id="mfa-disable-pass" autocomplete="current-password">
+    </div>
+    <div id="mfa-disable-err"></div>`,
+    `<button class="btn btn-danger btn-full" onclick="confirmMfaDisable()">${_t('mfa.disableBtn')}</button>`);
+}
+
+async function confirmMfaDisable() {
+  const password = document.getElementById('mfa-disable-pass').value;
+  const errEl = document.getElementById('mfa-disable-err');
+  try {
+    await post('/api/auth/mfa/disable', {password});
+    closeModal();
+    showToast(_t('mfa.disableSuccess'), 'success');
+    renderSettings(document.getElementById('content'));
+  } catch(e) {
+    errEl.innerHTML = alert_el('error', e.message);
+  }
 }
 
 function openDeleteAccountModal() {
@@ -3312,6 +3420,7 @@ async function adminView(hash, el) {
   if (hash==='#/requests')        return renderAdminRequests(el);
   if (hash==='#/disputes')        return renderAdminDisputes(el);
   if (hash==='#/reports')         return renderAdminReports(el);
+  if (hash==='#/settings')        return renderSettings(el);
   el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
 }
 
@@ -3762,6 +3871,10 @@ async function doLogin() {
   const pass  = document.getElementById('l-pass').value;
   try {
     const data = await post('/api/auth/login', {email, password:pass});
+    if (data.mfa_required) {
+      renderMfaChallenge(data.mfa_token, email);
+      return;
+    }
     if (APP_FLAVOR_ROLE && data.role !== APP_FLAVOR_ROLE) {
       const appName = APP_FLAVOR === 'provider' ? 'Lever' : 'Lever Provider';
       document.getElementById('l-err').innerHTML = alert_el('error',
@@ -3774,6 +3887,44 @@ async function doLogin() {
     else { route('#/'); }
   } catch(e) {
     document.getElementById('l-err').innerHTML = alert_el('error', e.message);
+  }
+}
+
+// ---- Admin MFA (GP-14) ----
+function renderMfaChallenge(mfaToken, email) {
+  const card = document.querySelector('.auth-card');
+  if (!card) return;
+  card.innerHTML = `
+    <div class="auth-logo">
+      <h1 style="display:inline-flex;align-items:center;gap:4px"><svg width="28" height="28" viewBox="0 0 100 100" fill="none"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg><span style="letter-spacing:-.5px;margin-left:-1px">ever</span></h1>
+      <p>${_t('mfa.challengeTitle')}</p>
+    </div>
+    <div id="mfa-err"></div>
+    <div class="form-group">
+      <label>${_t('mfa.codeLabel')}</label>
+      <input type="text" id="mfa-code" placeholder="123456" autocomplete="one-time-code" style="text-align:center;font-size:1.3rem;letter-spacing:2px">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="submitMfaChallenge()">${_t('mfa.verifyBtn')}</button>
+    <div style="text-align:center;margin-top:10px">
+      <button class="btn-ghost" style="font-size:.82rem" onclick="route('#/login')">${_t('auth.backToLogin')}</button>
+    </div>`;
+  window._mfaPendingToken = mfaToken;
+  window._mfaPendingEmail = email;
+  setTimeout(() => document.getElementById('mfa-code')?.focus(), 50);
+}
+
+async function submitMfaChallenge() {
+  const code = document.getElementById('mfa-code').value.trim();
+  const errEl = document.getElementById('mfa-err');
+  try {
+    const data = await post('/api/auth/mfa/verify-login', {mfa_token: window._mfaPendingToken, code});
+    login(data.access_token, {id:data.user_id, email:window._mfaPendingEmail||'', role:data.role, profession:data.profession||null, email_verified:data.email_verified!==false});
+    window._mfaPendingToken = null;
+    window._mfaPendingEmail = null;
+    await loadProfessions();
+    route('#/');
+  } catch(e) {
+    errEl.innerHTML = alert_el('error', e.message);
   }
 }
 

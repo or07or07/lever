@@ -17,14 +17,21 @@ ISO 27001 Controls:
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import datetime, timezone
+
+import pyotp
 from fastapi import APIRouter, Depends, HTTPException, status
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 from auth import (
     create_access_token,
+    create_mfa_pending_token,
     get_current_user,
     hash_password,
+    require_admin,
+    verify_mfa_pending_token,
     verify_password,
 )
 from database import get_db
@@ -34,8 +41,14 @@ from schemas import (
     AccountDeleteRequest,
     AccountDeleteResponse,
     ClientProfileOut,
+    LoginResponse,
     MechanicProfileOut,
     MessageResponse,
+    MfaConfirmRequest,
+    MfaDisableRequest,
+    MfaSetupResponse,
+    MfaStatusResponse,
+    MfaVerifyLoginRequest,
     PasswordResetRequest,
     PasswordResetResponse,
     PasswordResetVerify,
@@ -127,9 +140,11 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 # Login — now includes email_verified status
 # ---------------------------------------------------------------------------
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    """Authenticate and return JWT token.
+    """Authenticate and return a JWT token — or, for an MFA-enabled admin,
+    an mfa_required challenge that must be completed via
+    POST /api/auth/mfa/verify-login before a real token is issued (GP-14).
 
     ISO 27001 A.9.4.2 — Secure log-on procedures.
     Consistent timing and error messages prevent account enumeration.
@@ -140,6 +155,9 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is deactivated")
 
+    if user.role == "admin" and user.mfa_enabled:
+        return LoginResponse(mfa_required=True, mfa_token=create_mfa_pending_token(user.id))
+
     # Get profession for token response
     profession = None
     if user.role == "mechanic":
@@ -148,7 +166,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
             profession = profile.profession
 
     token = create_access_token(user.id, user.role, user.token_version)
-    return Token(
+    return LoginResponse(
         access_token=token,
         role=user.role,
         user_id=user.id,
@@ -271,6 +289,137 @@ def logout_all_devices(
     current_user.token_version += 1
     db.commit()
     return MessageResponse(message="You have been logged out of all devices.")
+
+
+# ---------------------------------------------------------------------------
+# Admin MFA / TOTP (GP-14)
+# ---------------------------------------------------------------------------
+
+_BACKUP_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O/1/I — hard to misread
+
+
+def _generate_backup_codes(count: int = 8) -> list[str]:
+    return [
+        "-".join("".join(secrets.choice(_BACKUP_CODE_ALPHABET) for _ in range(4)) for _ in range(2))
+        for _ in range(count)
+    ]
+
+
+@router.get("/mfa/status", response_model=MfaStatusResponse)
+def mfa_status(current_user: User = Depends(require_admin)):
+    remaining = len(current_user.mfa_backup_codes or []) if current_user.mfa_enabled else 0
+    return MfaStatusResponse(enabled=current_user.mfa_enabled, backup_codes_remaining=remaining)
+
+
+@router.post("/mfa/setup", response_model=MfaSetupResponse)
+def mfa_setup(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Start (or restart) MFA enrollment: generates a new secret and a
+    fresh set of backup codes. mfa_enabled stays False until the admin
+    proves they can generate a valid code via POST /mfa/confirm — this
+    prevents someone from being locked into MFA by a botched setup where
+    they never actually confirmed their authenticator app is working.
+    Backup codes are only ever returned here, in plaintext, once; only
+    their bcrypt hashes are stored.
+    """
+    secret = pyotp.random_base32()
+    backup_codes = _generate_backup_codes()
+
+    current_user.mfa_secret = secret
+    current_user.mfa_enabled = False
+    current_user.mfa_backup_codes = [hash_password(c) for c in backup_codes]
+    db.commit()
+
+    otpauth_uri = pyotp.TOTP(secret).provisioning_uri(name=current_user.email, issuer_name="Lever Admin")
+    return MfaSetupResponse(secret=secret, otpauth_uri=otpauth_uri, backup_codes=backup_codes)
+
+
+@router.post("/mfa/confirm", response_model=MessageResponse)
+def mfa_confirm(
+    payload: MfaConfirmRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Confirm enrollment by proving the authenticator app produces a
+    valid code, then actually turn MFA on."""
+    if not current_user.mfa_secret:
+        raise HTTPException(status_code=400, detail="Call /mfa/setup first")
+
+    totp = pyotp.TOTP(current_user.mfa_secret)
+    if not totp.verify(payload.code, valid_window=1):
+        raise HTTPException(status_code=401, detail="Invalid code")
+
+    current_user.mfa_enabled = True
+    db.commit()
+    logger.info(f"MFA enabled for admin user {current_user.id}")
+    return MessageResponse(message="Two-factor authentication is now enabled.")
+
+
+@router.post("/mfa/disable", response_model=MessageResponse)
+def mfa_disable(
+    payload: MfaDisableRequest,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    if not current_user.password_hash or not verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=401, detail="Incorrect password")
+
+    current_user.mfa_enabled = False
+    current_user.mfa_secret = None
+    current_user.mfa_backup_codes = None
+    db.commit()
+    logger.info(f"MFA disabled for admin user {current_user.id}")
+    return MessageResponse(message="Two-factor authentication has been disabled.")
+
+
+@router.post("/mfa/verify-login", response_model=Token)
+def mfa_verify_login(
+    payload: MfaVerifyLoginRequest,
+    db: Session = Depends(get_db),
+):
+    """Second step of an MFA-gated login: exchange the mfa_token from
+    /login plus a TOTP (or backup) code for a real access token."""
+    invalid = HTTPException(status_code=401, detail="Invalid or expired code")
+    try:
+        user_id = verify_mfa_pending_token(payload.mfa_token)
+    except (JWTError, TypeError, ValueError):
+        raise invalid
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active or not user.mfa_enabled or not user.mfa_secret:
+        raise invalid
+
+    totp = pyotp.TOTP(user.mfa_secret)
+    if totp.verify(payload.code, valid_window=1):
+        matched_backup = False
+    else:
+        # Not a valid TOTP code — try it as a single-use backup code instead.
+        codes = user.mfa_backup_codes or []
+        remaining = [c for c in codes if not verify_password(payload.code, c)]
+        matched_backup = len(remaining) < len(codes)
+        if not matched_backup:
+            raise invalid
+        user.mfa_backup_codes = remaining  # consume it — single use
+
+    profession = None
+    if user.role == "mechanic":
+        profile = db.query(MechanicProfile).filter(MechanicProfile.user_id == user.id).first()
+        if profile:
+            profession = profile.profession
+
+    token = create_access_token(user.id, user.role, user.token_version)
+    db.commit()
+    if matched_backup:
+        logger.info(f"Admin user {user.id} logged in using a backup MFA code")
+    return Token(
+        access_token=token,
+        role=user.role,
+        user_id=user.id,
+        profession=profession,
+        email_verified=user.email_verified,
+    )
 
 
 # ---------------------------------------------------------------------------

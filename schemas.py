@@ -70,9 +70,51 @@ class Token(BaseModel):
     email_verified: bool = False
 
 
+class LoginResponse(BaseModel):
+    """Same shape as Token, but a login for an MFA-enabled account returns
+    mfa_required=True with a short-lived mfa_token instead of a real
+    access_token — the client must call /api/auth/mfa/verify-login next."""
+    access_token: Optional[str] = None
+    token_type: str = "bearer"
+    role: Optional[str] = None
+    user_id: Optional[int] = None
+    profession: Optional[str] = None
+    email_verified: Optional[bool] = None
+    mfa_required: bool = False
+    mfa_token: Optional[str] = None
+
+
 class TokenData(BaseModel):
     user_id: Optional[int] = None
     role: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Admin MFA / TOTP (GP-14)
+# ---------------------------------------------------------------------------
+
+class MfaSetupResponse(BaseModel):
+    secret: str
+    otpauth_uri: str
+    backup_codes: List[str]
+
+
+class MfaConfirmRequest(BaseModel):
+    code: str = Field(min_length=6, max_length=6, pattern="^[0-9]{6}$")
+
+
+class MfaVerifyLoginRequest(BaseModel):
+    mfa_token: str
+    code: str = Field(min_length=6, max_length=12)
+
+
+class MfaDisableRequest(BaseModel):
+    password: str
+
+
+class MfaStatusResponse(BaseModel):
+    enabled: bool
+    backup_codes_remaining: int
 
 
 # ---------------------------------------------------------------------------

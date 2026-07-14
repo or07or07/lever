@@ -64,6 +64,19 @@ class User(Base):
     # on password reset, without needing a server-side session table.
     token_version = Column(Integer, default=0, nullable=False)
 
+    # ── Admin MFA / TOTP (GP-14) ──
+    # Gated to the admin role only in application logic — not enforced at
+    # the DB level, since any role could in principle enable it later.
+    # mfa_secret is stored in reversible (not hashed) form: unlike a
+    # password, the server has to recompute the current TOTP value from it
+    # on every login, which a one-way hash would make impossible. It's
+    # only ever set for the admin performing their own setup and only
+    # ever read server-side to verify a code, never returned by any API
+    # response after initial setup.
+    mfa_enabled = Column(Boolean, default=False, nullable=False)
+    mfa_secret = Column(String(64), nullable=True)  # base32 TOTP secret; set once, unconfirmed until mfa_enabled flips true
+    mfa_backup_codes = Column(JSON, nullable=True)  # list of bcrypt-hashed single-use recovery codes
+
     # Relationships
     client_profile = relationship("ClientProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
     mechanic_profile = relationship("MechanicProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
