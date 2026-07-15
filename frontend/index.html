@@ -238,6 +238,16 @@ tr:hover td{background:var(--gray-50)}
 .gbtn-primary{width:100%;padding:15px;border:none;border-radius:12px;background:var(--brand);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;min-height:50px}
 .gbtn-primary:disabled{opacity:.55}
 .gbtn-ghost{width:100%;padding:13px;border:none;border-radius:12px;background:none;color:var(--gray-600);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:6px}
+/* Location picker (map pin + address autosuggest) */
+.gf-addr-wrap{position:relative}
+.gf-suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1200;background:#fff;border:1px solid var(--gray-200);border-radius:12px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto}
+.gf-suggest-item{display:block;width:100%;text-align:left;padding:11px 13px;border:none;background:none;font-size:.88rem;color:var(--gray-800);cursor:pointer;border-bottom:1px solid var(--gray-100)}
+.gf-suggest-item:hover,.gf-suggest-item:focus{background:var(--gray-50)}
+.gf-suggest-empty{padding:11px 13px;font-size:.84rem;color:var(--gray-500)}
+.gf-loc-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:9px 14px;border:1px solid var(--gray-200);border-radius:10px;background:#fff;color:var(--brand);font-size:.86rem;font-weight:600;cursor:pointer;min-height:42px}
+.gf-loc-btn:disabled{opacity:.6;cursor:default}
+.gf-map{height:220px;margin-top:12px;border-radius:12px;border:1px solid var(--gray-200);overflow:hidden;z-index:0}
+.gf-pin-help{margin-top:8px;font-size:.8rem;color:var(--gray-500);line-height:1.4}
 .gskel{background:linear-gradient(90deg,var(--gray-100) 25%,var(--gray-200) 50%,var(--gray-100) 75%);background-size:200% 100%;animation:gskel 1.2s infinite;border-radius:10px}
 @keyframes gskel{0%{background-position:200% 0}100%{background-position:-200% 0}}
 @media(prefers-reduced-motion:reduce){.gskel{animation:none}}
@@ -1293,7 +1303,13 @@ var _translations = {
   'guest.gateBack': {es:'Volver y editar', en:'Go back and edit'},
   'guest.finishTitle': {es:'Confirma y envía tu solicitud', en:'Confirm and send your request'},
   'guest.fullAddress': {es:'Dirección exacta del servicio', en:'Exact service address'},
-  'guest.addressPlaceholder': {es:'Calle, número, referencia', en:'Street, number, reference'},
+  'guest.addressPlaceholder': {es:'Busca tu calle o dirección…', en:'Search your street or address…'},
+  'guest.pinHelp': {es:'Arrastra el pin al punto exacto, busca tu dirección arriba o usa tu ubicación.', en:'Drag the pin to the exact spot, search your address above, or use your location.'},
+  'guest.useMyLocation': {es:'Usar mi ubicación', en:'Use my location'},
+  'guest.locating': {es:'Ubicando…', en:'Locating…'},
+  'guest.geoUnavailable': {es:'No pudimos obtener tu ubicación. Arrastra el pin manualmente.', en:"We couldn't get your location. Drag the pin manually."},
+  'guest.pinOutside': {es:'Ese punto está fuera de nuestra zona de cobertura (Guayaquil).', en:'That spot is outside our coverage area (Guayaquil).'},
+  'guest.noSuggestions': {es:'Sin resultados. Puedes arrastrar el pin en el mapa.', en:'No matches. You can drag the pin on the map.'},
   'guest.budgetOptional': {es:'Presupuesto máximo (opcional)', en:'Maximum budget (optional)'},
   'guest.send': {es:'Enviar solicitud', en:'Send request'},
   'guest.sending': {es:'Enviando…', en:'Sending…'},
@@ -5053,14 +5069,150 @@ function renderFinishRequest() {
     '<div class="gsum-row"><span class="k">' + _t('guest.where') + '</span><span class="v">' + escapeHtml(d.sector + ', ' + d.city) + '</span></div>' +
     '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
     '<div class="form-group" style="margin-top:18px"><label for="gf-address">' + _t('guest.fullAddress') + ' *</label>' +
-    '<input id="gf-address" placeholder="' + _t('guest.addressPlaceholder') + '" autocomplete="street-address"></div>' +
+    '<div class="gf-addr-wrap">' +
+      '<input id="gf-address" placeholder="' + _t('guest.addressPlaceholder') + '" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gf-addr-suggest" oninput="gfAddrInput()" value="' + escapeHtml(d.address || '') + '">' +
+      '<div id="gf-addr-suggest" class="gf-suggest" role="listbox" hidden></div>' +
+    '</div>' +
+    '<button type="button" class="gf-loc-btn" id="gf-loc-btn" onclick="gfUseMyLocation()">📍 <span>' + _t('guest.useMyLocation') + '</span></button>' +
+    '<div id="gf-map" class="gf-map" aria-label="' + _t('guest.fullAddress') + '"></div>' +
+    '<p class="gf-pin-help">' + _t('guest.pinHelp') + '</p>' +
+    '<div id="gf-area-warn"></div>' +
+    '</div>' +
     '<div class="form-group"><label for="gf-budget">' + _t('guest.budgetOptional') + '</label>' +
     '<input id="gf-budget" type="number" min="0" placeholder="USD"></div>' +
     '<div id="gf-err"></div>' +
     '<button class="gbtn-primary" id="gf-submit" onclick="submitCatalogRequest()">' + _t('guest.send') + '</button>' +
     '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
     '</div>';
+  gfInitLocationPicker();
 }
+
+// ---- Location picker (map pin + Photon address autosuggest + reverse geocode) ----
+// Backend-proxied (CSP connect-src 'self'): suggestions hit /api/search/address-search,
+// pin drops hit /api/search/reverse-geocode. Guayaquil is the default center.
+let _gfMap = null, _gfMarker = null, _gfAddrTimer = null, _gfSuggestions = [];
+const _GYE_CENTER = [-2.17, -79.90];
+
+function gfInitLocationPicker() {
+  const d = getGuestDraft() || {};
+  const hasCoords = typeof d.lat === 'number' && typeof d.lng === 'number';
+  const center = hasCoords ? [d.lat, d.lng] : _GYE_CENTER;
+  // Marker is authoritative: whatever the pin sits on is the coordinate we send.
+  // Seed the draft with the center so a request always carries coordinates
+  // (which the server validates against the Guayaquil service area).
+  if (!hasCoords) saveGuestDraft({lat: center[0], lng: center[1]});
+
+  const el = document.getElementById('gf-map');
+  if (!el || typeof L === 'undefined') { if (el) el.style.display = 'none'; return; }
+  _gfMap = L.map('gf-map').setView(center, hasCoords ? 16 : 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 19,
+  }).addTo(_gfMap);
+  _gfMarker = L.marker(center, { draggable: true }).addTo(_gfMap);
+  _gfMarker.on('dragend', function() { const p = _gfMarker.getLatLng(); gfSetPin(p.lat, p.lng, true); });
+  _gfMap.on('click', function(e) { gfSetPin(e.latlng.lat, e.latlng.lng, true); });
+  // Leaflet miscalculates size in a freshly-inserted container; fix after paint.
+  setTimeout(function() { if (_gfMap) _gfMap.invalidateSize(); }, 220);
+  if (hasCoords) gfAreaCheck(center[0], center[1]);
+}
+
+// Move the pin, persist coords, optionally reverse-geocode to fill the address.
+async function gfSetPin(lat, lng, doReverse) {
+  if (_gfMarker) _gfMarker.setLatLng([lat, lng]);
+  if (_gfMap) _gfMap.panTo([lat, lng]);
+  saveGuestDraft({lat, lng});
+  gfAreaCheck(lat, lng);
+  if (doReverse) {
+    try {
+      const r = await api('GET', '/api/search/reverse-geocode?lat=' + lat + '&lng=' + lng);
+      if (r && r.success && r.address) {
+        const inp = document.getElementById('gf-address');
+        if (inp) inp.value = r.address;
+        saveGuestDraft({address: r.address});
+      }
+    } catch(e) { /* reverse geocode is best-effort */ }
+  }
+}
+
+// Advisory coverage check — warns before submit if the pin is outside Guayaquil.
+async function gfAreaCheck(lat, lng) {
+  const warn = document.getElementById('gf-area-warn');
+  if (!warn) return;
+  try {
+    const r = await api('POST', '/api/market/check-location', {latitude: lat, longitude: lng}, true);
+    warn.innerHTML = (r && r.supported === false)
+      ? alert_el('error', _t('guest.pinOutside')) : '';
+  } catch(e) { warn.innerHTML = ''; }
+}
+
+function gfAddrInput() {
+  const inp = document.getElementById('gf-address');
+  if (inp) saveGuestDraft({address: inp.value});
+  clearTimeout(_gfAddrTimer);
+  _gfAddrTimer = setTimeout(gfRunAddrSearch, 450);   // debounce (Photon fair-use)
+}
+
+async function gfRunAddrSearch() {
+  const inp = document.getElementById('gf-address');
+  const box = document.getElementById('gf-addr-suggest');
+  if (!inp || !box) return;
+  const q = inp.value.trim();
+  if (q.length < 3) { gfCloseSuggest(); return; }
+  try {
+    const results = await api('GET', '/api/search/address-search?q=' + encodeURIComponent(q));
+    _gfSuggestions = Array.isArray(results) ? results : [];
+    if (!_gfSuggestions.length) {
+      box.innerHTML = '<div class="gf-suggest-empty">' + _t('guest.noSuggestions') + '</div>';
+    } else {
+      box.innerHTML = _gfSuggestions.map(function(s, i) {
+        return '<button type="button" class="gf-suggest-item" role="option" onclick="gfPickSuggestion(' + i + ')">📍 ' + escapeHtml(s.label) + '</button>';
+      }).join('');
+    }
+    box.hidden = false;
+    inp.setAttribute('aria-expanded', 'true');
+  } catch(e) { gfCloseSuggest(); }
+}
+
+function gfPickSuggestion(i) {
+  const s = _gfSuggestions[i];
+  if (!s) return;
+  const inp = document.getElementById('gf-address');
+  if (inp) inp.value = s.label;
+  saveGuestDraft({address: s.label});
+  gfCloseSuggest();
+  if (_gfMap) _gfMap.setView([s.latitude, s.longitude], 16);
+  gfSetPin(s.latitude, s.longitude, false);   // we already have a label
+}
+
+function gfCloseSuggest() {
+  const box = document.getElementById('gf-addr-suggest');
+  const inp = document.getElementById('gf-address');
+  if (box) { box.hidden = true; box.innerHTML = ''; }
+  if (inp) inp.setAttribute('aria-expanded', 'false');
+}
+
+function gfUseMyLocation() {
+  const btn = document.getElementById('gf-loc-btn');
+  const label = btn ? btn.querySelector('span') : null;
+  if (!navigator.geolocation) { showToast(_t('guest.geoUnavailable'), 'error'); return; }
+  if (label) label.textContent = _t('guest.locating');
+  if (btn) btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      if (label) label.textContent = _t('guest.useMyLocation');
+      if (btn) btn.disabled = false;
+      if (_gfMap) _gfMap.setView([pos.coords.latitude, pos.coords.longitude], 16);
+      gfSetPin(pos.coords.latitude, pos.coords.longitude, true);
+    },
+    function() {
+      if (label) label.textContent = _t('guest.useMyLocation');
+      if (btn) btn.disabled = false;
+      showToast(_t('guest.geoUnavailable'), 'error');   // e.g. native client app (no location permission) or denied
+    },
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+  );
+}
+
 async function submitCatalogRequest() {
   if (_submittingRequest) return;               // double-tap protection
   const d = getGuestDraft(); if (!d) return route('#/');
@@ -5088,6 +5240,9 @@ async function submitCatalogRequest() {
     city: d.city || _market.city,
     province: d.province || _market.province,
     country_code: 'EC',
+    // Exact pin coordinates when the client set them — the server validates
+    // these against the Guayaquil service area (coords take precedence over city).
+    ...(typeof d.lat === 'number' && typeof d.lng === 'number' ? {latitude: d.lat, longitude: d.lng} : {}),
     ...(d.urgency === 'later' && d.date ? {scheduled_date: d.date + 'T09:00:00'} : {}),
     ...(budget > 0 ? {budget_max: budget} : {}),
   };

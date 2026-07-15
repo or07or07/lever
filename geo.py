@@ -31,7 +31,20 @@ EARTH_RADIUS_KM = 6371.0    # Mean radius in kilometers
 
 # Nominatim requires a descriptive User-Agent (their usage policy)
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 NOMINATIM_USER_AGENT = "Lever/2.3.0 (service-marketplace; contact: admin@lever.app)"
+
+# Photon (Komoot) — OSM-based geocoder built for type-ahead autocomplete.
+# Used instead of Nominatim for address suggestions because Nominatim's usage
+# policy forbids autocomplete. No API key required.
+PHOTON_URL = "https://photon.komoot.io/api"
+
+# Guayaquil-area bias for address autocomplete, so suggestions stay local.
+# Mirrors the active market's service area (see market.py). bbox is
+# (min_lon, min_lat, max_lon, max_lat) as Photon expects.
+_GYE_BIAS_LAT = -2.17
+_GYE_BIAS_LNG = -79.90
+_GYE_BBOX = (-80.05, -2.35, -79.75, -2.05)
 
 # Rate limit: max 1 request per second per Nominatim policy
 _last_geocode_time: float = 0.0
@@ -141,6 +154,103 @@ def geocode(address: str) -> Optional[Tuple[float, float]]:
 
     except Exception as e:
         logger.warning(f"Geocoding error for '{address}': {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Address autocomplete (Photon) + reverse geocoding (Nominatim)
+# ---------------------------------------------------------------------------
+
+def _photon_label(props: dict) -> str:
+    """Build a readable one-line address from Photon feature properties."""
+    parts = []
+    street = props.get("street")
+    house = props.get("housenumber")
+    name = props.get("name")
+    if street and house:
+        parts.append(f"{street} {house}")
+    elif street:
+        parts.append(street)
+    elif name:
+        parts.append(name)
+    for key in ("district", "city", "state"):
+        v = props.get(key)
+        if v and v not in parts:
+            parts.append(v)
+    label = ", ".join(parts)
+    return label or (name or "")
+
+
+def search_addresses(query: str, limit: int = 6) -> list:
+    """Type-ahead address search via Photon, biased to the Guayaquil area.
+
+    Returns a list of {"label", "latitude", "longitude"} dicts. Empty list on
+    any failure (network, bad status, no results) — the caller degrades to
+    plain text entry, so this is never fatal.
+    """
+    q = (query or "").strip()
+    if len(q) < 3:
+        return []
+    try:
+        params = {
+            "q": q,
+            "limit": max(1, min(limit, 10)),
+            "lat": _GYE_BIAS_LAT,
+            "lon": _GYE_BIAS_LNG,
+            "bbox": ",".join(str(x) for x in _GYE_BBOX),
+        }
+        with httpx.Client(timeout=8.0) as client:
+            resp = client.get(
+                PHOTON_URL, params=params,
+                headers={"User-Agent": NOMINATIM_USER_AGENT},
+            )
+        if resp.status_code != 200:
+            logger.warning(f"Photon HTTP {resp.status_code} for '{q}'")
+            return []
+        out = []
+        for feat in (resp.json() or {}).get("features", []):
+            coords = ((feat.get("geometry") or {}).get("coordinates")) or []
+            if len(coords) != 2:
+                continue
+            out.append({
+                "label": _photon_label(feat.get("properties") or {}),
+                "latitude": float(coords[1]),
+                "longitude": float(coords[0]),
+            })
+        return out
+    except Exception as e:
+        logger.warning(f"Photon search error for '{q}': {e}")
+        return []
+
+
+def reverse_geocode(lat: float, lng: float) -> Optional[str]:
+    """Reverse-geocode coordinates to a display address via Nominatim.
+
+    A single call per pin drop is well within Nominatim's 1 req/sec policy.
+    Returns None on failure.
+    """
+    global _last_geocode_time
+    if not is_valid_coords(lat, lng):
+        return None
+
+    elapsed = time.time() - _last_geocode_time
+    if elapsed < 1.1:
+        time.sleep(1.1 - elapsed)
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(
+                NOMINATIM_REVERSE_URL,
+                params={"lat": lat, "lon": lng, "format": "json", "zoom": 18, "addressdetails": 0},
+                headers={"User-Agent": NOMINATIM_USER_AGENT},
+            )
+            _last_geocode_time = time.time()
+        if resp.status_code != 200:
+            logger.warning(f"Reverse geocode HTTP {resp.status_code} for ({lat}, {lng})")
+            return None
+        return (resp.json() or {}).get("display_name")
+    except Exception as e:
+        logger.warning(f"Reverse geocode error for ({lat}, {lng}): {e}")
         return None
 
 

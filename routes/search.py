@@ -24,7 +24,14 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db
-from geo import bounding_box, haversine_miles, geocode, is_valid_coords
+from geo import (
+    bounding_box,
+    geocode,
+    haversine_miles,
+    is_valid_coords,
+    reverse_geocode,
+    search_addresses,
+)
 from models import MechanicProfile, ServiceRequest, User
 from professions import PROFESSION_KEYS
 from routes.moderation import blocked_user_ids_involving
@@ -282,6 +289,32 @@ def geocode_address(
         longitude=None,
         success=False,
     )
+
+
+# ---------------------------------------------------------------------------
+# Address autocomplete + reverse geocoding (for the request-flow map picker)
+# ---------------------------------------------------------------------------
+
+@router.get("/address-search")
+def address_search(
+    q: str = Query(min_length=3, max_length=120),
+    current_user: User = Depends(get_current_user),
+):
+    """Type-ahead address suggestions (Guayaquil-biased), backend-proxied so the
+    frontend's CSP (connect-src 'self') is respected. Returns a list of
+    {label, latitude, longitude}; empty list on any upstream failure."""
+    return search_addresses(q, limit=6)
+
+
+@router.get("/reverse-geocode")
+def reverse_geocode_endpoint(
+    lat: float = Query(ge=-90.0, le=90.0),
+    lng: float = Query(ge=-180.0, le=180.0),
+    current_user: User = Depends(get_current_user),
+):
+    """Coordinates -> display address, for the map-pin picker in the request flow."""
+    address = reverse_geocode(lat, lng)
+    return {"address": address, "success": address is not None}
 
 
 # ---------------------------------------------------------------------------
