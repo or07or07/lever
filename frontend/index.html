@@ -5173,20 +5173,20 @@ function renderLanding() {
     '<section class="support-section" id="support-section">' +
         '<h2>Centro de Ayuda</h2>' +
         '<p class="subtitle">\u00bfTienes preguntas? Estamos aqu\u00ed para ayudarte.</p>' +
-        '<div class="support-tabs">' +
-          '<button class="support-tab active" onclick="switchSupportTab(this,\'faq\')">Preguntas Frecuentes</button>' +
-          '<button class="support-tab" onclick="switchSupportTab(this,\'contact\')">Contacto</button>' +
-          '<button class="support-tab" onclick="switchSupportTab(this,\'help\')">Ayuda</button>' +
+        '<div class="support-tabs" role="tablist" aria-label="Centro de Ayuda">' +
+          '<button class="support-tab active" id="tab-faq" role="tab" aria-selected="true" aria-controls="support-faq" onclick="switchSupportTab(this,\'faq\')">Preguntas Frecuentes</button>' +
+          '<button class="support-tab" id="tab-contact" role="tab" aria-selected="false" aria-controls="support-contact" tabindex="-1" onclick="switchSupportTab(this,\'contact\')">Contacto</button>' +
+          '<button class="support-tab" id="tab-help" role="tab" aria-selected="false" aria-controls="support-help" tabindex="-1" onclick="switchSupportTab(this,\'help\')">Ayuda</button>' +
         '</div>' +
         '<div class="support-content">' +
-          '<div id="support-faq" class="support-pane">' +
+          '<div id="support-faq" class="support-pane" role="tabpanel" aria-labelledby="tab-faq">' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo solicito un servicio? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Reg\u00edstrate como cliente, describe lo que necesitas, y un profesional cercano aceptar\u00e1 tu solicitud.</div></div>' +
-            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo me registro como profesional? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Haz clic en Registrarse, selecciona Proveedor de Servicios, elige tu profesi\u00f3n y completa tu perfil.</div></div>' +
+            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo me registro como profesional? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Haz clic en Registrarme como profesional, elige tu profesi\u00f3n y completa tu perfil.</div></div>' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfCu\u00e1nto cuesta usar Lever? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Registrarse, buscar proveedores y usar Lever es completamente gratis.</div></div>' +
-            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfEn qu\u00e9 ciudades est\u00e1n disponibles? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Actualmente operamos en Ecuador: Quito, Guayaquil y Cuenca. Estamos expandiendo.</div></div>' +
+            '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfEn qu\u00e9 ciudades est\u00e1n disponibles? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Por el momento, Lever est\u00e1 disponible en nuestra zona de cobertura en ' + escapeHtml(_market.city) + '. Estamos comenzando aqu\u00ed para ofrecer una experiencia r\u00e1pida y confiable con profesionales locales.</div></div>' +
             '<div class="faq-item" onclick="this.classList.toggle(\'open\')"><div class="faq-q">\u00bfC\u00f3mo garantizan la calidad? <span class="faq-arrow">\u25bc</span></div><div class="faq-a">Sistema de calificaciones y rese\u00f1as de clientes despu\u00e9s de cada trabajo completado.</div></div>' +
           '</div>' +
-          '<div id="support-contact" class="support-pane" style="display:none">' +
+          '<div id="support-contact" class="support-pane" role="tabpanel" aria-labelledby="tab-contact" hidden style="display:none">' +
             '<div class="contact-grid">' +
               '<div class="contact-card"><div class="c-icon">\ud83d\udce7</div><h4>Email</h4><p>soporte@leverapp.com</p></div>' +
               '<div class="contact-card"><div class="c-icon">\ud83d\udcf1</div><h4>WhatsApp</h4><p>+593 99 000 0000</p></div>' +
@@ -5194,7 +5194,7 @@ function renderLanding() {
               '<div class="contact-card"><div class="c-icon">\ud83d\udd52</div><h4>Horario</h4><p>Lun-Vie: 8:00-18:00</p></div>' +
             '</div>' +
           '</div>' +
-          '<div id="support-help" class="support-pane" style="display:none">' +
+          '<div id="support-help" class="support-pane" role="tabpanel" aria-labelledby="tab-help" hidden style="display:none">' +
             '<div style="text-align:center;padding:24px">' +
               '<div style="margin-bottom:12px;color:var(--brand)"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg></div>' +
               '<h3 style="margin-bottom:8px">Recursos de Ayuda</h3>' +
@@ -5251,11 +5251,17 @@ function renderLanding() {
 }
 
 function switchSupportTab(btn, tabId) {
-  document.querySelectorAll('.support-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.support-tab').forEach(function(t){
+    t.classList.remove('active');
+    t.setAttribute('aria-selected', 'false');
+    t.setAttribute('tabindex', '-1');
+  });
   btn.classList.add('active');
-  document.querySelectorAll('.support-pane').forEach(function(p){p.style.display='none';});
+  btn.setAttribute('aria-selected', 'true');
+  btn.setAttribute('tabindex', '0');
+  document.querySelectorAll('.support-pane').forEach(function(p){ p.style.display='none'; p.hidden = true; });
   var el = document.getElementById('support-'+tabId);
-  if (el) el.style.display = 'block';
+  if (el) { el.style.display = 'block'; el.hidden = false; }
 }
 
 // ============================================================
