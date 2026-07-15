@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1420,6 +1420,7 @@ function _t(key) {
 function setLanguage(lang) {
   _lang = lang;
   localStorage.setItem('lever_lang', lang);
+  try { document.documentElement.lang = lang; } catch(e) {}
   if (_user) {
     var _currentRole = _user.role;
     buildSidebarImproved(_currentRole, location.hash || '#/');
@@ -1869,17 +1870,43 @@ function renderProviderStatusToggle() {
 // ---- Router ----
 function route(hash) { window.location.hash = hash; }
 window.addEventListener('hashchange', render);
+
+// ── Accessibility: mark decorative inline SVGs as hidden from AT ──
+// Every SVG in this app is a decorative icon that sits next to visible text
+// (brand mark by "Lever", icons in labelled buttons, rating stars beside a
+// numeric value). None convey information a screen reader needs, so we hide
+// them and take them out of the tab order. An observer keeps this true as the
+// SPA re-renders. Any SVG that ever needs to be meaningful can opt out by
+// carrying its own aria-label or role="img".
+function markDecorativeSvgs(root) {
+  (root || document).querySelectorAll('svg:not([aria-hidden]):not([role="img"]):not([aria-label])').forEach(function(s) {
+    s.setAttribute('aria-hidden', 'true');
+    s.setAttribute('focusable', 'false');
+  });
+}
 window.addEventListener('load', async () => {
   await loadProfessions();
   render();
+  markDecorativeSvgs();
+  var appEl = document.getElementById('app');
+  if (appEl && 'MutationObserver' in window) {
+    new MutationObserver(function(muts) {
+      for (var i = 0; i < muts.length; i++) {
+        if (muts[i].addedNodes && muts[i].addedNodes.length) { markDecorativeSvgs(appEl); break; }
+      }
+    }).observe(appEl, {childList: true, subtree: true});
+  }
 });
 
 async function render() {
   const _hash = window.location.hash || '#/';
+  // Keep <html lang> in sync with the active UI language (a11y).
+  try { if (document.documentElement.lang !== _lang) document.documentElement.lang = _lang; } catch(e) {}
   // Language route shortcuts: #/us -> English, #/es -> Spanish
   if (_hash === '#/us' || _hash === '#/es') {
     _lang = _hash === '#/us' ? 'en' : 'es';
     localStorage.setItem('lever_lang', _lang);
+    try { document.documentElement.lang = _lang; } catch(e) {}
     window.location.hash = '#/settings';
     // Force re-render if hash was already #/settings (hashchange won't fire)
     setTimeout(render, 50);
@@ -5099,14 +5126,14 @@ function renderLanding() {
 
   document.getElementById('app').innerHTML =
     landingNav() +
-    '<div class="landing-body">' +
-      '<section class="hero-section">' +
+    '<main class="landing-body" id="main-content">' +
+      '<section class="hero-section" aria-labelledby="hero-heading">' +
         '<span class="hero-avail">\ud83d\udccd ' + _t('nav2.availLabel') + '</span>' +
-        '<h1>Servicios confiables,<br>cuando los necesitas</h1>' +
+        '<h1 id="hero-heading">Servicios confiables,<br>cuando los necesitas</h1>' +
         '<p>Encuentra profesionales para servicios del hogar y negocios en ' + escapeHtml(_market.city) + '. Lever conecta clientes con profesionales para solicitar, coordinar y completar servicios de una manera sencilla y segura.</p>' +
         '<div class="hero-cta">' +
           '<button class="btn-hero-primary" onclick="route(\'#/services\')">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
             'Solicitar un servicio' +
           '</button>' +
           '<button class="btn-hero-secondary" onclick="route(\'#/registro/profesional\')">Trabajar como profesional</button>' +
@@ -5202,6 +5229,7 @@ function renderLanding() {
           '<button class="btn-cta-outline" onclick="route(\'#/registro/profesional\')">Trabajar como profesional</button>' +
         '</div>' +
       '</section>' +
+    '</main>' +
       '<footer class="footer-section">' +
         '<div class="footer-grid">' +
           '<div class="footer-col">' +
@@ -5219,8 +5247,7 @@ function renderLanding() {
           '</div>' +
         '</div>' +
         '<div class="footer-bottom">\u00a9 2026 Lever. Todos los derechos reservados.</div>' +
-      '</footer>' +
-    '</div>';
+      '</footer>';
 }
 
 function switchSupportTab(btn, tabId) {
