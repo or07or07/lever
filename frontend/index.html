@@ -1423,7 +1423,7 @@ function setLanguage(lang) {
   try { document.documentElement.lang = lang; } catch(e) {}
   if (_user) {
     var _currentRole = _user.role;
-    buildSidebarImproved(_currentRole, location.hash || '#/');
+    buildSidebarImproved(_currentRole, currentRoute());
     render();
   }
 }
@@ -1870,9 +1870,61 @@ function renderProviderStatusToggle() {
   el.innerHTML = `<span class="status-dot"></span>${_providerOnline ? _t('provider.online') : _t('provider.offline')}`;
 }
 
-// ---- Router ----
-function route(hash) { window.location.hash = hash; }
-window.addEventListener('hashchange', render);
+// ---- Router (dual-mode) ----
+// Inside the Capacitor native apps we keep hash routing — file:// / capacitor://
+// have no server to rewrite paths, and hash routing is the reliable choice there.
+// On the web we use clean History-API paths so the URL reads '/home/' instead of
+// '/#/':   '#/' <-> '/home/',   '#/x/y' <-> '/x/y/'.
+// Internal route tokens stay in the original '#/...' form everywhere else in the
+// app, so only the address bar and these few helpers change behaviour.
+var USE_PATH_ROUTING = !IS_NATIVE;
+
+function hashToPath(hash) {
+  hash = hash || '#/';
+  if (hash === '#' || hash === '#/') return '/home/';
+  var p = hash.charAt(0) === '#' ? hash.slice(1) : hash;   // '#/x/y' -> '/x/y'
+  if (p.charAt(p.length - 1) !== '/') p += '/';            // ensure trailing slash
+  return p;
+}
+function pathToHash(pathname) {
+  if (!pathname || pathname === '/' || pathname === '/home' || pathname === '/home/') return '#/';
+  var p = pathname.replace(/\/+$/, '');                    // strip trailing slash(es)
+  if (p.charAt(0) !== '/') p = '/' + p;
+  return '#' + p;                                          // '/x/y' -> '#/x/y'
+}
+// The canonical current route in '#/...' form, regardless of routing mode.
+function currentRoute() {
+  return USE_PATH_ROUTING ? pathToHash(window.location.pathname) : (window.location.hash || '#/');
+}
+function route(hash) {
+  if (USE_PATH_ROUTING) {
+    var path = hashToPath(hash);
+    if (path !== window.location.pathname) window.history.pushState({}, '', path);
+    render();
+  } else {
+    window.location.hash = hash;   // hashchange listener triggers render()
+  }
+}
+if (USE_PATH_ROUTING) {
+  // Preserve legacy hash links (and the old '/#/' URL the app used to show):
+  // rewrite any '#/...' in the address bar to its path form before the first
+  // render, so old bookmarks and shared links keep working.
+  if (window.location.hash && window.location.hash.length > 1) {
+    try { window.history.replaceState({}, '', hashToPath(window.location.hash)); } catch (e) {}
+  }
+  window.addEventListener('popstate', render);
+  // Route in-app hash anchors (e.g. <a href="#/services/x">) through the
+  // History-API router instead of letting them leave a stale '#/...' in the URL.
+  document.addEventListener('click', function(e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href^="#/"]') : null;
+    if (!a) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;  // allow open-in-new-tab etc.
+    e.preventDefault();
+    route(a.getAttribute('href'));
+  });
+} else {
+  window.addEventListener('hashchange', render);
+}
 
 // ── Accessibility: mark decorative inline SVGs as hidden from AT ──
 // Every SVG in this app is a decorative icon that sits next to visible text
@@ -1902,7 +1954,7 @@ window.addEventListener('load', async () => {
 });
 
 async function render() {
-  const _hash = window.location.hash || '#/';
+  const _hash = currentRoute();
   // Keep <html lang> in sync with the active UI language (a11y).
   try { if (document.documentElement.lang !== _lang) document.documentElement.lang = _lang; } catch(e) {}
   // Language route shortcuts: #/us -> English, #/es -> Spanish
@@ -1910,8 +1962,8 @@ async function render() {
     _lang = _hash === '#/us' ? 'en' : 'es';
     localStorage.setItem('lever_lang', _lang);
     try { document.documentElement.lang = _lang; } catch(e) {}
-    window.location.hash = '#/settings';
-    // Force re-render if hash was already #/settings (hashchange won't fire)
+    route('#/settings');
+    // Force re-render if we were already on #/settings (hashchange won't fire)
     setTimeout(render, 50);
     return;
   }
@@ -1948,7 +2000,7 @@ async function render() {
   if (_user?.role === 'client' && (_hash === '#/' || _hash === '#') && guestDraftReady()) {
     route('#/finish-request'); return;
   }
-  const hash = window.location.hash || '#/';
+  const hash = currentRoute();
   const role = _user?.role;
   const profession = _user?.profession;
   const app = document.getElementById('app');
@@ -2080,7 +2132,7 @@ const stars = (r) => '<svg width="14" height="14" viewBox="0 0 24 24" fill="curr
 const alert_el = (type, msg) => `<div class="alert alert-${type}">${msg}</div>`;
 
 function pageHeader(title, btnHtml='') {
-  var bc = buildBreadcrumb(window.location.hash || '#/');
+  var bc = buildBreadcrumb(currentRoute());
   return `${bc}<div class="page-header"><h1 class="page-title">${title}</h1>${btnHtml}</div>`;
 }
 
@@ -3767,7 +3819,7 @@ async function toggleUser(id, isActive) {
   try {
     await patch('/api/admin/users/'+id, {is_active: !isActive});
     const el = document.getElementById('content');
-    if (el) adminView(location.hash || '#/users', el);
+    if (el) adminView(currentRoute(), el);
   } catch(e) { alert('Failed to ' + action + ' user: ' + e.message); }
 }
 
@@ -3777,7 +3829,7 @@ async function toggleVerify(id, currentLevel) {
   try {
     await patch('/api/admin/users/'+id, {verification_level: nextLevel});
     const el = document.getElementById('content');
-    if (el) adminView(location.hash || '#/users', el);
+    if (el) adminView(currentRoute(), el);
   } catch(e) { showToast(e.message, 'error'); }
 }
 
@@ -4521,12 +4573,12 @@ async function submitFeedback() {
   if (!_feedbackRating && !text) { showToast('Por favor agrega una calificaci\u00f3n o comentario', 'error'); return; }
   try {
     // Post to feedback endpoint (graceful if not exists)
-    await post('/api/feedback', { rating: _feedbackRating, comment: text, page: window.location.hash });
+    await post('/api/feedback', { rating: _feedbackRating, comment: text, page: currentRoute() });
     showToast('\u00a1Gracias por tu feedback!', 'success');
   } catch(e) {
     // Store locally if endpoint not ready
     var fb = JSON.parse(localStorage.getItem('lever_feedback') || '[]');
-    fb.push({ rating: _feedbackRating, comment: text, page: window.location.hash, ts: new Date().toISOString() });
+    fb.push({ rating: _feedbackRating, comment: text, page: currentRoute(), ts: new Date().toISOString() });
     localStorage.setItem('lever_feedback', JSON.stringify(fb));
     showToast('\u00a1Gracias! Tu feedback fue guardado.', 'success');
   }
