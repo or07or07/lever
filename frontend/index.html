@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Lever — Servicios Profesionales</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#6366f1">
@@ -39,6 +39,7 @@
 /* Transitions */
 --ease:cubic-bezier(.4,0,.2,1);--duration:.2s;
 }
+html{-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;color:var(--gray-900);min-height:100vh;-webkit-font-smoothing:antialiased}
 a{color:var(--brand);text-decoration:none}
 button{cursor:pointer;font-family:inherit}
@@ -355,7 +356,7 @@ tr:hover td{background:var(--gray-50)}
 .hero-section{background:#fff;color:var(--gray-900);padding:60px 24px 50px;text-align:center;border-bottom:1px solid var(--gray-200)}
 .hero-section h1{font-size:2.2rem;font-weight:800;margin-bottom:12px;line-height:1.2}
 .hero-section p{font-size:1.05rem;color:var(--gray-600);max-width:540px;margin:0 auto 36px;line-height:1.6}
-@media(max-width:600px){.hero-section h1{font-size:1.6rem}.hero-section p{font-size:.92rem}}
+@media(max-width:600px){.hero-section h1{font-size:1.7rem}.hero-section p{font-size:1rem}}
 .hero-avail{display:inline-flex;align-items:center;gap:6px;background:var(--brand-50);color:var(--brand-dark);border:1px solid var(--brand-100);border-radius:999px;padding:6px 14px;font-size:.82rem;font-weight:700;margin-bottom:18px}
 .hero-cta{display:flex;flex-direction:column;align-items:center;gap:12px;max-width:400px;margin:0 auto}
 .hero-cta>button{width:100%}
@@ -405,6 +406,26 @@ tr:hover td{background:var(--gray-50)}
 .footer-col.footer-services{column-count:3;column-gap:16px}
 @media(max-width:768px){.footer-col.footer-services{column-count:2}}
 @media(max-width:500px){.footer-col.footer-services{column-count:1}}
+/* Mobile readability — enlarge undersized landing text (captions, subtitles,
+   FAQ, contact, footer) on phones. The layout already fits the screen; this
+   only bumps small type so it's comfortable to read in a mobile browser. */
+@media(max-width:600px){
+  .hero-avail{font-size:.9rem}
+  .hero-subtext{font-size:.9rem}
+  .professions-section .subtitle,.support-section .subtitle{font-size:1rem}
+  .prof-card-landing .prof-name-lg{font-size:.95rem}
+  .support-tab{font-size:.95rem;padding:10px 16px}
+  .faq-q{font-size:1rem}
+  .faq-a{font-size:.95rem}
+  .contact-card h4{font-size:.95rem}
+  .contact-card p{font-size:.9rem}
+  .footer-col h3{font-size:1.05rem}
+  .footer-col p{font-size:.9rem}
+  .footer-col a{font-size:.9rem}
+  .footer-bottom{font-size:.85rem}
+  /* 16px inputs stop iOS Safari from auto-zooming the page on focus */
+  .form-group input,.form-group textarea,.form-group select{font-size:16px}
+}
 .guest-banner{background:var(--accent-light);border:1px solid var(--accent);border-radius:var(--radius);padding:12px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;font-size:.88rem;color:var(--gray-800)}
 .guest-banner button{flex-shrink:0}
 @media(max-width:768px){
