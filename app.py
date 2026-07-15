@@ -113,6 +113,13 @@ app = FastAPI(
     version=settings.app_version,
     description="Multi-profession on-demand service marketplace API",
     lifespan=lifespan,
+    # In production (DEBUG=false) don't expose the interactive Swagger/ReDoc
+    # UI or the raw OpenAPI schema — the endpoints are auth-protected, but
+    # publishing the full API surface only aids attacker enumeration. These
+    # stay available in local development for convenience.
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+    openapi_url="/openapi.json" if settings.debug else None,
 )
 
 # Security Headers Middleware (defense in depth — supplements nginx headers)

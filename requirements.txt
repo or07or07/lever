@@ -3,10 +3,10 @@ uvicorn[standard]>=0.24.0
 sqlalchemy>=2.0.0
 pydantic[email]>=2.5.0
 pydantic-settings>=2.1.0
-python-jose[cryptography]>=3.3.0
+python-jose[cryptography]>=3.4.0  # >=3.4.0 fixes CVE-2024-33663 (algorithm confusion) + CVE-2024-33664 (JWE DoS)
 passlib[bcrypt]>=1.7.4
 bcrypt>=3.2.2,<4.0.0
-python-multipart>=0.0.6
+python-multipart>=0.0.18  # >=0.0.7 fixes CVE-2024-24762 (ReDoS), >=0.0.18 fixes CVE-2024-53981 (DoS)
 python-dotenv>=1.0.0
 aiofiles>=23.2.1
 

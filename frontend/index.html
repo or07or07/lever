@@ -1526,9 +1526,7 @@ function timeAgo(dateStr) {
 }
 
 function escHtml(s) {
-  var d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+  return escapeHtml(s);  // unified — escapes quotes too (attribute-safe)
 }
 
 // ---- Bottom Tab Bar ----
@@ -1785,9 +1783,14 @@ async function loadProfessions() {
 // ---- Security: HTML escaping to prevent XSS ----
 function escapeHtml(str) {
   if (str == null) return '';
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
+  // Escapes all five HTML-significant characters, incl. quotes, so the
+  // result is safe in BOTH text and attribute (value="...") contexts.
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function profIcon(key) { return _professions[key]?.icon || '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>'; }
@@ -2146,7 +2149,7 @@ async function renderClientDash(el) {
         `<div class="table-wrap"><table>
           <thead><tr><th>${_t('th.title')}</th><th>${_t('th.profession')}</th><th>${_t('th.status')}</th><th>${_t('th.urgency')}</th><th>${_t('th.created')}</th><th></th></tr></thead>
           <tbody>${reqs.slice(0,6).map(r=>`<tr>
-            <td><strong>${r.title}</strong></td>
+            <td><strong>${escapeHtml(r.title)}</strong></td>
             <td>${profBadge(r.profession_type)}</td>
             <td>${badge(r.status)}</td>
             <td>${badge(r.urgency)}</td>
@@ -2170,7 +2173,7 @@ async function renderClientRequests(el) {
   el.innerHTML += `<div class="table-wrap"><div class="card"><table>
     <thead><tr><th>${_t('th.title')}</th><th>${_t('th.profession')}</th><th>${_t('th.status')}</th><th>${_t('th.urgency')}</th><th>${_t('th.budget')}</th><th>${_t('th.date')}</th><th></th></tr></thead>
     <tbody>${reqs.map(r=>`<tr>
-      <td><strong>${r.title}</strong></td>
+      <td><strong>${escapeHtml(r.title)}</strong></td>
       <td>${profBadge(r.profession_type)}</td>
       <td>${badge(r.status)}</td>
       <td>${badge(r.urgency)}</td>
@@ -2995,8 +2998,8 @@ function showProviderDetail(m) {
         <div class="text-sm mt-4">${m.years_experience} years experience</div>
       </div>
     </div>
-    <p style="color:var(--gray-700);margin-bottom:12px">${m.bio||'No bio provided.'}</p>
-    <div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${m.location} (${m.service_radius_miles} mi radius)</div>
+    <p style="color:var(--gray-700);margin-bottom:12px">${m.bio?escapeHtml(m.bio):'No bio provided.'}</p>
+    <div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(m.location||'')} (${m.service_radius_miles} mi radius)</div>
     ${m.distance_miles!=null ? '<div class="distance-badge" style="margin-top:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+m.distance_miles+' miles from your search</div>' : ''}
     ${m.distance_miles!=null ? '<div class="distance-badge" style="margin-top:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+m.distance_miles+' miles from your search</div>' : ''}
     <div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> ${fmtMoney(m.hourly_rate)}/hr</div>
@@ -3078,9 +3081,9 @@ async function renderClientProfile(el) {
   el.innerHTML = `
     ${pageHeader(_t('profile.title'))}
     <div class="card" style="max-width:500px">
-      <div class="form-group"><label>${_t('profile.fullName')}</label><input id="cp-name" value="${profile.full_name||''}"></div>
-      <div class="form-group"><label>${_t('profile.phone')}</label><input id="cp-phone" value="${profile.phone||''}"></div>
-      <div class="form-group"><label>${_t('profile.address')}</label><input id="cp-address" value="${profile.address||''}"></div>
+      <div class="form-group"><label>${_t('profile.fullName')}</label><input id="cp-name" value="${escapeHtml(profile.full_name||'')}"></div>
+      <div class="form-group"><label>${_t('profile.phone')}</label><input id="cp-phone" value="${escapeHtml(profile.phone||'')}"></div>
+      <div class="form-group"><label>${_t('profile.address')}</label><input id="cp-address" value="${escapeHtml(profile.address||'')}"></div>
       <div id="cp-msg"></div>
       <button class="btn btn-primary" onclick="saveClientProfile()">${_t('profile.save')}</button>
     </div>`;
@@ -3335,7 +3338,7 @@ async function renderMechanicDash(el) {
         `<div class="table-wrap"><table>
           <thead><tr><th>${_t('th.request')}</th><th>${_t('th.status')}</th><th>${_t('th.started')}</th><th></th></tr></thead>
           <tbody>${jobs.filter(j=>!['completed','cancelled'].includes(j.status)).map(j=>`<tr>
-            <td><strong>${j.request?.title||'Job #'+j.id}</strong></td>
+            <td><strong>${escapeHtml(j.request?.title||'Job #'+j.id)}</strong></td>
             <td>${badge(j.status)}</td>
             <td>${fmtTime(j.started_at)}</td>
             <td><button class="btn btn-ghost" onclick="route('#/job/${j.id}')">${_t('pdash.manage')}</button></td>
@@ -3348,9 +3351,9 @@ async function renderMechanicDash(el) {
         `<div class="table-wrap"><table>
           <thead><tr><th>${_t('th.title')}</th><th>${_t('th.urgency')}</th><th>${_t('th.location')}</th><th>${_t('th.budget')}</th><th></th></tr></thead>
           <tbody>${board.slice(0,4).map(r=>`<tr>
-            <td><strong>${r.title}</strong></td>
+            <td><strong>${escapeHtml(r.title)}</strong></td>
             <td>${badge(r.urgency)}</td>
-            <td>${r.location}</td>
+            <td>${escapeHtml(r.location)}</td>
             <td>${r.budget_max!=null?_t('pdash.upTo')+' '+fmtMoney(r.budget_max):'\u2014'}</td>
             <td><button class="btn btn-success btn" onclick="acceptRequest(${r.id})">${_t('board.acceptShort')}</button></td>
           </tr>`).join('')}</tbody>
@@ -3373,15 +3376,15 @@ async function renderJobBoard(el) {
     <div class="card board-card" data-request-id="${r.id}">
       <div class="card-header">
         <div>
-          <div class="card-title">${r.title}</div>
-          <div class="card-subtitle">\u{1F4CD} ${r.location} \u2022 ${_t('board.posted')} ${fmtDate(r.created_at)}</div>
+          <div class="card-title">${escapeHtml(r.title)}</div>
+          <div class="card-subtitle">\u{1F4CD} ${escapeHtml(r.location)} \u2022 ${_t('board.posted')} ${fmtDate(r.created_at)}</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           ${badge(r.urgency)}
           <button class="btn btn-success" onclick="acceptRequest(${r.id})">${_t('board.accept')}</button>
         </div>
       </div>
-      <p class="text-sm">${r.description}</p>
+      <p class="text-sm">${escapeHtml(r.description)}</p>
       ${r.budget_max!=null?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> ${_t('board.budgetUpTo')} ${fmtMoney(r.budget_max)}</div>`:''}
     </div>`).join('');
   // Mark new cards with pulse animation
@@ -3406,7 +3409,7 @@ async function renderMyJobs(el) {
   el.innerHTML += `<div class="card"><div class="table-wrap"><table>
     <thead><tr><th>${_t('jobs.request')}</th><th>${_t('th.status')}</th><th>${_t('jobs.price')}</th><th>${_t('th.date')}</th><th></th></tr></thead>
     <tbody>${jobs.map(j=>`<tr>
-      <td><strong>${j.request?.title||'Job #'+j.id}</strong></td>
+      <td><strong>${escapeHtml(j.request?.title||'Job #'+j.id)}</strong></td>
       <td>${badge(j.status)}</td>
       <td>${fmtMoney(j.final_price)}</td>
       <td>${fmtDate(j.created_at)}</td>
@@ -3455,13 +3458,13 @@ async function renderJobDetail(el, id) {
     <div class="card">
       <div class="card-header">
         <div>
-          <div class="card-title">${job.request?.title||'\u2014'}</div>
+          <div class="card-title">${escapeHtml(job.request?.title||'\u2014')}</div>
           <div class="card-subtitle">${profBadge(profKey)}</div>
         </div>
         ${badge(job.status)}
       </div>
-      <p class="text-sm" style="margin-bottom:12px">${job.request?.description||''}</p>
-      <div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${job.request?.location||''}</div>
+      <p class="text-sm" style="margin-bottom:12px">${escapeHtml(job.request?.description||'')}</p>
+      <div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(job.request?.location||'')}</div>
       ${job.started_at?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${_t('jdet.started')}: ${fmtTime(job.started_at)}</div>`:''}
       ${job.completed_at?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${_t('jdet.completed')}: ${fmtTime(job.completed_at)}</div>`:''}
     </div>
@@ -3531,14 +3534,14 @@ async function renderMechanicProfile(el) {
     ${pageHeader('My Profile')}
     <div class="card" style="max-width:560px">
       ${profile.profession ? `<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px">${profBadge(profile.profession)}<button class="btn btn-outline btn-sm" onclick="route('#/my-services')">${_t('psvc.manageBtn')}</button></div>` : ''}
-      <div class="form-group"><label>Full Name</label><input id="mp-name" value="${profile.full_name||''}"></div>
-      <div class="form-group"><label>Phone</label><input id="mp-phone" value="${profile.phone||''}"></div>
-      <div class="form-group"><label>Bio</label><textarea id="mp-bio">${profile.bio||''}</textarea></div>
+      <div class="form-group"><label>Full Name</label><input id="mp-name" value="${escapeHtml(profile.full_name||'')}"></div>
+      <div class="form-group"><label>Phone</label><input id="mp-phone" value="${escapeHtml(profile.phone||'')}"></div>
+      <div class="form-group"><label>Bio</label><textarea id="mp-bio">${escapeHtml(profile.bio||'')}</textarea></div>
       <div class="form-row">
         <div class="form-group"><label>Years Experience</label><input id="mp-exp" type="number" value="${profile.years_experience}"></div>
         <div class="form-group"><label>Hourly Rate ($)</label><input id="mp-rate" type="number" value="${profile.hourly_rate}"></div>
       </div>
-      <div class="form-group"><label>Location</label><input id="mp-loc" value="${profile.location||''}"></div>
+      <div class="form-group"><label>Location</label><input id="mp-loc" value="${escapeHtml(profile.location||'')}"></div>
       <div class="form-row">
         <div class="form-group"><label>Service Radius (miles)</label><input id="mp-radius" type="number" value="${profile.service_radius_miles}"></div>
         <div class="form-group"><label>Available</label>
@@ -3646,7 +3649,7 @@ async function renderMessages(el, jobId) {
     el.innerHTML += jobs.map(j=>`
       <div class="card" style="cursor:pointer" onclick="route('#/chat/${j.id}')">
         <div class="card-header">
-          <div><div class="card-title">Job #${j.id} \u2014 ${j.title}</div><div class="card-subtitle">${profBadge(j.profession_type)}</div></div>
+          <div><div class="card-title">Job #${j.id} \u2014 ${escapeHtml(j.title)}</div><div class="card-subtitle">${profBadge(j.profession_type)}</div></div>
           <div style="display:flex;align-items:center;gap:8px">${badge(j.status)}<span style="color:var(--brand)">\u2192</span></div>
         </div>
       </div>`).join('');
@@ -3743,7 +3746,7 @@ async function renderAdminUsers(el) {
         <thead><tr><th>ID</th><th>Email</th><th>Role</th><th>Status</th><th>Verification</th><th>Joined</th><th>Actions</th></tr></thead>
         <tbody>${data.items.map(u=>`<tr>
           <td>${u.id}</td>
-          <td>${u.email}</td>
+          <td>${escapeHtml(u.email)}</td>
           <td>${badge(u.role)}</td>
           <td>${u.is_active?'<span class="badge badge-completed">Active</span>':'<span class="badge badge-cancelled">Inactive</span>'}</td>
           <td>${u.role==='mechanic' ? (u.verification_level==='enhanced' ? '<span class="badge badge-completed">' + _t('psvc.verified') + '</span>' : '<span class="badge">' + _t('psvc.needsVerification') + '</span>') : '—'}</td>
@@ -3788,7 +3791,7 @@ async function renderAdminRequests(el) {
       <thead><tr><th>ID</th><th>Title</th><th>Profession</th><th>Status</th><th>Urgency</th><th>Created</th></tr></thead>
       <tbody>${data.items.map(r=>`<tr>
         <td>${r.id}</td>
-        <td>${r.title}</td>
+        <td>${escapeHtml(r.title)}</td>
         <td>${profBadge(r.profession_type)}</td>
         <td>${badge(r.status)}</td>
         <td>${badge(r.urgency)}</td>
