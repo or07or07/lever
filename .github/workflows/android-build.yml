@@ -1,5 +1,10 @@
 name: Android Build
 
+# Builds debug APKs for both apps on every push to main (and PRs), and publishes
+# them to a rolling "test-latest" GitHub pre-release so they can be installed on a
+# phone from a stable download link. These are DEBUG builds for testing only —
+# the signed .aab for the Play Store is produced by android-release.yml instead.
+
 on:
   push:
     branches: [main]
@@ -12,6 +17,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write   # required to publish the rolling test release
 
 jobs:
   build:
@@ -38,9 +46,6 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - name: Verify Node version
-        run: node --version && which node
-
       - name: Install Node dependencies
         run: npm ci
 
@@ -54,6 +59,29 @@ jobs:
           restore-keys: |
             gradle-${{ runner.os }}-${{ matrix.app }}-
 
+      # A STABLE debug signing key, so each new test APK installs *over* the
+      # previous one on your phone instead of failing with a signature mismatch.
+      # Cached per app; only regenerated if the cache is ever evicted (~7 days
+      # idle), after which you uninstall once. This is a throwaway DEBUG key
+      # (well-known password "android") — it is NOT and must never be the Play
+      # upload/release key, which lives only in secrets (see android-release.yml).
+      - name: Pin debug signing key (cache)
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-debug-keystore-${{ matrix.app }}-v1
+
+      - name: Ensure debug keystore exists
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Sync Capacitor Android project (${{ matrix.app }})
         working-directory: apps/${{ matrix.app }}
         run: npx cap sync android
@@ -65,9 +93,44 @@ jobs:
         working-directory: apps/${{ matrix.app }}/android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Stage APK with a stable name
+        run: |
+          mkdir -p out
+          cp apps/${{ matrix.app }}/android/app/build/outputs/apk/debug/app-debug.apk \
+             out/lever-${{ matrix.app }}-debug.apk
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: lever-${{ matrix.app }}-debug-apk
-          path: apps/${{ matrix.app }}/android/app/build/outputs/apk/debug/app-debug.apk
+          path: out/lever-${{ matrix.app }}-debug.apk
           if-no-files-found: error
+
+  # Publish both APKs to a single rolling pre-release with stable download URLs.
+  # Runs only on push to main (not PRs), after both matrix builds succeed.
+  publish-test-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Download built APKs
+        uses: actions/download-artifact@v4
+        with:
+          path: apks
+
+      - name: Publish/refresh rolling test release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-latest
+          name: "Latest test build (debug APKs)"
+          prerelease: true
+          body: |
+            Auto-built **debug** APKs for on-device UX/UI testing. **Not for production.**
+
+            Rebuilt on every push to `main`; the download links below stay the same.
+
+            - Client app: `lever-client-debug.apk`
+            - Provider app: `lever-provider-debug.apk`
+
+            Built from commit ${{ github.sha }}.
+          files: apks/**/*.apk
