@@ -1776,7 +1776,18 @@ async function api(method, path, body, noAuth=false) {
   const res = await fetch(API+path, {method, headers, body: body ? JSON.stringify(body) : undefined});
   if (res.status === 204) return null;
   const data = await res.json().catch(()=>({detail:'No response body'}));
-  if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+  if (!res.ok) {
+    // FastAPI errors: detail is usually a string, but Pydantic validation
+    // errors return an ARRAY of {loc,msg,type}. Stringifying that array
+    // naively yields "[object Object]" — extract the readable messages.
+    const dt = data && data.detail;
+    let msg;
+    if (Array.isArray(dt)) msg = dt.map(e => (e && e.msg) ? e.msg : JSON.stringify(e)).join('; ');
+    else if (typeof dt === 'string') msg = dt;
+    else if (dt) msg = JSON.stringify(dt);
+    else msg = JSON.stringify(data);
+    throw new Error(msg);
+  }
   return data;
 }
 const get  = (p)       => api('GET',p);
@@ -2564,10 +2575,19 @@ async function submitNewRequest() {
   const budgetMax = document.getElementById('sr-budget').value;
   const profType  = document.getElementById('sr-prof').value;
   const vehicleId = document.getElementById('sr-vehicle')?.value;
+  const title       = document.getElementById('sr-title').value.trim();
+  const description = document.getElementById('sr-desc').value.trim();
+  const location    = document.getElementById('sr-loc').value.trim();
+  const errEl = document.getElementById('sr-err');
+  // Friendly, Spanish-first checks that mirror the backend's minimums, so the
+  // user gets a clear message instead of a raw validation error.
+  if (title.length < 5) { errEl.innerHTML = alert_el('error', _lang==='es' ? 'El título debe tener al menos 5 caracteres.' : 'Title must be at least 5 characters.'); return; }
+  if (description.length < 10) { errEl.innerHTML = alert_el('error', _lang==='es' ? 'La descripción debe tener al menos 10 caracteres.' : 'Description must be at least 10 characters.'); return; }
+  if (location.length < 3) { errEl.innerHTML = alert_el('error', _lang==='es' ? 'Ingresa la dirección o zona del servicio.' : 'Enter the service address or area.'); return; }
   const payload = {
-    title: document.getElementById('sr-title').value.trim(),
-    description: document.getElementById('sr-desc').value.trim(),
-    location: document.getElementById('sr-loc').value.trim(),
+    title: title,
+    description: description,
+    location: location,
     urgency: document.getElementById('sr-urgency').value,
     profession_type: profType,
     // Structured location for the Guayaquil market check. The server re-validates
