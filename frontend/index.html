@@ -2520,6 +2520,12 @@ async function submitNewRequest() {
     location: document.getElementById('sr-loc').value.trim(),
     urgency: document.getElementById('sr-urgency').value,
     profession_type: profType,
+    // Structured location for the Guayaquil market check. The server re-validates
+    // and assigns market_code itself (these fields are stripped before insert).
+    // Without them the request is rejected as ADDRESS_OUTSIDE_GUAYAQUIL.
+    city: _market.city,
+    province: _market.province,
+    country_code: 'EC',
       // NOTE: preferred_mechanic_id removed - backend does not support this field yet.
     ...(budgetMax && {budget_max: parseFloat(budgetMax)}),
     ...(vehicleId && {vehicle_id: parseInt(vehicleId)}),
@@ -2529,7 +2535,9 @@ async function submitNewRequest() {
     closeModal();
     showWaitingForAssignment(req, profType);
   } catch(e) {
-    document.getElementById('sr-err').innerHTML = alert_el('error', e.message);
+    // Surface the market/coverage rejection as friendly copy, not the raw code.
+    const outOfArea = /GUAYAQUIL|MARKET_NOT_ACTIVE|INVALID_LOCATION|SERVICE_NOT_AVAILABLE/i.test(e.message || '');
+    document.getElementById('sr-err').innerHTML = alert_el('error', outOfArea ? _t('guest.outOfArea') : e.message);
   }
 }
 
