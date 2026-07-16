@@ -38,6 +38,10 @@
 --shadow-lg:0 10px 25px rgba(0,0,0,.1),0 4px 10px rgba(0,0,0,.06);
 /* Transitions */
 --ease:cubic-bezier(.4,0,.2,1);--duration:.2s;
+/* Customer app shell tokens (floating bottom nav + home header) */
+--bottom-nav-height:64px;--bottom-nav-gap:12px;
+--content-bottom-pad:calc(var(--bottom-nav-height) + 32px + env(safe-area-inset-bottom,0px));
+--nav-green:#0d9488;--nav-green-soft:#ccfbf1;
 }
 html{-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;color:var(--gray-900);min-height:100vh;-webkit-font-smoothing:antialiased}
@@ -837,12 +841,14 @@ tr:hover td{background:var(--gray-50)}
 .refresh-indicator.visible{display:block}
 
 /* ==== NAVIGATION UPGRADE ==== */
-.bottom-tabs{display:none;position:fixed;bottom:0;left:0;right:0;height:64px;background:#fff;border-top:1px solid var(--gray-200);z-index:100;padding:0;padding-bottom:env(safe-area-inset-bottom,0);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
-.bottom-tabs-inner{display:flex;justify-content:space-around;align-items:center;height:64px;max-width:480px;margin:0 auto}
-.tab-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 0;min-width:56px;border:none;background:none;cursor:pointer;color:var(--gray-400);font-size:.65rem;font-weight:500;transition:all .15s ease;-webkit-tap-highlight-color:transparent;position:relative}
-.tab-item .tab-icon{font-size:1.35rem;line-height:1;transition:transform .15s ease}
-.tab-item.active{color:var(--brand)}
-.tab-item.active .tab-icon{transform:scale(1.1)}
+.bottom-tabs{display:none;position:fixed;bottom:calc(var(--bottom-nav-gap) + env(safe-area-inset-bottom,0px));left:var(--bottom-nav-gap);right:var(--bottom-nav-gap);height:var(--bottom-nav-height);background:#fff;border:1px solid var(--gray-200);border-radius:20px;z-index:100;box-shadow:0 8px 28px rgba(15,23,42,.13),0 2px 6px rgba(15,23,42,.06)}
+.bottom-tabs-inner{display:flex;justify-content:space-around;align-items:stretch;height:var(--bottom-nav-height);max-width:520px;margin:0 auto;padding:0 4px}
+.tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 0;min-height:44px;border:none;background:none;cursor:pointer;color:var(--gray-500);font-size:.66rem;font-weight:600;transition:color .15s ease;-webkit-tap-highlight-color:transparent;position:relative;border-radius:14px}
+.tab-item .tab-icon{font-size:1.3rem;line-height:1;display:flex;transition:transform .15s ease}
+.tab-item.active{color:var(--nav-green)}
+.tab-item.active .tab-icon{transform:translateY(-1px) scale(1.05)}
+.tab-item:focus-visible{outline:2px solid var(--nav-green);outline-offset:-3px}
+.tab-item:active{background:var(--gray-50)}
 .tab-item .tab-dot{display:none;position:absolute;top:4px;right:12px;width:6px;height:6px;background:var(--coral);border-radius:50%}
 .tab-item .tab-dot.visible{display:block}
 .topbar-bell{position:relative;cursor:pointer;font-size:1.15rem;width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:none;color:var(--gray-600);-webkit-tap-highlight-color:transparent}
@@ -853,6 +859,31 @@ tr:hover td{background:var(--gray-50)}
 .topbar-signout{display:inline-flex;align-items:center;justify-content:center;height:38px;padding:0 14px;border:1px solid var(--gray-200);border-radius:10px;background:#fff;color:var(--gray-600);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap}
 .topbar-signout:hover{background:var(--gray-50);color:var(--danger);border-color:var(--danger-light)}
 .topbar-role{color:var(--gray-400);font-size:.8rem;font-weight:600;text-transform:capitalize}
+/* ===== Customer Home: floating header (Lever wordmark + service search) ===== */
+#app-shell.route-home .topbar{display:none}
+#app-shell.route-home .content{padding:0}
+.home-header{position:sticky;top:0;z-index:60;margin:calc(env(safe-area-inset-top,0px) + 10px) auto 4px;padding:16px 16px 14px;background:#fff;border:1px solid var(--gray-200);border-radius:20px;box-shadow:0 6px 22px rgba(15,23,42,.10),0 2px 6px rgba(15,23,42,.05);max-width:600px;width:calc(100% - 24px)}
+.home-wordmark{font-weight:800;font-size:1.4rem;letter-spacing:-.5px;color:var(--gray-900);margin-bottom:12px}
+.home-search{position:relative}
+.home-search-icon{position:absolute;left:14px;top:24px;transform:translateY(-50%);color:var(--gray-400);pointer-events:none;display:flex}
+.home-search input{width:100%;height:48px;padding:0 14px 0 42px;border:1.5px solid var(--gray-200);border-radius:14px;font-size:16px;background:var(--gray-50);color:var(--gray-900);transition:border-color .15s,background .15s}
+.home-search input:focus{outline:none;border-color:var(--nav-green);background:#fff;box-shadow:0 0 0 3px var(--nav-green-soft)}
+.home-suggest{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:70;background:#fff;border:1px solid var(--gray-200);border-radius:14px;box-shadow:var(--shadow-lg);max-height:300px;overflow-y:auto}
+.home-suggest-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:11px 14px;border:none;background:none;font-size:.9rem;color:var(--gray-800);cursor:pointer;border-bottom:1px solid var(--gray-100)}
+.home-suggest-item:hover,.home-suggest-item:focus{background:var(--gray-50);outline:none}
+.home-suggest-viewall{color:var(--nav-green);font-weight:700}
+.home-suggest-empty{padding:12px 14px;font-size:.85rem;color:var(--gray-500)}
+.home-body{padding:14px 16px var(--content-bottom-pad);max-width:600px;margin:0 auto}
+.home-greeting{font-size:1.05rem;font-weight:700;color:var(--gray-900);margin-bottom:6px}
+.home-avail{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;color:var(--nav-green);background:var(--nav-green-soft);border-radius:999px;padding:4px 12px;margin-bottom:16px}
+.home-cta{display:block;width:100%;padding:15px;border:none;border-radius:14px;background:var(--brand);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;min-height:52px;margin-bottom:18px}
+.home-draft{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:14px;border:1px solid var(--accent);background:var(--accent-light);border-radius:14px;color:var(--gray-800);font-size:.9rem;font-weight:600;cursor:pointer;margin-bottom:18px}
+.home-section-title{font-size:.95rem;font-weight:700;color:var(--gray-800);margin:0 0 12px}
+.home-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px}
+.home-cat{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;border:1px solid var(--gray-200);border-radius:14px;background:#fff;cursor:pointer;text-align:center}
+.home-cat:hover{border-color:var(--nav-green);background:var(--gray-50)}
+.home-cat-icon{font-size:1.6rem;line-height:1}
+.home-cat-name{font-size:.72rem;font-weight:600;color:var(--gray-700);line-height:1.2}
 .notif-panel{display:none;position:fixed;top:60px;right:0;width:340px;max-width:calc(100vw - 16px);max-height:60vh;background:#fff;border:1px solid var(--gray-200);border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow-lg);z-index:150;overflow-y:auto}
 .notif-panel.open{display:block}
 .notif-panel-header{padding:14px 16px;font-weight:700;font-size:.9rem;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
@@ -883,11 +914,11 @@ tr:hover td{background:var(--gray-50)}
 .sidebar-footer{margin-top:auto;border-top:1px solid var(--gray-100);padding-top:8px}
 .sidebar-item.logout-item{color:var(--gray-500)}
 .sidebar-item.logout-item:hover{color:var(--danger);background:var(--danger-light)}
-.tab-item::after{content:'';position:absolute;bottom:8px;left:50%;transform:translateX(-50%) scaleX(0);width:20px;height:3px;background:var(--brand);border-radius:2px;transition:transform .2s ease}
+.tab-item::after{content:'';position:absolute;top:5px;left:50%;transform:translateX(-50%) scaleX(0);width:22px;height:3px;background:var(--nav-green);border-radius:2px;transition:transform .2s ease}
 .tab-item.active::after{transform:translateX(-50%) scaleX(1)}
 @media(max-width:768px){
   .bottom-tabs{display:block}
-  .content{padding-bottom:80px!important}
+  .content{padding-bottom:var(--content-bottom-pad)!important}
   .topbar-page-title{display:block}
   .topbar-user{display:none}
   .topbar{padding:0 14px}
@@ -955,6 +986,25 @@ function showToast(message, type='info', duration=4000) {
 var _lang = localStorage.getItem('lever_lang') || 'es';
 
 var _translations = {
+  // -- Customer bottom navigation (4 tabs) --
+  'nav.primary': {es:'Navegación principal', en:'Primary navigation'},
+  'tab.home': {es:'Inicio', en:'Home'},
+  'tab.services': {es:'Servicios', en:'Services'},
+  'tab.activity': {es:'Actividad', en:'Activity'},
+  'tab.account': {es:'Cuenta', en:'Account'},
+  // -- Home section --
+  'home.searchPlaceholder': {es:'¿Qué servicio necesitas?', en:'What service do you need?'},
+  'home.searchLabel': {es:'Buscar un servicio', en:'Search for a service'},
+  'home.greeting': {es:'Hola', en:'Hi'},
+  'home.availability': {es:'Disponible en Guayaquil', en:'Available in Guayaquil'},
+  'home.primaryAction': {es:'Solicitar un servicio', en:'Request a service'},
+  'home.popularCategories': {es:'Categorías populares', en:'Popular categories'},
+  'home.viewAllServices': {es:'Ver todos los servicios', en:'View all services'},
+  'home.continueDraft': {es:'Continuar solicitud sin terminar', en:'Continue unfinished request'},
+  'home.emptyTitle': {es:'Encuentra el servicio que necesitas', en:'Find the service you need'},
+  'home.emptyBody': {es:'Busca un servicio o explora las categorías disponibles en Guayaquil.', en:'Search for a service or explore the categories available in Guayaquil.'},
+  'home.viewAllResults': {es:'Ver todos los resultados', en:'View all results'},
+  'home.searchFailed': {es:'No pudimos buscar servicios en este momento.', en:"We couldn't search for services right now."},
   // -- Navigation --
   'nav.dashboard': {es:'Panel', en:'Dashboard'},
   'nav.requests': {es:'Mis Solicitudes', en:'My Requests'},
@@ -1577,10 +1627,10 @@ function escHtml(s) {
 // ---- Bottom Tab Bar ----
 var BOTTOM_TABS = {
   client: [
-    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label:'Inicio',    hash:'#/'},
-    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Solicitudes',hash:'#/requests'},
-    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label:'Mensajes',  hash:'#/messages'},
-    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>', label:'Perfil',    hash:'#/profile'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label:'tab.home',     hash:'#/'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>', label:'tab.services', hash:'#/services'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M9 12h6"/><path d="M9 16h4"/></svg>', label:'tab.activity', hash:'#/requests'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 10-16 0"/></svg>', label:'tab.account', hash:'#/profile'},
   ],
   mechanic: [
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label:'Inicio',    hash:'#/'},
@@ -1599,18 +1649,37 @@ var BOTTOM_TABS = {
   ],
 };
 
+// Map any (possibly nested) route to the primary customer tab that owns it, so
+// deep pages keep the correct bottom tab highlighted. Non-client roles keep the
+// original exact-match behaviour.
+function activeTabHash(hash, role) {
+  if (role !== 'client') return hash;
+  if (hash === '#/' || hash === '#' || hash === '#/home') return '#/';
+  if (hash === '#/services' || hash.startsWith('#/services/') || hash.startsWith('#/service/') ||
+      hash === '#/request/new' || hash === '#/request/review' || hash === '#/finish-request' ||
+      hash === '#/auth-gate' || hash === '#/otra-ciudad' || hash === '#/cobertura') return '#/services';
+  if (hash === '#/requests' || hash.startsWith('#/request/') || hash.startsWith('#/activity') ||
+      hash === '#/messages' || hash.startsWith('#/chat/')) return '#/requests';
+  if (hash === '#/profile' || hash.startsWith('#/account') || hash === '#/settings' ||
+      hash === '#/vehicles' || hash === '#/map') return '#/profile';
+  return hash;
+}
+
 function buildBottomTabs(role, currentHash) {
   var tabs = BOTTOM_TABS[role];
   if (!tabs) return '';
-  var html = '<div class="bottom-tabs" id="bottom-tabs"><div class="bottom-tabs-inner">';
+  var active = activeTabHash(currentHash, role);
+  var html = '<nav class="bottom-tabs" id="bottom-tabs" aria-label="' + escapeHtml(_t('nav.primary')) + '"><div class="bottom-tabs-inner">';
   tabs.forEach(function(t) {
-    html += '<button class="tab-item ' + (currentHash === t.hash ? 'active' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + t.label + '">';
-    html += '<span class="tab-icon">' + t.icon + '</span>';
-    html += '<span>' + t.label + '</span>';
+    var isActive = active === t.hash;
+    var label = _t(t.label);
+    html += '<button class="tab-item ' + (isActive ? 'active' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + escapeHtml(label) + '"' + (isActive ? ' aria-current="page"' : '') + '>';
+    html += '<span class="tab-icon" aria-hidden="true">' + t.icon + '</span>';
+    html += '<span>' + escapeHtml(label) + '</span>';
     if (t.hash === '#/messages') html += '<span class="tab-dot" id="tab-notif-dot"></span>';
     html += '</button>';
   });
-  html += '</div></div>';
+  html += '</div></nav>';
   return html;
 }
 
@@ -2063,9 +2132,12 @@ async function render() {
 
   const brandIcon = role === 'mechanic' && profession ? profIcon(profession) : '\u{1F42A}';
   const roleLabel = role === 'mechanic' && profession ? profLabel(profession) : role;
+  // Customer Home shows a dedicated floating header (Lever wordmark + search)
+  // instead of the global top bar — see .route-home CSS + renderClientHome.
+  const isCustomerHome = role === 'client' && (hash === '#/' || hash === '#/home');
 
   app.innerHTML = `
-    <div id="app-shell">
+    <div id="app-shell" class="${isCustomerHome ? 'route-home' : ''}">
       <nav class="topbar">
         <div style="display:flex;align-items:center;gap:12px"><div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div><div class="topbar-brand"><svg width="22" height="22" viewBox="0 0 100 100" fill="none" style="display:inline-block;vertical-align:middle"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg><span style="font-weight:800;letter-spacing:-.5px;margin-left:5px">Lever</span><span class="topbar-role">${roleLabel}</span></div></div>
         <div class="topbar-right">
@@ -2228,16 +2300,95 @@ function closeModal() {
 //  CLIENT VIEWS
 // ============================================================
 async function clientView(hash, el) {
-  if (hash==='#/'||hash==='#')       return renderClientDash(el);
-  if (hash==='#/requests')           return renderClientRequests(el);
+  // Legacy routes → new customer sections (safe redirects).
+  const _legacy = {'#/dashboard':'#/', '#/categories':'#/services', '#/history':'#/requests'};
+  if (_legacy[hash]) { route(_legacy[hash]); return; }
+  if (hash==='#/'||hash==='#'||hash==='#/home')  return renderClientHome(el);
+  if (hash==='#/requests'||hash==='#/activity')  return renderClientRequests(el);
+  if (hash.startsWith('#/activity/')) return renderRequestDetail(el, hash.split('/')[2]);
   if (hash.startsWith('#/request/')) return renderRequestDetail(el, hash.split('/')[2]);
   if (hash==='#/messages')           return renderMessages(el, null);
   if (hash.startsWith('#/chat/'))    return renderMessages(el, hash.split('/')[2]);
-  if (hash==='#/profile')            return renderClientProfile(el);
+  if (hash==='#/profile'||hash==='#/account') return renderClientProfile(el);
   if (hash==='#/map')                return renderMapView(el);
   if (hash==='#/vehicles')           return renderVehicles(el);
   if (hash==='#/settings')           return renderSettings(el);
   el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
+}
+
+// ---- Customer Home (floating Lever header + service search + overview) ----
+async function renderClientHome(el) {
+  try { await loadCatalog(); } catch(e) {}
+  const first = (_user && _user.full_name) ? String(_user.full_name).trim().split(' ')[0] : '';
+  const cats = (_catalog && _catalog.categories ? _catalog.categories : []).slice(0, 8);
+  const draft = getGuestDraft();
+  const hasDraft = draft && draft.serviceKey && svcByKey(draft.serviceKey);
+  const searchIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+  el.innerHTML =
+    '<header class="home-header">' +
+      '<div class="home-wordmark">Lever</div>' +
+      '<div class="home-search">' +
+        '<span class="home-search-icon" aria-hidden="true">' + searchIcon + '</span>' +
+        '<input id="home-search-input" type="search" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="home-suggest" ' +
+          'aria-label="' + escapeHtml(_t('home.searchLabel')) + '" placeholder="' + escapeHtml(_t('home.searchPlaceholder')) + '" ' +
+          'oninput="homeSearchInput()" onkeydown="homeSearchKey(event)">' +
+        '<div id="home-suggest" class="home-suggest" role="listbox" hidden></div>' +
+      '</div>' +
+    '</header>' +
+    '<div class="home-body">' +
+      '<div class="home-greeting">' + (first ? escapeHtml(_t('home.greeting') + ', ' + first) : escapeHtml(_t('home.emptyTitle'))) + '</div>' +
+      '<div class="home-avail">📍 ' + escapeHtml(_t('home.availability')) + '</div>' +
+      (hasDraft ? '<button class="home-draft" onclick="route(\'#/finish-request\')">📝 ' + escapeHtml(_t('home.continueDraft')) + '</button>' : '') +
+      '<button class="home-cta" onclick="route(\'#/services\')">' + escapeHtml(_t('home.primaryAction')) + '</button>' +
+      '<div class="home-section-title">' + escapeHtml(_t('home.popularCategories')) + '</div>' +
+      '<div class="home-cats">' +
+        cats.map(function(c){ return '<button class="home-cat" onclick="route(\'#/services/' + c.key + '\')"><span class="home-cat-icon" aria-hidden="true">' + (c.icon || '🔧') + '</span><span class="home-cat-name">' + escapeHtml(catName(c.key)) + '</span></button>'; }).join('') +
+      '</div>' +
+    '</div>';
+}
+
+// Home service search (debounced, accent/synonym-aware via /api/catalog/search)
+let _homeSearchTimer = null, _homeSuggestions = [];
+function homeSearchInput() {
+  clearTimeout(_homeSearchTimer);
+  _homeSearchTimer = setTimeout(runHomeSearch, 300);
+}
+async function runHomeSearch() {
+  const inp = document.getElementById('home-search-input');
+  const box = document.getElementById('home-suggest');
+  if (!inp || !box) return;
+  const q = inp.value.trim();
+  if (q.length < 2) { box.hidden = true; box.innerHTML = ''; inp.setAttribute('aria-expanded', 'false'); return; }
+  try {
+    const results = await api('GET', '/api/catalog/search?q=' + encodeURIComponent(q) + '&lang=' + _lang, undefined, true);
+    _homeSuggestions = Array.isArray(results) ? results : [];
+    let html = _homeSuggestions.length
+      ? _homeSuggestions.slice(0, 7).map(function(s, i) {
+          return '<button type="button" class="home-suggest-item" role="option" onclick="homePickSuggestion(' + i + ')"><span aria-hidden="true">' + (s.icon || '🔧') + '</span><span>' + escapeHtml(svcName(s)) + '</span></button>';
+        }).join('')
+      : '<div class="home-suggest-empty">' + escapeHtml(_t('guest.noSuggestions')) + '</div>';
+    html += '<button type="button" class="home-suggest-item home-suggest-viewall" onclick="homeViewAll()">' + escapeHtml(_t('home.viewAllResults')) + ' →</button>';
+    box.innerHTML = html;
+    box.hidden = false;
+    inp.setAttribute('aria-expanded', 'true');
+  } catch (e) {
+    box.innerHTML = '<div class="home-suggest-empty">' + escapeHtml(_t('home.searchFailed')) + '</div>';
+    box.hidden = false;
+  }
+}
+function homePickSuggestion(i) {
+  const s = _homeSuggestions[i];
+  if (s && s.key) route('#/service/' + s.key);
+}
+function homeViewAll() {
+  const inp = document.getElementById('home-search-input');
+  const q = inp ? inp.value.trim() : '';
+  try { localStorage.setItem('lever_services_q', q); } catch (e) {}
+  route('#/services');
+}
+function homeSearchKey(e) {
+  if (e.key === 'Enter') { e.preventDefault(); homeViewAll(); }
+  else if (e.key === 'Escape') { const b = document.getElementById('home-suggest'); if (b) { b.hidden = true; } }
 }
 
 async function renderClientDash(el) {
@@ -4825,15 +4976,30 @@ async function renderGuestFlowRoute(hash) {
     app.innerHTML = '<div class="gpage"><div class="empty"><div class="empty-icon">📡</div><h3>' + _t('guest.sendFailed').split('.')[1] + '</h3><button class="gbtn-primary" style="max-width:280px;margin:16px auto 0" onclick="render()">' + (_lang==='es'?'Reintentar':'Retry') + '</button></div></div>';
     return;
   }
-  if (hash === '#/services') return renderGuestHome();
-  if (hash.startsWith('#/services/')) return renderGuestCategory(hash.split('/')[2]);
-  if (hash.startsWith('#/service/')) return renderGuestServiceDetail(hash.split('/')[2]);
-  if (hash === '#/request/new') return renderRequestWizard();
-  if (hash === '#/request/review') return renderGuestReview();
-  if (hash === '#/auth-gate') return renderAuthGate2();
-  if (hash === '#/finish-request') return renderFinishRequest();
-  if (hash === '#/otra-ciudad' || hash === '#/cobertura') return renderCityInterest();
-  renderGuestHome();
+  if (hash === '#/services') renderGuestHome();
+  else if (hash.startsWith('#/services/')) renderGuestCategory(hash.split('/')[2]);
+  else if (hash.startsWith('#/service/')) renderGuestServiceDetail(hash.split('/')[2]);
+  else if (hash === '#/request/new') renderRequestWizard();
+  else if (hash === '#/request/review') renderGuestReview();
+  else if (hash === '#/auth-gate') renderAuthGate2();
+  else if (hash === '#/finish-request') renderFinishRequest();
+  else if (hash === '#/otra-ciudad' || hash === '#/cobertura') renderCityInterest();
+  else renderGuestHome();
+  // Keep the customer bottom nav on Services *browsing* screens; it stays hidden
+  // during the full-screen request-submission workflow (spec §2, §11).
+  ensureGuestBottomNav(hash);
+}
+
+// Adds the customer bottom navigation to the guest/catalog layout for an
+// authenticated customer while browsing Services, so the nav persists there.
+function ensureGuestBottomNav(hash) {
+  var existing = document.getElementById('bottom-tabs');
+  if (existing) existing.remove();
+  if (!_token || (_user && _user.role !== 'client')) return;
+  var browse = hash === '#/services' || hash.startsWith('#/services/') || hash.startsWith('#/service/');
+  if (!browse) return;
+  var app = document.getElementById('app');
+  if (app) app.insertAdjacentHTML('beforeend', buildBottomTabs('client', hash));
 }
 
 // ---- Future-city interest / coverage (out-of-area experience) ----
