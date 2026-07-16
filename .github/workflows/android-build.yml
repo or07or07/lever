@@ -112,25 +112,30 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download built APKs
         uses: actions/download-artifact@v4
         with:
           path: apks
 
-      - name: Publish/refresh rolling test release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: test-latest
-          name: "Latest test build (debug APKs)"
-          prerelease: true
-          body: |
-            Auto-built **debug** APKs for on-device UX/UI testing. **Not for production.**
-
-            Rebuilt on every push to `main`; the download links below stay the same.
-
-            - Client app: `lever-client-debug.apk`
-            - Provider app: `lever-provider-debug.apk`
-
-            Built from commit ${{ github.sha }}.
-          files: apks/**/*.apk
+      # Delete + recreate the rolling pre-release with the gh CLI. This is
+      # idempotent (no update-in-place race like the marketplace action had)
+      # and keeps the download URLs stable because the tag + asset names are
+      # unchanged: .../releases/download/test-latest/lever-<app>-debug.apk
+      - name: Publish rolling test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          gh release delete test-latest --yes 2>/dev/null || true
+          git push --delete origin test-latest 2>/dev/null || true
+          gh release create test-latest \
+            --prerelease \
+            --title "Latest test build (debug APKs)" \
+            --notes "Auto-built debug APKs for on-device testing. Not for production. Rebuilt on every push to main; download links stay the same. Built from commit ${{ github.sha }}." \
+            $(find apks -name '*.apk')
