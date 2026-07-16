@@ -2296,7 +2296,12 @@ async function showNewRequest() {
     </div>
     <div class="form-group"><label>${_t('newreq.briefTitle')}</label><input id="sr-title" placeholder="${_t('newreq.briefPlaceholder')}"></div>
     <div class="form-group"><label>${_t('newreq.description')}</label><textarea id="sr-desc" placeholder="${_t('newreq.descPlaceholder')}"></textarea></div>
-    <div class="form-group"><label>${_t('newreq.location')}</label><input id="sr-loc" placeholder="${_t('newreq.locPlaceholder')}"></div>
+    <div class="form-group"><label>${_t('newreq.location')}</label>
+      <div class="gf-addr-wrap">
+        <input id="sr-loc" placeholder="${_t('guest.addressPlaceholder')}" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="sr-loc-suggest">
+        <div id="sr-loc-suggest" class="gf-suggest" role="listbox" hidden></div>
+      </div>
+    </div>
     <div class="form-group"><label>${_t('veh.selectVehicle')}</label><select id="sr-vehicle"><option value="">${_t('veh.noneSelected')}</option></select></div>
     <div class="form-row">
       <div class="form-group"><label>${_t('newreq.urgency')}</label>
@@ -2315,6 +2320,9 @@ async function showNewRequest() {
     `<button class="btn btn-primary btn-full" onclick="submitNewRequest()">${_t('newreq.submit')}</button>`);
   onProfessionChange();
   loadVehiclesForSelection();
+  // Address autofill: type a street, pick a Guayaquil match; captures coordinates.
+  _srCoords = null;
+  attachAddressAutosuggest('sr-loc', 'sr-loc-suggest', function(label, lat, lng) { _srCoords = { lat: lat, lng: lng }; });
 }
 
 async function loadVehiclesForSelection() {
@@ -2510,6 +2518,48 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// ---- Reusable Photon address autosuggest (shared by the classic form) ----
+// Wires an <input> + a suggestion <div> (both must already be in the DOM).
+// onPick(label, lat, lng) fires when a match is chosen. Backend-proxied via
+// /api/search/address-search so the CSP (connect-src 'self') is respected.
+let _srCoords = null;
+let _addrSuggestTimer = null;
+function attachAddressAutosuggest(inputId, boxId, onPick) {
+  const inp = document.getElementById(inputId);
+  const box = document.getElementById(boxId);
+  if (!inp || !box) return;
+  box.__addr = { items: [], inp: inp, onPick: onPick };
+  inp.addEventListener('input', function() {
+    clearTimeout(_addrSuggestTimer);
+    _addrSuggestTimer = setTimeout(function() { _runAddrSuggest(inp, box); }, 450);
+  });
+}
+async function _runAddrSuggest(inp, box) {
+  const q = inp.value.trim();
+  if (q.length < 3) { box.hidden = true; box.innerHTML = ''; return; }
+  try {
+    const results = await api('GET', '/api/search/address-search?q=' + encodeURIComponent(q));
+    box.__addr.items = Array.isArray(results) ? results : [];
+    if (!box.__addr.items.length) {
+      box.innerHTML = '<div class="gf-suggest-empty">' + _t('guest.noSuggestions') + '</div>';
+    } else {
+      box.innerHTML = box.__addr.items.map(function(s, i) {
+        return '<button type="button" class="gf-suggest-item" role="option" onclick="_pickAddrSuggest(\'' + box.id + '\',' + i + ')">📍 ' + escapeHtml(s.label) + '</button>';
+      }).join('');
+    }
+    box.hidden = false;
+  } catch(e) { box.hidden = true; box.innerHTML = ''; }
+}
+function _pickAddrSuggest(boxId, i) {
+  const box = document.getElementById(boxId);
+  if (!box || !box.__addr) return;
+  const s = box.__addr.items[i];
+  if (!s) return;
+  box.__addr.inp.value = s.label;
+  box.hidden = true; box.innerHTML = '';
+  if (box.__addr.onPick) box.__addr.onPick(s.label, s.latitude, s.longitude);
+}
+
 async function submitNewRequest() {
   const budgetMax = document.getElementById('sr-budget').value;
   const profType  = document.getElementById('sr-prof').value;
@@ -2526,6 +2576,9 @@ async function submitNewRequest() {
     city: _market.city,
     province: _market.province,
     country_code: 'EC',
+    // Exact coordinates when the client picked an address suggestion (server
+    // validates these against the Guayaquil service area; coords beat city).
+    ...(_srCoords ? {latitude: _srCoords.lat, longitude: _srCoords.lng} : {}),
       // NOTE: preferred_mechanic_id removed - backend does not support this field yet.
     ...(budgetMax && {budget_max: parseFloat(budgetMax)}),
     ...(vehicleId && {vehicle_id: parseInt(vehicleId)}),
