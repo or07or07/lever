@@ -132,10 +132,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -e
-          gh release delete test-latest --yes 2>/dev/null || true
-          git push --delete origin test-latest 2>/dev/null || true
-          gh release create test-latest \
-            --prerelease \
-            --title "Latest test build (debug APKs)" \
-            --notes "Auto-built debug APKs for on-device testing. Not for production. Rebuilt on every push to main; download links stay the same. Built from commit ${{ github.sha }}." \
-            $(find apks -name '*.apk')
+          files=$(find apks -name '*.apk')
+          echo "APKs to publish:"; echo "$files"
+          if gh release view test-latest >/dev/null 2>&1; then
+            # Release exists — just overwrite the APK assets (stable URLs, no
+            # fragile delete/recreate). --clobber replaces same-named assets.
+            gh release upload test-latest $files --clobber
+          else
+            gh release create test-latest \
+              --prerelease \
+              --title "Latest test build (debug APKs)" \
+              --notes "Auto-built debug APKs for on-device testing. Not for production. Rebuilt on every push to main; download links stay the same." \
+              $files
+          fi
