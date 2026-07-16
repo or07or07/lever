@@ -544,6 +544,16 @@ class ReviewCreate(BaseModel):
     comment: Optional[str] = Field(default="", max_length=2000)
 
 
+class CustomerRatingCreate(BaseModel):
+    """Professional → customer rating. Only `rating` is required (no comment)."""
+    rating: int = Field(ge=1, le=5)
+    comment: Optional[str] = Field(default="", max_length=1000)
+    communication: Optional[int] = Field(default=None, ge=1, le=5)
+    punctuality: Optional[int] = Field(default=None, ge=1, le=5)
+    respect: Optional[int] = Field(default=None, ge=1, le=5)
+    request_accuracy: Optional[int] = Field(default=None, ge=1, le=5)
+
+
 class ReviewOut(BaseModel):
     id: int
     job_id: int

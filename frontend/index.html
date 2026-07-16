@@ -66,7 +66,7 @@ input,textarea,select{font-family:inherit}
 .bg-accent-light{background:var(--accent-light)}
 /* ---- Layout ---- */
 #app{display:flex;flex-direction:column;min-height:100vh}
-.topbar{background:#fff;color:var(--gray-900);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-200);position:sticky;top:0;z-index:100}
+.topbar{background:#fff;color:var(--gray-900);padding:env(safe-area-inset-top,0px) 24px 0;min-height:calc(60px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-200);position:sticky;top:0;z-index:100}
 .topbar-brand{font-weight:700;font-size:1.2rem;letter-spacing:-.5px}
 .topbar-brand span{color:var(--gray-500);font-size:.85rem;margin-left:6px}
 .topbar-right{display:flex;align-items:center;gap:12px}
@@ -210,7 +210,7 @@ tr:hover td{background:var(--gray-50)}
 .badge-prof-events{background:#ffe4e6;color:#9f1239}
 .badge-prof-business_support{background:#e0f2fe;color:#0c4a6e}
 /* ── Guest flow / service catalog (Phase 2) ── */
-.gpage{max-width:640px;margin:0 auto;padding:16px 16px 96px;min-height:100vh;background:#fff}
+.gpage{max-width:640px;margin:0 auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 96px;min-height:100vh;background:#fff}
 .ghead{display:flex;align-items:center;gap:10px;padding:8px 0 16px}
 .ghead .gback{border:none;background:var(--gray-100);border-radius:10px;width:38px;height:38px;font-size:1.1rem;cursor:pointer;flex-shrink:0}
 .ghead .gtitle{font-weight:800;font-size:1.05rem;flex:1;letter-spacing:-.3px}
@@ -884,7 +884,39 @@ tr:hover td{background:var(--gray-50)}
 .home-cat:hover{border-color:var(--nav-green);background:var(--gray-50)}
 .home-cat-icon{font-size:1.6rem;line-height:1}
 .home-cat-name{font-size:.72rem;font-weight:600;color:var(--gray-700);line-height:1.2}
-.notif-panel{display:none;position:fixed;top:60px;right:0;width:340px;max-width:calc(100vw - 16px);max-height:60vh;background:#fff;border:1px solid var(--gray-200);border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow-lg);z-index:150;overflow-y:auto}
+/* ===== Account: identity + reputation + grouped rows ===== */
+.acct-wrap{max-width:600px;margin:0 auto}
+.acct-identity{display:flex;align-items:flex-start;gap:14px;padding:18px;background:#fff;border:1px solid var(--gray-200);border-radius:16px;margin-bottom:18px}
+.acct-avatar{width:60px;height:60px;border-radius:50%;background:var(--brand-light);color:var(--brand);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;flex-shrink:0;overflow:hidden}
+.acct-avatar img{width:100%;height:100%;object-fit:cover}
+.acct-identity-info{flex:1;min-width:0}
+.acct-name{font-size:1.35rem;font-weight:800;color:var(--gray-900);line-height:1.2;letter-spacing:-.3px;word-break:break-word;margin:0}
+.acct-rating{display:inline-flex;align-items:center;gap:6px;margin-top:5px;font-size:.9rem;color:var(--gray-700)}
+.acct-rating .star{color:#f59e0b;font-size:1rem}
+.acct-rating-none{margin-top:5px;font-size:.82rem;color:var(--gray-500);line-height:1.4}
+.acct-meta{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.acct-chip{font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--gray-100);color:var(--gray-600)}
+.acct-chip.verified{background:var(--nav-green-soft);color:var(--nav-green)}
+.acct-edit{flex-shrink:0;padding:7px 12px;border:1px solid var(--gray-200);border-radius:10px;background:#fff;color:var(--brand);font-size:.8rem;font-weight:600;cursor:pointer}
+.acct-group{margin-bottom:16px}
+.acct-group-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);margin:0 4px 8px}
+.acct-rows{background:#fff;border:1px solid var(--gray-200);border-radius:14px;overflow:hidden}
+.acct-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px 16px;border:none;background:none;cursor:pointer;font-size:.92rem;color:var(--gray-800);border-bottom:1px solid var(--gray-100);min-height:52px}
+.acct-row:last-child{border-bottom:none}
+.acct-row:hover{background:var(--gray-50)}
+.acct-row:focus-visible{outline:2px solid var(--nav-green);outline-offset:-2px}
+.acct-row-icon{color:var(--gray-400);display:flex;flex-shrink:0}
+.acct-row-label{flex:1}
+.acct-row-chev{color:var(--gray-300);flex-shrink:0}
+.acct-row.danger{color:var(--danger)}
+.acct-row.danger .acct-row-icon{color:var(--danger)}
+.rep-big{font-size:2.6rem;font-weight:800;color:var(--gray-900);line-height:1}
+.rep-dist-row{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:.78rem;color:var(--gray-600)}
+.rep-dist-row .rep-dist-star{width:44px;flex-shrink:0}
+.rep-dist-bar{flex:1;height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.rep-dist-fill{height:100%;background:#f59e0b;border-radius:4px}
+.rep-guide li{margin:6px 0;font-size:.86rem;color:var(--gray-700);line-height:1.4}
+.notif-panel{display:none;position:fixed;top:calc(60px + env(safe-area-inset-top,0px));right:0;width:340px;max-width:calc(100vw - 16px);max-height:60vh;background:#fff;border:1px solid var(--gray-200);border-radius:0 0 var(--radius-lg) var(--radius-lg);box-shadow:var(--shadow-lg);z-index:150;overflow-y:auto}
 .notif-panel.open{display:block}
 .notif-panel-header{padding:14px 16px;font-weight:700;font-size:.9rem;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1}
 .notif-panel-header button{font-size:.75rem;color:var(--brand);background:none;border:none;cursor:pointer;font-weight:600}
@@ -921,7 +953,7 @@ tr:hover td{background:var(--gray-50)}
   .content{padding-bottom:var(--content-bottom-pad)!important}
   .topbar-page-title{display:block}
   .topbar-user{display:none}
-  .topbar{padding:0 14px}
+  .topbar{padding:env(safe-area-inset-top,0px) 14px 0}
   .topbar-role{display:none}
   .topbar-signout{display:none}
   .sidebar-item.active{border-left-width:3px}
@@ -1005,6 +1037,50 @@ var _translations = {
   'home.emptyBody': {es:'Busca un servicio o explora las categorías disponibles en Guayaquil.', en:'Search for a service or explore the categories available in Guayaquil.'},
   'home.viewAllResults': {es:'Ver todos los resultados', en:'View all results'},
   'home.searchFailed': {es:'No pudimos buscar servicios en este momento.', en:"We couldn't search for services right now."},
+  // -- Account (Cuenta) --
+  'acct.edit': {es:'Editar', en:'Edit'},
+  'acct.back': {es:'Volver', en:'Back'},
+  'acct.clientLabel': {es:'Cliente', en:'Customer'},
+  'acct.verified': {es:'verificado', en:'verified'},
+  'acct.ratingsWord': {es:'calificaciones', en:'ratings'},
+  'acct.noRatingShort': {es:'Aún no tienes calificaciones de profesionales', en:'No professional ratings yet'},
+  'acct.noRatingTitle': {es:'Aún no tienes calificaciones', en:"You don't have ratings yet"},
+  'acct.noRatingBody': {es:'Los profesionales podrán calificar tu experiencia como cliente después de completar un servicio.', en:'Professionals will be able to rate your experience as a customer after completing a service.'},
+  'acct.grpAccount': {es:'Tu cuenta', en:'Your account'},
+  'acct.grpReputation': {es:'Reputación y actividad', en:'Reputation & activity'},
+  'acct.grpSecurity': {es:'Seguridad y privacidad', en:'Security & privacy'},
+  'acct.grpHelp': {es:'Ayuda e información', en:'Help & information'},
+  'acct.grpManage': {es:'Administración de cuenta', en:'Account management'},
+  'acct.personalInfo': {es:'Información personal', en:'Personal information'},
+  'acct.vehicles': {es:'Mis vehículos', en:'My vehicles'},
+  'acct.myReputation': {es:'Mi reputación', en:'My reputation'},
+  'acct.myActivity': {es:'Mis solicitudes', en:'My requests'},
+  'acct.settingsSecurity': {es:'Ajustes y seguridad', en:'Settings & security'},
+  'acct.help': {es:'Centro de ayuda', en:'Help center'},
+  'acct.terms': {es:'Términos', en:'Terms'},
+  'acct.privacy': {es:'Política de privacidad', en:'Privacy policy'},
+  'acct.deleteAccount': {es:'Eliminar cuenta', en:'Delete account'},
+  'acct.repError': {es:'No pudimos cargar tu calificación en este momento.', en:"We couldn't load your rating right now."},
+  'acct.repFromPros': {es:'Basada en {n} calificaciones de profesionales', en:'Based on {n} professional ratings'},
+  'acct.repDistribution': {es:'Distribución de calificaciones', en:'Rating distribution'},
+  'acct.repGuideTitle': {es:'Cómo mantener una buena calificación', en:'How to keep a good rating'},
+  'acct.repGuide_g1': {es:'Describe el servicio con claridad.', en:'Describe the service clearly.'},
+  'acct.repGuide_g2': {es:'Mantén la dirección y las instrucciones actualizadas.', en:'Keep your address and instructions up to date.'},
+  'acct.repGuide_g3': {es:'Está disponible a la hora acordada.', en:'Be available at the agreed time.'},
+  'acct.repGuide_g4': {es:'Comunícate con respeto.', en:'Communicate respectfully.'},
+  'acct.repGuide_g5': {es:'Aprueba cambios únicamente cuando estés de acuerdo.', en:'Approve changes only when you agree.'},
+  'acct.repGuide_g6': {es:'Completa el pago según las condiciones del servicio.', en:'Complete payment per the service terms.'},
+  'misc.retry': {es:'Reintentar', en:'Retry'},
+  // -- Provider rates customer --
+  'jdet.rateCustomer': {es:'Calificar cliente', en:'Rate customer'},
+  'rateCust.desc': {es:'Califica tu experiencia con este cliente. Solo la calificación es obligatoria.', en:'Rate your experience with this customer. Only the rating is required.'},
+  'rateCust.commentLabel': {es:'Comentario (opcional)', en:'Comment (optional)'},
+  'rateCust.commentPh': {es:'Escribe un comentario…', en:'Write a comment…'},
+  'rateCust.submit': {es:'Enviar calificación', en:'Submit rating'},
+  'rateCust.pickStar': {es:'Selecciona una calificación.', en:'Please select a rating.'},
+  'rateCust.thanks': {es:'¡Gracias por tu calificación!', en:'Thanks for your rating!'},
+  'rateCust.already': {es:'Ya calificaste a este cliente para este servicio.', en:'You already rated this customer for this job.'},
+  'rateCust.notEligible': {es:'Este servicio aún no puede calificarse.', en:'This job cannot be rated yet.'},
   // -- Navigation --
   'nav.dashboard': {es:'Panel', en:'Dashboard'},
   'nav.requests': {es:'Mis Solicitudes', en:'My Requests'},
@@ -2309,6 +2385,8 @@ async function clientView(hash, el) {
   if (hash.startsWith('#/request/')) return renderRequestDetail(el, hash.split('/')[2]);
   if (hash==='#/messages')           return renderMessages(el, null);
   if (hash.startsWith('#/chat/'))    return renderMessages(el, hash.split('/')[2]);
+  if (hash==='#/account/personal'||hash==='#/profile/edit') return renderProfileEdit(el);
+  if (hash==='#/account/reputation') return renderReputation(el);
   if (hash==='#/profile'||hash==='#/account') return renderClientProfile(el);
   if (hash==='#/map')                return renderMapView(el);
   if (hash==='#/vehicles')           return renderVehicles(el);
@@ -3405,17 +3483,124 @@ async function deleteVehicleConfirm(id) {
   catch(e) { alert(e.message); }
 }
 
+// ---- Account root: customer identity + reputation + grouped sections ----
 async function renderClientProfile(el) {
+  el.innerHTML = pageHeader(_t('tab.account')) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">⏳</div></div></div>';
+  let profile = {}, rep = null;
+  try { profile = await get('/api/client/profile'); } catch(e) {}
+  try { rep = await get('/api/client/reputation'); } catch(e) {}   // optional — never blocks Account
+  const name = (profile.full_name && profile.full_name.trim()) || (_user && _user.email ? _user.email.split('@')[0] : 'Usuario');
+  const initials = name.trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+  const avatar = profile.avatar_url
+    ? '<img src="' + escapeHtml(profile.avatar_url) + '" alt="' + escapeHtml(name) + '">'
+    : escapeHtml(initials);
+  const verified = !!(_user && _user.email_verified);
+  const chip = '<span class="acct-chip verified">' + (verified ? '✓ ' : '') + escapeHtml(_t('acct.clientLabel')) + (verified ? ' · ' + escapeHtml(_t('acct.verified')) : '') + '</span>';
+
+  function row(label, onclick, opts){
+    opts = opts || {};
+    return '<button class="acct-row' + (opts.danger?' danger':'') + '" onclick="' + onclick + '">' +
+      '<span class="acct-row-label">' + escapeHtml(label) + '</span>' +
+      '<span class="acct-row-chev" aria-hidden="true">›</span></button>';
+  }
+  function group(title, rowsHtml){
+    return '<div class="acct-group"><div class="acct-group-title">' + escapeHtml(title) + '</div><div class="acct-rows">' + rowsHtml + '</div></div>';
+  }
+
+  el.innerHTML = pageHeader(_t('tab.account')) +
+    '<div class="acct-wrap">' +
+      '<section class="acct-identity">' +
+        '<div class="acct-avatar">' + avatar + '</div>' +
+        '<div class="acct-identity-info">' +
+          '<h1 class="acct-name">' + escapeHtml(name) + '</h1>' +
+          ratingBlock(rep) +
+          '<div class="acct-meta">' + chip + '</div>' +
+        '</div>' +
+        '<button class="acct-edit" onclick="route(\'#/account/personal\')">' + escapeHtml(_t('acct.edit')) + '</button>' +
+      '</section>' +
+      group(_t('acct.grpAccount'),
+        row(_t('acct.personalInfo'), "route('#/account/personal')") +
+        row(_t('acct.vehicles'), "route('#/vehicles')")) +
+      group(_t('acct.grpReputation'),
+        row(_t('acct.myReputation'), "route('#/account/reputation')") +
+        row(_t('acct.myActivity'), "route('#/requests')")) +
+      group(_t('acct.grpSecurity'),
+        row(_t('acct.settingsSecurity'), "route('#/settings')")) +
+      group(_t('acct.grpHelp'),
+        row(_t('acct.help'), "openExternal('/support')") +
+        row(_t('acct.terms'), "openExternal('/terms')") +
+        row(_t('acct.privacy'), "openExternal('/privacy')")) +
+      group(_t('acct.grpManage'),
+        row(_t('nav.logout'), "logout()") +
+        row(_t('acct.deleteAccount'), "route('#/settings')", {danger:true})) +
+    '</div>';
+}
+
+// Accessible rating block (states the number + count in text, not stars alone).
+function ratingBlock(rep) {
+  if (rep && rep.rating_count > 0 && rep.average_rating != null) {
+    var val = Number(rep.average_rating).toFixed(1);
+    var label = _lang==='es'
+      ? 'Calificación como cliente: ' + val + ' de 5, basada en ' + rep.rating_count + ' calificaciones de profesionales.'
+      : 'Customer rating: ' + val + ' of 5, based on ' + rep.rating_count + ' professional ratings.';
+    return '<div class="acct-rating" role="img" aria-label="' + escapeHtml(label) + '">' +
+      '<span class="star" aria-hidden="true">★</span> <strong>' + val + '</strong> · ' +
+      rep.rating_count + ' ' + escapeHtml(_t('acct.ratingsWord')) + '</div>';
+  }
+  return '<div class="acct-rating-none">' + escapeHtml(_t('acct.noRatingShort')) + '</div>';
+}
+
+function openExternal(path) {
+  try { window.open((typeof API!=='undefined' && API ? API : '') + path, '_blank'); }
+  catch(e) { location.href = path; }
+}
+
+// Personal information (the former Account edit form)
+async function renderProfileEdit(el) {
   const profile = await get('/api/client/profile');
-  el.innerHTML = `
-    ${pageHeader(_t('profile.title'))}
-    <div class="card" style="max-width:500px">
-      <div class="form-group"><label>${_t('profile.fullName')}</label><input id="cp-name" value="${escapeHtml(profile.full_name||'')}"></div>
-      <div class="form-group"><label>${_t('profile.phone')}</label><input id="cp-phone" value="${escapeHtml(profile.phone||'')}"></div>
-      <div class="form-group"><label>${_t('profile.address')}</label><input id="cp-address" value="${escapeHtml(profile.address||'')}"></div>
-      <div id="cp-msg"></div>
-      <button class="btn btn-primary" onclick="saveClientProfile()">${_t('profile.save')}</button>
-    </div>`;
+  el.innerHTML =
+    pageHeader(_t('acct.personalInfo'), '<button class="btn btn-outline" onclick="route(\'#/account\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>') +
+    '<div class="card" style="max-width:500px">' +
+      '<div class="form-group"><label>' + _t('profile.fullName') + '</label><input id="cp-name" value="' + escapeHtml(profile.full_name||'') + '"></div>' +
+      '<div class="form-group"><label>' + _t('profile.phone') + '</label><input id="cp-phone" value="' + escapeHtml(profile.phone||'') + '"></div>' +
+      '<div class="form-group"><label>' + _t('profile.address') + '</label><input id="cp-address" value="' + escapeHtml(profile.address||'') + '"></div>' +
+      '<div id="cp-msg"></div>' +
+      '<button class="btn btn-primary" onclick="saveClientProfile()">' + _t('profile.save') + '</button>' +
+    '</div>';
+}
+
+// Reputation detail (#/account/reputation)
+async function renderReputation(el) {
+  const back = '<button class="btn btn-outline" onclick="route(\'#/account\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>';
+  el.innerHTML = pageHeader(_t('acct.myReputation'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">⏳</div></div></div>';
+  let rep = null;
+  try { rep = await get('/api/client/reputation'); }
+  catch(e) {
+    el.innerHTML = pageHeader(_t('acct.myReputation'), back) + '<div class="acct-wrap">' + alert_el('error', _t('acct.repError')) +
+      '<button class="btn btn-outline" style="margin-top:10px" onclick="renderReputation(document.getElementById(\'content\'))">' + _t('misc.retry') + '</button></div>';
+    return;
+  }
+  let body;
+  if (!rep || rep.rating_count === 0) {
+    body = '<div class="card"><div class="empty"><div class="empty-icon">⭐</div><h3>' + escapeHtml(_t('acct.noRatingTitle')) + '</h3><p style="color:var(--gray-500);font-size:.88rem;max-width:340px;margin:6px auto 0">' + escapeHtml(_t('acct.noRatingBody')) + '</p></div></div>';
+  } else {
+    const val = Number(rep.average_rating).toFixed(1);
+    const dist = rep.distribution || {};
+    const maxCount = Math.max(1, [5,4,3,2,1].reduce(function(m,s){return Math.max(m, dist[String(s)]||0);}, 0));
+    const distHtml = [5,4,3,2,1].map(function(s){
+      const c = dist[String(s)]||0;
+      const pct = Math.round((c/maxCount)*100);
+      return '<div class="rep-dist-row"><span class="rep-dist-star">' + s + ' ★</span><span class="rep-dist-bar"><span class="rep-dist-fill" style="width:' + pct + '%"></span></span><span>' + c + '</span></div>';
+    }).join('');
+    body = '<div class="card" style="text-align:center;margin-bottom:16px">' +
+        '<div class="rep-big">' + val + '</div>' +
+        '<div style="color:var(--gray-600);font-size:.88rem;margin-top:6px">' + escapeHtml(_t('acct.repFromPros').replace('{n}', rep.rating_count)) + '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-bottom:16px"><div class="card-title" style="margin-bottom:10px">' + escapeHtml(_t('acct.repDistribution')) + '</div>' + distHtml + '</div>';
+  }
+  const guide = '<div class="card"><div class="card-title" style="margin-bottom:10px">' + escapeHtml(_t('acct.repGuideTitle')) + '</div><ul class="rep-guide" style="padding-left:18px;margin:0">' +
+    ['g1','g2','g3','g4','g5','g6'].map(function(k){return '<li>' + escapeHtml(_t('acct.repGuide_'+k)) + '</li>';}).join('') + '</ul></div>';
+  el.innerHTML = pageHeader(_t('acct.myReputation'), back) + '<div class="acct-wrap">' + body + guide + '</div>';
 }
 
 async function saveClientProfile() {
@@ -3813,10 +3998,48 @@ async function renderJobDetail(el, id) {
     </div>`:``}
     ${renderProviderTrackingControls(job.id, job.status)}
     ${job.status==='completed'?`<div class="card" style="text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-success" onclick="showRateCustomerModal(${job.id})">${_t('jdet.rateCustomer')}</button>
       <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
       <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
       <button class="btn btn-ghost" onclick="showReportModal('user',${job.request.client_id})">${_t('report.userBtn')}</button>
     </div>`:''}`;
+}
+
+// ---- Provider → customer rating (after a completed job) ----
+let _rateCustStars = 0;
+function showRateCustomerModal(jobId) {
+  _rateCustStars = 0;
+  showModal(_t('jdet.rateCustomer'),
+    '<p style="color:var(--gray-600);font-size:.88rem;margin-bottom:12px">' + escapeHtml(_t('rateCust.desc')) + '</p>' +
+    '<div id="rc-stars" role="radiogroup" aria-label="' + escapeHtml(_t('jdet.rateCustomer')) + '" style="display:flex;gap:10px;justify-content:center;font-size:2.2rem;margin-bottom:14px">' +
+      [1,2,3,4,5].map(function(n){return '<span class="rc-star" role="radio" aria-checked="false" aria-label="' + n + '" tabindex="0" data-n="' + n + '" onclick="setRateCustStars(' + n + ')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();setRateCustStars(' + n + ')}" style="cursor:pointer;color:var(--gray-300)">★</span>';}).join('') +
+    '</div>' +
+    '<div class="form-group"><label>' + escapeHtml(_t('rateCust.commentLabel')) + '</label><textarea id="rc-comment" placeholder="' + escapeHtml(_t('rateCust.commentPh')) + '"></textarea></div>' +
+    '<div id="rc-err"></div>',
+    '<button class="btn btn-primary btn-full" onclick="submitRateCustomer(' + jobId + ')">' + escapeHtml(_t('rateCust.submit')) + '</button>');
+}
+function setRateCustStars(n) {
+  _rateCustStars = n;
+  document.querySelectorAll('#rc-stars .rc-star').forEach(function(s){
+    var on = parseInt(s.dataset.n, 10) <= n;
+    s.style.color = on ? '#f59e0b' : 'var(--gray-300)';
+    s.setAttribute('aria-checked', parseInt(s.dataset.n, 10) === n ? 'true' : 'false');
+  });
+}
+async function submitRateCustomer(jobId) {
+  if (!_rateCustStars) { document.getElementById('rc-err').innerHTML = alert_el('error', _t('rateCust.pickStar')); return; }
+  var comment = (document.getElementById('rc-comment') || {}).value || '';
+  try {
+    await post('/api/provider/jobs/' + jobId + '/rate-customer', {rating: _rateCustStars, comment: comment.trim()});
+    closeModal();
+    showToast(_t('rateCust.thanks'), 'success');
+    render();
+  } catch(e) {
+    var m = e.message || '';
+    var msg = /ALREADY_EXISTS/.test(m) ? _t('rateCust.already')
+      : (/NOT_ELIGIBLE|NOT_ASSIGNED/.test(m) ? _t('rateCust.notEligible') : m);
+    document.getElementById('rc-err').innerHTML = alert_el('error', msg);
+  }
 }
 
 async function updateJobStatus(jobId, status) {

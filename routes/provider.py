@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import require_provider
 from database import get_db
-from models import Job, MechanicProfile, Notification, ProviderService, ServiceRequest, User
+from models import ClientProfile, CustomerRating, Job, MechanicProfile, Notification, ProviderService, ServiceRequest, User
 from professions import DEFAULT_PROFESSION, get_job_statuses
 from routes.moderation import blocked_user_ids_involving, is_blocked_pair
 from schemas import (
@@ -24,6 +24,7 @@ from schemas import (
     MechanicProfileOut,
     MechanicProfileUpdate,
     MessageResponse,
+    CustomerRatingCreate,
     ProviderServiceOut,
     ProviderServiceToggle,
     ProviderServicesUpdate,
@@ -602,3 +603,74 @@ def my_reviews(
         .order_by(Review.created_at.desc())
         .all()
     )
+
+
+# ---------------------------------------------------------------------------
+# Rate a customer (professional → customer) after a completed job
+# ---------------------------------------------------------------------------
+
+@router.post("/jobs/{job_id}/rate-customer", status_code=status.HTTP_201_CREATED)
+def rate_customer(
+    job_id: int,
+    payload: CustomerRatingCreate,
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """The assigned professional rates the customer after a completed job.
+
+    Authorization/eligibility is enforced entirely server-side:
+      - only the professional assigned to the job may rate its customer,
+      - only completed jobs are eligible (guest drafts / cancelled excluded),
+      - exactly one rating per job (duplicate submissions rejected).
+    The customer can never edit or delete a rating they received.
+    """
+    job = db.query(Job).options(joinedload(Job.request)).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.mechanic_id != current_user.id:
+        raise HTTPException(status_code=403, detail="PROFESSIONAL_NOT_ASSIGNED_TO_JOB")
+    if job.status != "completed":
+        raise HTTPException(status_code=400, detail="JOB_NOT_ELIGIBLE_FOR_CUSTOMER_RATING")
+    if db.query(CustomerRating).filter(CustomerRating.job_id == job_id).first():
+        raise HTTPException(status_code=409, detail="CUSTOMER_RATING_ALREADY_EXISTS")
+
+    client_user_id = job.request.client_id
+    rating = CustomerRating(
+        job_id=job_id,
+        mechanic_id=current_user.id,
+        client_id=client_user_id,
+        rating=payload.rating,
+        comment=(payload.comment or "")[:1000],
+        communication=payload.communication,
+        punctuality=payload.punctuality,
+        respect=payload.respect,
+        request_accuracy=payload.request_accuracy,
+    )
+    db.add(rating)
+    db.flush()
+
+    # Recompute the customer's aggregate from visible ratings (source of truth).
+    from sqlalchemy import func
+    cp = db.query(ClientProfile).filter(ClientProfile.user_id == client_user_id).first()
+    if cp:
+        agg = (
+            db.query(func.count(CustomerRating.id), func.avg(CustomerRating.rating))
+            .filter(
+                CustomerRating.client_id == client_user_id,
+                CustomerRating.moderation_status == "visible",
+            )
+            .one()
+        )
+        cp.total_ratings = int(agg[0] or 0)
+        cp.avg_rating = round(float(agg[1] or 0.0), 2)
+
+    # Notify the customer — no written feedback in the notification body.
+    _create_notification(
+        db, client_user_id, "review", "Nueva calificación",
+        "Un profesional calificó tu experiencia como cliente.", link="#/account",
+    )
+
+    db.commit()
+    db.refresh(rating)
+    return {"id": rating.id, "job_id": rating.job_id, "rating": rating.rating,
+            "created_at": rating.created_at.isoformat()}

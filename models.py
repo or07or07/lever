@@ -114,6 +114,9 @@ class ClientProfile(Base):
     phone = Column(String(30), default="")
     address = Column(String(500), default="")
     avatar_url = Column(String(500), default="")
+    # Customer reputation — aggregate of professional→customer ratings.
+    avg_rating = Column(Float, default=0.0, nullable=False)
+    total_ratings = Column(Integer, default=0, nullable=False)
 
     user = relationship("User", back_populates="client_profile")
 
@@ -303,6 +306,38 @@ class Review(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     job = relationship("Job", back_populates="review")
+
+
+class CustomerRating(Base):
+    """Professional → customer rating for a completed job (the reverse of
+    Review). Kept in its own table because Review.job_id is unique per job and
+    represents the opposite direction. One rating per professional per job.
+
+    CIA Triad:
+      Confidentiality: aggregate is exposed only to the customer themselves;
+                       feedback is surfaced without the professional's identity.
+      Integrity:       job assignment + completion enforced server-side; unique
+                       job_id prevents duplicate ratings.
+      Availability:    aggregate stored on ClientProfile for cheap reads.
+    """
+    __tablename__ = "customer_ratings"
+
+    id = Column(Integer, primary_key=True)
+    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"), unique=True, nullable=False)
+    mechanic_id = Column(Integer, ForeignKey("users.id"), nullable=False)  # rater (professional)
+    client_id = Column(Integer, ForeignKey("users.id"), nullable=False)    # rated (customer)
+    rating = Column(Integer, nullable=False)  # 1-5 overall
+    comment = Column(Text, default="")
+    # Optional short category ratings (1-5); none required.
+    communication = Column(Integer, nullable=True)
+    punctuality = Column(Integer, nullable=True)
+    respect = Column(Integer, nullable=True)
+    request_accuracy = Column(Integer, nullable=True)
+    moderation_status = Column(
+        SAEnum("visible", "hidden", name="cust_rating_mod_enum"),
+        default="visible", nullable=False,
+    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Dispute(Base):

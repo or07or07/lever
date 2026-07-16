@@ -11,6 +11,7 @@ from auth import get_current_user, require_client
 from database import get_db
 from models import (
     ClientProfile,
+    CustomerRating,
     Job,
     MechanicProfile,
     Review,
@@ -385,3 +386,63 @@ def leave_review(
     db.commit()
     db.refresh(review)
     return review
+
+
+# ---------------------------------------------------------------------------
+# Customer reputation (professional → customer ratings) — own data only
+# ---------------------------------------------------------------------------
+
+@router.get("/reputation")
+def my_reputation(
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """The authenticated customer's own reputation. Recent feedback is returned
+    anonymously (no professional identity). A customer can only read their own."""
+    from sqlalchemy import func
+
+    rows = (
+        db.query(CustomerRating)
+        .filter(
+            CustomerRating.client_id == current_user.id,
+            CustomerRating.moderation_status == "visible",
+        )
+        .order_by(CustomerRating.created_at.desc())
+        .all()
+    )
+    count = len(rows)
+    avg = round(sum(r.rating for r in rows) / count, 2) if count else None
+
+    def _catavg(attr):
+        vals = [getattr(r, attr) for r in rows if getattr(r, attr) is not None]
+        return round(sum(vals) / len(vals), 2) if vals else None
+
+    completed = (
+        db.query(func.count(Job.id))
+        .join(ServiceRequest, Job.request_id == ServiceRequest.id)
+        .filter(ServiceRequest.client_id == current_user.id, Job.status == "completed")
+        .scalar()
+    ) or 0
+
+    dist = {str(i): 0 for i in range(1, 6)}
+    for r in rows:
+        k = str(int(r.rating))
+        if k in dist:
+            dist[k] += 1
+
+    return {
+        "average_rating": avg,
+        "rating_count": count,
+        "completed_job_count": int(completed),
+        "distribution": dist,
+        "category_averages": {
+            "communication": _catavg("communication"),
+            "punctuality": _catavg("punctuality"),
+            "respect": _catavg("respect"),
+            "request_accuracy": _catavg("request_accuracy"),
+        },
+        "recent_ratings": [
+            {"overall_rating": r.rating, "comment": r.comment or "", "created_at": r.created_at.isoformat()}
+            for r in rows[:5]
+        ],
+    }
