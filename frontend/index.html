@@ -2459,6 +2459,16 @@ async function clientView(hash, el) {
 
 // ---- Customer Home (floating Lever header + service search + overview) ----
 async function renderClientHome(el) {
+  // Section-specific loading skeleton (not a full-screen spinner) while the
+  // catalog loads for the popular categories.
+  if (!_catalog) {
+    el.innerHTML = '<div class="home-body" style="padding-top:24px">' +
+      '<div class="gskel" style="height:118px;border-radius:20px;margin-bottom:16px"></div>' +
+      '<div class="gskel" style="height:20px;width:150px;margin-bottom:14px"></div>' +
+      '<div class="gskel" style="height:52px;border-radius:14px;margin-bottom:20px"></div>' +
+      '<div class="gskel" style="height:16px;width:170px;margin-bottom:12px"></div>' +
+      '<div class="home-cats">' + Array(6).fill('<div class="gskel" style="height:80px;border-radius:14px"></div>').join('') + '</div></div>';
+  }
   try { await loadCatalog(); } catch(e) {}
   const first = (_user && _user.full_name) ? String(_user.full_name).trim().split(' ')[0] : '';
   const cats = (_catalog && _catalog.categories ? _catalog.categories : []).slice(0, 8);
