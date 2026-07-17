@@ -12,13 +12,16 @@ charges NO commission, so the amount the client pays is the amount the
 professional receives — the UI states this rather than inventing fees.
 
 Where the rates come from (documented so they can be challenged/updated):
-- Baseline: Ecuador's 2026 unified basic salary (SBU ≈ US$480/month) implies a
-  formal-employment floor of roughly US$2.00–2.40/hour. Independent trades in
-  Guayaquil bill well above that hourly floor because jobs are short,
-  irregular, and carry travel + tool costs.
-- Ranges below reflect typical Guayaquil market rates for independent
-  professionals (e.g. cleaning ≈ US$15–25 per 4-hour session; plumbing/
-  electrical call-outs ≈ US$10–15 plus US$10–25/hour of work).
+- Baseline: Ecuador's 2026 Salario Básico Unificado is US$482/month — an
+  official hourly value of US$3.01 (Ministerio del Trabajo, tripartite
+  consensus, Dec 2025). Independent trades bill above that hourly floor
+  because jobs are short, irregular, and carry travel + tool costs.
+- Market evidence (Ecuador service platforms / trade guides, 2025-26):
+  plumbers & electricians commonly bill US$10-20/hour, with complex electrical
+  work quoted US$25-40/hour; call-out ("visita") fees around US$10; cleaning
+  ≈ US$15-25 per 4-hour session (≈ US$4-6/hour).
+- Guayaquil rates track slightly below Quito's; ranges below sit inside the
+  evidenced band rather than at its top.
 - They are deliberately RANGES, versioned (PRICING_POLICY_VERSION) and kept in
   one place so the owner can review/adjust without touching any other code.
 
@@ -32,22 +35,22 @@ from __future__ import annotations
 
 from typing import Optional
 
-PRICING_POLICY_VERSION = "GYE-2026-07.v1"
+PRICING_POLICY_VERSION = "GYE-2026-07.v2"
 CURRENCY = "USD"
 
 # USD per hour of work, per profession — Guayaquil reference ranges.
 LABOR_RATES: dict[str, tuple[float, float]] = {
-    "home_cleaning":    (3.5, 6.0),
+    "home_cleaning":    (4.0, 6.0),
     "handyman":         (6.0, 10.0),
-    "plumbing":         (8.0, 15.0),
-    "electrical":       (8.0, 15.0),
+    "plumbing":         (10.0, 18.0),
+    "electrical":       (10.0, 18.0),
     "painting":         (5.0, 9.0),
     "construction":     (5.0, 10.0),
     "gardening":        (5.0, 9.0),
-    "appliance_repair": (8.0, 15.0),
+    "appliance_repair": (9.0, 16.0),
     "tech_support":     (8.0, 14.0),
     "beauty":           (6.0, 12.0),
-    "automotive":       (8.0, 15.0),
+    "automotive":       (9.0, 16.0),
     "moving":           (6.0, 10.0),
     "home_security":    (8.0, 14.0),
     "pets":             (4.0, 8.0),
