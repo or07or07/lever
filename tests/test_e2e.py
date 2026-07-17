@@ -598,6 +598,7 @@ def run_all():
         test_minimum_age,
         test_multi_profession_matching,
         test_pricing_estimates,
+        test_app_set_pricing,
     ]
 
     for test_fn in tests:
@@ -904,6 +905,53 @@ def test_pricing_estimates():
           bool(mine) and mine[0].get("estimate_min") is not None, str(mine[:1]))
 
 
+def test_app_set_pricing():
+    section("14. Lever sets the price (no negotiation)")
+    uid = str(uuid.uuid4())[:8]
+    SVC = "pipe_leak_repair"
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"apc_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    mr = anon.post("/api/auth/register", json={
+        "email": f"apm_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "plumbing", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    mech = Session(mr.json()["access_token"])
+
+    # Client tries to set their own budget — the server must OVERRIDE it with
+    # the app price snapshot.
+    rq = client.post("/api/client/requests", json={
+        "title": "Fuga con presupuesto propio",
+        "description": "El cliente intenta fijar su propio precio.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": SVC,
+        "budget_min": 1.0, "budget_max": 2.0})
+    check("Request created (201)", rq.status_code == 201, rq.text)
+    body = rq.json()
+    check("Server overrode client budget with app price",
+          body.get("budget_max") is not None and body.get("budget_max") > 2.0,
+          f"budget={body.get('budget_min')}-{body.get('budget_max')}")
+    price_min, price_max = body["budget_min"], body["budget_max"]
+
+    # Provider accepts, then tries to bill outside the app-set range.
+    mech.post("/api/provider/go-online")
+    acc = mech.post(f"/api/provider/board/{body['id']}/accept")
+    check("Accept (201)", acc.status_code == 201, acc.text)
+    job_id = acc.json()["id"]
+    for s in ["en_route", "diagnosing", "repairing"]:
+        mech.patch(f"/api/provider/jobs/{job_id}/status", json={"status": s})
+
+    over = mech.patch(f"/api/provider/jobs/{job_id}/status",
+                      json={"status": "completed", "final_price": price_max + 500})
+    check("Final price above app range rejected (400)",
+          over.status_code == 400 and "FINAL_PRICE_OUT_OF_RANGE" in over.text, over.text)
+
+    ok = mech.patch(f"/api/provider/jobs/{job_id}/status",
+                    json={"status": "completed", "final_price": price_min})
+    check("Final price within app range accepted (200)", ok.status_code == 200, ok.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -925,3 +973,4 @@ def test_pytest_email_ci():   test_email_case_insensitive()
 def test_pytest_minimum_age(): test_minimum_age()
 def test_pytest_multi_profession(): test_multi_profession_matching()
 def test_pytest_pricing(): test_pricing_estimates()
+def test_pytest_app_set_pricing(): test_app_set_pricing()

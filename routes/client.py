@@ -235,6 +235,18 @@ def create_request(
     for k in ("city", "province", "country_code"):
         data.pop(k, None)
 
+    # ── Lever sets the price ──
+    # For catalog services the price is the app's researched Guayaquil labor
+    # estimate (pricing.py), snapshotted onto the request at creation. Any
+    # client-sent budget is IGNORED: price is not negotiated between client
+    # and professional. The final charge must stay within this range
+    # (enforced at job completion in routes/provider.py).
+    if data.get("service_key"):
+        from pricing import ESTIMATES
+        est = ESTIMATES.get(data["service_key"])
+        if est:
+            data["budget_min"], data["budget_max"] = float(est[0]), float(est[1])
+
     req = ServiceRequest(client_id=current_user.id, market_code=result["market_code"], **data)
     db.add(req)
     db.commit()

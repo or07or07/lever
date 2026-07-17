@@ -1114,8 +1114,9 @@ var _translations = {
   'price.clientPays': {es:'El cliente pagará', en:'The client will pay'},
   'price.reference': {es:'Pago referencial', en:'Reference payment'},
   'price.youKeep100': {es:'Recibes el 100% — Lever no cobra comisión.', en:'You keep 100% — Lever charges no commission.'},
-  'price.refLabel': {es:'Precio referencial en Guayaquil', en:'Reference price in Guayaquil'},
-  'price.refNote': {es:'Estimado según tarifas de mano de obra en Guayaquil. El precio final lo acuerdas con el profesional.', en:'Estimated from Guayaquil labor rates. You agree the final price with the professional.'},
+  'price.refLabel': {es:'Precio del servicio', en:'Service price'},
+  'price.refNote': {es:'Precio fijado por Lever según tarifas de mano de obra en Guayaquil. El cobro final estará dentro de este rango según el trabajo realizado.', en:'Price set by Lever from Guayaquil labor rates. The final charge stays within this range based on the work performed.'},
+  'price.setByLever': {es:'Precio del servicio (fijado por Lever)', en:'Service price (set by Lever)'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -2736,7 +2737,6 @@ async function showNewRequest() {
         </div>
         <input type="hidden" id="sr-selected-worker" value="">
       </div>
-      <div class="form-group"><label>${_t('newreq.budgetMax')}</label><input id="sr-budget" type="number" placeholder="${_t('misc.optional')}"></div>
     </div>
     <div id="sr-err"></div>`,
     `<button class="btn btn-primary btn-full" onclick="submitNewRequest()">${_t('newreq.submit')}</button>`);
@@ -2983,7 +2983,6 @@ function _pickAddrSuggest(boxId, i) {
 }
 
 async function submitNewRequest() {
-  const budgetMax = document.getElementById('sr-budget').value;
   const profType  = document.getElementById('sr-prof').value;
   const vehicleId = document.getElementById('sr-vehicle')?.value;
   const title       = document.getElementById('sr-title').value.trim();
@@ -3011,7 +3010,6 @@ async function submitNewRequest() {
     // validates these against the Guayaquil service area; coords beat city).
     ...(_srCoords ? {latitude: _srCoords.lat, longitude: _srCoords.lng} : {}),
       // NOTE: preferred_mechanic_id removed - backend does not support this field yet.
-    ...(budgetMax && {budget_max: parseFloat(budgetMax)}),
     ...(vehicleId && {vehicle_id: parseInt(vehicleId)}),
   };
   try {
@@ -5785,6 +5783,7 @@ function renderGuestReview() {
     '<div class="gsum-row"><span class="k">' + _t('guest.when') + '</span><span class="v">' + when + '</span><button class="e" onclick="gwBack(\'schedule\');route(\'#/request/new\')">' + _t('guest.edit') + '</button></div>' +
     '<div class="gsum-row"><span class="k">' + _t('guest.where') + '</span><span class="v">' + escapeHtml(d.sector + ', ' + d.city) + '</span><button class="e" onclick="gwBack(\'location\');route(\'#/request/new\')">' + _t('guest.edit') + '</button></div>' +
     '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
+    (s.estimate_min != null ? '<div class="gsum-row"><span class="k">' + _t('price.setByLever') + '</span><span class="v"><strong>USD ' + s.estimate_min + ' – ' + s.estimate_max + '</strong></span></div>' : '') +
     '<div style="margin-top:20px">' +
       '<button class="gbtn-primary" onclick="' + (_token ? 'route(\'#/finish-request\')' : 'route(\'#/auth-gate\')') + '">' + _t('guest.continueToSend') + '</button>' +
       '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
@@ -5838,8 +5837,10 @@ function renderFinishRequest() {
     '<p class="gf-pin-help">' + _t('guest.pinHelp') + '</p>' +
     '<div id="gf-area-warn"></div>' +
     '</div>' +
-    '<div class="form-group"><label for="gf-budget">' + _t('guest.budgetOptional') + '</label>' +
-    '<input id="gf-budget" type="number" min="0" placeholder="USD"></div>' +
+    (s.estimate_min != null
+      ? '<div class="gsum-row" style="margin-top:14px"><span class="k">' + _t('price.setByLever') + '</span><span class="v"><strong>USD ' + s.estimate_min + ' – ' + s.estimate_max + '</strong></span></div>' +
+        '<p style="font-size:.78rem;color:var(--gray-500);margin:6px 0 0">' + _t('price.refNote') + '</p>'
+      : '') +
     '<div id="gf-err"></div>' +
     '<button class="gbtn-primary" id="gf-submit" onclick="submitCatalogRequest()">' + _t('guest.send') + '</button>' +
     '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
@@ -5983,7 +5984,6 @@ async function submitCatalogRequest() {
     errEl.innerHTML = alert_el('error', _lang === 'es' ? 'Ingresa la dirección exacta del servicio.' : 'Enter the exact service address.');
     return;
   }
-  const budget = parseFloat(document.getElementById('gf-budget').value);
   const btn = document.getElementById('gf-submit');
   _submittingRequest = true;
   btn.disabled = true; btn.textContent = _t('guest.sending');
@@ -6004,7 +6004,8 @@ async function submitCatalogRequest() {
     // these against the Guayaquil service area (coords take precedence over city).
     ...(typeof d.lat === 'number' && typeof d.lng === 'number' ? {latitude: d.lat, longitude: d.lng} : {}),
     ...(d.urgency === 'later' && d.date ? {scheduled_date: d.date + 'T09:00:00'} : {}),
-    ...(budget > 0 ? {budget_max: budget} : {}),
+    // No client budget: Lever sets the price server-side from the researched
+    // Guayaquil labor rates (routes/client.py snapshots it onto the request).
   };
   try {
     const req = await post('/api/client/requests', payload);

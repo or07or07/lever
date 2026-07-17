@@ -100,13 +100,14 @@ ESTIMATES: dict[str, tuple[int, int]] = _build_estimates()
 
 def payment_line_es(budget_min: Optional[float], budget_max: Optional[float],
                     service_key: Optional[str]) -> Optional[str]:
-    """Spanish payment line for provider-facing offers. Prefers the client's
-    REAL budget; falls back to the reference estimate (labelled as such);
-    None when neither exists — never fabricates an amount."""
+    """Spanish payment line for provider-facing offers. budget_min/max is the
+    request's app-set price snapshot (Lever sets the price at creation — see
+    routes/client.py); falls back to the live estimate for legacy requests
+    without a snapshot; None when neither exists — never fabricates an amount."""
     if budget_max is not None:
         if budget_min is not None and budget_min != budget_max:
-            return f"Presupuesto del cliente: USD {budget_min:g}–{budget_max:g}"
-        return f"Presupuesto del cliente: hasta USD {budget_max:g}"
+            return f"Pago del servicio: USD {budget_min:g}–{budget_max:g}"
+        return f"Pago del servicio: USD {budget_max:g}"
     est = ESTIMATES.get(service_key or "")
     if est:
         return f"Pago referencial: USD {est[0]}–{est[1]}"

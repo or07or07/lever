@@ -575,6 +575,16 @@ def update_job_status(
     if payload.mechanic_notes is not None:
         job.mechanic_notes = payload.mechanic_notes
     if payload.final_price is not None:
+        # Lever sets the price (see routes/client.py create_request): the final
+        # charge must stay within the request's price snapshot. The professional
+        # cannot bill outside the app-set range — pricing is not negotiated.
+        if req and req.budget_min is not None and req.budget_max is not None:
+            if not (req.budget_min <= payload.final_price <= req.budget_max):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"FINAL_PRICE_OUT_OF_RANGE: el precio final debe estar entre "
+                           f"USD {req.budget_min:g} y USD {req.budget_max:g}",
+                )
         job.final_price = payload.final_price
 
     # ── Notify the CLIENT of the status change ──
