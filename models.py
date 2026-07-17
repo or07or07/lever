@@ -197,6 +197,9 @@ class ProviderService(Base):
 
     __table_args__ = (
         Index("ix_provider_services_unique", "provider_user_id", "service_key", unique=True),
+        # Matching looks up providers by exact service (spec §13): "who offers
+        # service_key X and has it active?"
+        Index("ix_provider_services_service_active", "service_key", "is_active"),
     )
 
 

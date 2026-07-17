@@ -126,6 +126,17 @@ input,textarea,select{font-family:inherit}
 .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--gray-700);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.95rem;transition:.15s;background:#fff}
 .dob-help{margin-top:6px;font-size:.76rem;color:var(--gray-500);line-height:1.45}
+/* Provider multi-profession service selection */
+.psvc-search{width:100%;height:44px;padding:0 14px;border:1.5px solid var(--gray-200);border-radius:12px;font-size:16px;background:var(--gray-50);margin-bottom:10px}
+.psvc-search:focus{outline:none;border-color:var(--nav-green);background:#fff}
+.psvc-count{font-size:.82rem;font-weight:600;color:var(--nav-green);margin-bottom:10px}
+.psvc-empty{padding:16px 4px;color:var(--gray-500);font-size:.86rem}
+.psvc-group{border:1px solid var(--gray-200);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.psvc-group-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;cursor:pointer;font-weight:700;font-size:.9rem;color:var(--gray-800);list-style:none}
+.psvc-group-head::-webkit-details-marker{display:none}
+.psvc-group[open] .psvc-group-head{border-bottom:1px solid var(--gray-100);background:var(--gray-50)}
+.psvc-group-n{font-size:.76rem;font-weight:700;color:var(--nav-green);background:var(--nav-green-soft);border-radius:999px;padding:2px 9px}
+.psvc-group-body{padding:0 14px}
 /* Password field with show/hide eye toggle */
 .pass-wrap{position:relative}
 .pass-wrap input{padding-right:44px}
@@ -1088,6 +1099,10 @@ var _translations = {
   'activity.rateProfessional': {es:'Calificar al profesional', en:'Rate the professional'},
   'activity.reviewSent': {es:'Reseña enviada', en:'Review submitted'},
   'activity.verified': {es:'Verificado', en:'Verified'},
+  // -- Provider multi-profession service selection --
+  'psvc.search': {es:'Buscar un servicio…', en:'Search a service…'},
+  'psvc.selectedCount': {es:'{n} servicios seleccionados', en:'{n} services selected'},
+  'psvc.noMatch': {es:'Ningún servicio coincide con tu búsqueda.', en:'No services match your search.'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -4254,19 +4269,65 @@ async function saveMechanicProfile() {
 // ---- My Services (Phase 3 — provider service selection) ----
 async function renderMyServices(el) {
   const services = await get('/api/provider/services');
+  // Multi-profession: the backend returns the FULL catalog across professions.
+  // Group by category (profession) into expandable sections + search so long
+  // lists stay usable (spec §7).
+  const groups = {};
+  services.forEach(s => { (groups[s.category] = groups[s.category] || []).push(s); });
+  const cats = Object.keys(groups).sort((a, b) => (profLabel(a) || a).localeCompare(profLabel(b) || b));
+  const activeCount = services.filter(s => s.is_active).length;
   el.innerHTML = `
     ${pageHeader(_t('psvc.title'), '<button class="btn btn-outline" onclick="route(\'#/profile\')">' + _t('guest.back') + '</button>')}
-    <div class="card" style="max-width:640px">
+    <div class="card" style="max-width:680px">
       <p style="color:var(--gray-600);font-size:.88rem;margin-bottom:6px">${_t('psvc.subtitle')}</p>
-      <p style="color:var(--gray-400);font-size:.8rem;margin-bottom:16px">${_t('psvc.allOffTip')}</p>
-      <div id="psvc-list">${services.map(s => psvcRow(s)).join('')}</div>
+      <p style="color:var(--gray-400);font-size:.8rem;margin-bottom:12px">${_t('psvc.allOffTip')}</p>
+      <input id="psvc-search" type="search" class="psvc-search" placeholder="${_t('psvc.search')}" oninput="filterPsvc()" aria-label="${_t('psvc.search')}">
+      <div id="psvc-count" class="psvc-count">${_t('psvc.selectedCount').replace('{n}', activeCount)}</div>
+      <div id="psvc-empty" class="psvc-empty" hidden>${_t('psvc.noMatch')}</div>
+      <div id="psvc-list">${cats.map(cat => `
+        <details class="psvc-group" data-group="${escapeHtml(cat)}"${groups[cat].some(s => s.is_active) ? ' open' : ''}>
+          <summary class="psvc-group-head"><span>${escapeHtml(profLabel(cat) || cat)}</span><span class="psvc-group-n" data-count="${escapeHtml(cat)}">${groups[cat].filter(s => s.is_active).length}/${groups[cat].length}</span></summary>
+          <div class="psvc-group-body">${groups[cat].map(s => psvcRow(s)).join('')}</div>
+        </details>`).join('')}</div>
       <div id="psvc-msg" style="margin-top:12px"></div>
       <button class="btn btn-primary" style="margin-top:14px" onclick="savePsvcSelection()">${_t('psvc.save')}</button>
     </div>`;
 }
+function _psvcNorm(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+function filterPsvc() {
+  const q = _psvcNorm((document.getElementById('psvc-search') || {}).value);
+  let anyAtAll = false;
+  document.querySelectorAll('#psvc-list .psvc-group').forEach(g => {
+    let visible = 0;
+    g.querySelectorAll('[data-key]').forEach(row => {
+      const show = !q || _psvcNorm(row.getAttribute('data-name')).includes(q);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    g.style.display = visible ? '' : 'none';
+    if (q && visible) g.open = true;
+    if (visible) anyAtAll = true;
+  });
+  const empty = document.getElementById('psvc-empty');
+  if (empty) empty.hidden = anyAtAll;
+}
+function updatePsvcCounts() {
+  let total = 0;
+  document.querySelectorAll('#psvc-list .psvc-group').forEach(g => {
+    const rows = g.querySelectorAll('[data-key]');
+    let active = 0;
+    rows.forEach(r => { const cb = r.querySelector('[data-psvc-active]'); if (cb && cb.checked) active++; });
+    total += active;
+    const n = g.querySelector('.psvc-group-n');
+    if (n) n.textContent = active + '/' + rows.length;
+  });
+  const c = document.getElementById('psvc-count');
+  if (c) c.textContent = _t('psvc.selectedCount').replace('{n}', total);
+}
 function psvcRow(s) {
   const locked = !s.selectable;
-  return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--gray-100)' + (locked ? ';opacity:.55' : '') + '" data-key="' + s.service_key + '">' +
+  const nm = (_lang === 'en' ? s.name_en : s.name_es) || '';
+  return '<div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--gray-100)' + (locked ? ';opacity:.55' : '') + '" data-key="' + s.service_key + '" data-cat="' + escapeHtml(s.category) + '" data-name="' + escapeHtml(nm.toLowerCase()) + '">' +
     '<input type="checkbox" data-psvc-active="' + s.service_key + '" ' + (s.is_active ? 'checked' : '') + (locked ? ' disabled' : '') + ' style="width:20px;height:20px;flex-shrink:0" onchange="onPsvcToggle(this)">' +
     '<span style="font-size:1.1rem;flex-shrink:0">' + s.icon + '</span>' +
     '<div style="flex:1;min-width:0">' +
@@ -4282,6 +4343,7 @@ function psvcRow(s) {
 function onPsvcToggle(cb) {
   const priceInput = cb.closest('[data-key]')?.querySelector('[data-psvc-price]');
   if (priceInput) priceInput.disabled = !cb.checked;
+  updatePsvcCounts();
 }
 async function savePsvcSelection() {
   const rows = document.querySelectorAll('#psvc-list [data-key]');

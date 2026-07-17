@@ -47,32 +47,39 @@ def find_eligible_providers(
     1. Distance (closest first; if no geo data, sorted last)
     2. Average rating (descending)
     """
-    q = db.query(MechanicProfile).filter(
+    base = db.query(MechanicProfile).filter(
         MechanicProfile.is_online == True,
         MechanicProfile.is_available == True,
-        MechanicProfile.profession == request.profession_type,
     )
-    candidates = q.all()
 
-    # If the request names a specific catalog service (Phase 3) and a
-    # candidate has configured their own service selection, only offer it
-    # to them if they've actually enabled that service. Providers who've
-    # never touched the selection feature keep receiving everything in
-    # their profession (see routes/provider.py's _active_service_keys for
-    # the same "None = unconfigured, offer everything" convention).
     if request.service_key:
+        # ── Multi-profession + EXACT-service matching (spec §12) ──
+        # A provider is eligible if they EXPLICITLY offer this exact service and
+        # keep it active — regardless of which profession it belongs to, so a
+        # provider can span professions via their ProviderService selection.
+        # Providers who have never configured any service keep the legacy
+        # behaviour: they receive every request in their single
+        # MechanicProfile.profession. A provider who HAS configured services
+        # receives only the ones they left active (so a plumber who selected
+        # only faucet-installation never gets a water-heater request), and a
+        # paused service (is_active=False) produces no offers.
         from models import ProviderService
-        provider_ids = [p.user_id for p in candidates]
-        rows = db.query(ProviderService).filter(ProviderService.provider_user_id.in_(provider_ids)).all()
-        configured: dict[int, set[str]] = {}
-        for r in rows:
-            configured.setdefault(r.provider_user_id, set())
-            if r.is_active:
-                configured[r.provider_user_id].add(r.service_key)
+        sk = request.service_key
+        active_ids = {
+            r[0] for r in db.query(ProviderService.provider_user_id)
+            .filter(ProviderService.service_key == sk, ProviderService.is_active == True).all()
+        }
+        configured_ids = {
+            r[0] for r in db.query(ProviderService.provider_user_id).distinct().all()
+        }
         candidates = [
-            p for p in candidates
-            if p.user_id not in configured or request.service_key in configured[p.user_id]
+            p for p in base.all()
+            if (p.user_id in active_ids)
+            or (p.user_id not in configured_ids and p.profession == request.profession_type)
         ]
+    else:
+        # Legacy request without a specific service — match the profession.
+        candidates = base.filter(MechanicProfile.profession == request.profession_type).all()
 
     # Score and sort candidates
     scored = []

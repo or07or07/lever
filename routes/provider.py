@@ -156,7 +156,12 @@ def list_my_services(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    catalog_services = _catalog_services_for_profession(profile.profession)
+    # Multi-profession (spec §5/§7): offer the FULL active catalog across every
+    # profession, so a provider can select services outside their registration
+    # profession. Each row still reports whether they currently offer it
+    # (is_active) and whether they may enable it (selectable / verification).
+    from services_catalog import ALL_SERVICES
+    catalog_services = [s for s in ALL_SERVICES if s["is_active"]]
     selections = {
         ps.service_key: ps
         for ps in db.query(ProviderService).filter(ProviderService.provider_user_id == current_user.id).all()
@@ -191,13 +196,16 @@ def set_my_services(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    from services_catalog import SERVICES_BY_KEY
-    valid_keys = {s["key"] for s in _catalog_services_for_profession(profile.profession)}
+    from services_catalog import ALL_SERVICES, SERVICES_BY_KEY
+    # Multi-profession (spec §5/§7): a provider may offer ANY active catalog
+    # service, across professions — not only their registration profession.
+    # (Per-service enhanced-verification gating below still applies.)
+    valid_keys = {s["key"] for s in ALL_SERVICES if s.get("is_active", True)}
 
     requested = {item.service_key: item for item in payload.services}
     unknown = [k for k in requested if k not in valid_keys]
     if unknown:
-        raise HTTPException(status_code=400, detail=f"Not services in your profession: {unknown}")
+        raise HTTPException(status_code=400, detail=f"SERVICE_NOT_ACTIVE: {unknown}")
 
     blocked = [
         k for k in requested
@@ -337,10 +345,7 @@ def job_board(
         )
 
     profession = profile.profession if profile else DEFAULT_PROFESSION
-    q = db.query(ServiceRequest).filter(
-        ServiceRequest.status == "pending",
-        ServiceRequest.profession_type == profession,
-    )
+    q = db.query(ServiceRequest).filter(ServiceRequest.status == "pending")
     if urgency:
         q = q.filter(ServiceRequest.urgency == urgency)
 
@@ -349,13 +354,19 @@ def job_board(
     if blocked_ids:
         q = q.filter(ServiceRequest.client_id.notin_(blocked_ids))
 
-    # If this provider has configured specific services (Phase 3), only
-    # show requests for services they've actually enabled. Providers who've
-    # never touched this feature keep seeing everything in their profession.
-    active_keys = _active_service_keys(db, current_user.id)
-    if active_keys is not None:
+    # ── Multi-profession + exact-service board (spec §12) ──
+    # A provider who configured services sees requests for the exact services
+    # they've enabled (across ANY profession), plus legacy requests without a
+    # service_key that fall in their own profession. A provider who never
+    # configured services keeps the legacy behaviour: everything in their
+    # profession.
+    active_keys = _active_service_keys(db, current_user.id)   # None = unconfigured
+    if active_keys is None:
+        q = q.filter(ServiceRequest.profession_type == profession)
+    else:
         q = q.filter(
-            (ServiceRequest.service_key.is_(None)) | (ServiceRequest.service_key.in_(active_keys))
+            ServiceRequest.service_key.in_(active_keys)
+            | (ServiceRequest.service_key.is_(None) & (ServiceRequest.profession_type == profession))
         )
 
     return q.order_by(ServiceRequest.created_at.asc()).all()
@@ -388,16 +399,20 @@ def accept_request(
         raise HTTPException(status_code=409, detail="Request is no longer available")
     if is_blocked_pair(db, current_user.id, req.client_id):
         raise HTTPException(status_code=403, detail="You cannot accept a request from this client")
-    if req.service_key:
-        active_keys = _active_service_keys(db, current_user.id)
-        if active_keys is not None and req.service_key not in active_keys:
-            raise HTTPException(status_code=400, detail="You haven't enabled this specific service")
-
-    # Verify profession match
+    # ── Eligibility (multi-profession + exact service, spec §12/§27) ──
+    # A provider may accept if they explicitly offer this exact service (active),
+    # regardless of their MechanicProfile.profession. Providers who never
+    # configured services fall back to the legacy profession match. This mirrors
+    # find_eligible_providers so a provider can never accept a request that would
+    # not have been offered to them.
     profile = db.query(MechanicProfile).filter(
         MechanicProfile.user_id == current_user.id
     ).first()
-    if profile and profile.profession != req.profession_type:
+    active_keys = _active_service_keys(db, current_user.id)   # None = unconfigured
+    if req.service_key and active_keys is not None:
+        if req.service_key not in active_keys:
+            raise HTTPException(status_code=400, detail="PROVIDER_NOT_ELIGIBLE")
+    elif profile and profile.profession != req.profession_type:
         raise HTTPException(
             status_code=400,
             detail=f"This request requires a {req.profession_type} professional"

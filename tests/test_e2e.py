@@ -596,6 +596,7 @@ def run_all():
         test_customer_ratings,
         test_email_case_insensitive,
         test_minimum_age,
+        test_multi_profession_matching,
     ]
 
     for test_fn in tests:
@@ -794,6 +795,82 @@ def test_minimum_age():
     check("Underage error does not echo the DOB", dob_for_age(9) not in r.text, r.text)
 
 
+def test_multi_profession_matching():
+    section("12. Multi-profession + exact-service matching")
+    uid = str(uuid.uuid4())[:8]
+    PLUMB = "pipe_leak_repair"      # plumbing service (no enhanced verification)
+    ELEC = "outlet_replacement"     # electrical service
+
+    # An ELECTRICIAN who explicitly enables a PLUMBING service.
+    er = anon.post("/api/auth/register", json={
+        "email": f"elec_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "electrical", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    check("Register electrician", er.status_code == 201, er.text)
+    elec = Session(er.json()["access_token"])
+
+    # Multi-profession WRITE: an electrician can now configure a plumbing service.
+    r = elec.put("/api/provider/services", json={"services": [{"service_key": PLUMB}]})
+    check("Electrician can enable a PLUMBING service (cross-profession)", r.status_code == 200, r.text)
+
+    # A second electrician who only enabled an ELECTRICAL service.
+    er2 = anon.post("/api/auth/register", json={
+        "email": f"elec2_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "electrical", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    elec2 = Session(er2.json()["access_token"])
+    elec2.put("/api/provider/services", json={"services": [{"service_key": ELEC}]})
+
+    elec.post("/api/provider/go-online")
+    elec2.post("/api/provider/go-online")
+
+    # Client submits a PLUMBING request (backend derives profession from service).
+    cr = anon.post("/api/auth/register", json={
+        "email": f"cli_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    rq = client.post("/api/client/requests", json={
+        "title": "Fuga en tubería de la cocina",
+        "description": "Hay una fuga en la tubería bajo el fregadero.",
+        "location": "Urdesa Central, Guayaquil",
+        "city": "Guayaquil", "province": "Guayas", "country_code": "EC",
+        "urgency": "immediate", "service_key": PLUMB})
+    check("Plumbing request created (201)", rq.status_code == 201, rq.text)
+    check("Backend derived profession = plumbing",
+          rq.json().get("profession_type") == "plumbing", rq.json().get("profession_type"))
+    request_id = rq.json()["id"]
+
+    # The electrician who ENABLED the plumbing service SEES it (cross-profession).
+    board = elec.get("/api/provider/board")
+    ids = [x["id"] for x in board.json()]
+    check("Electrician-with-plumbing SEES the plumbing request", request_id in ids, str(ids))
+
+    # The electrician who did NOT enable it does not see it (exact service).
+    board2 = elec2.get("/api/provider/board")
+    ids2 = [x["id"] for x in board2.json()]
+    check("Electrician-without-it does NOT see the plumbing request", request_id not in ids2, str(ids2))
+
+    # And can ACCEPT it despite the profession mismatch.
+    acc = elec.post(f"/api/provider/board/{request_id}/accept")
+    check("Cross-profession accept succeeds (201)", acc.status_code == 201, acc.text)
+
+    # Paused service -> no longer eligible.
+    uid2 = str(uuid.uuid4())[:8]
+    pr = anon.post("/api/auth/register", json={
+        "email": f"paus_{uid2}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "electrical", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    paused = Session(pr.json()["access_token"])
+    paused.put("/api/provider/services", json={"services": [{"service_key": PLUMB}]})
+    paused.patch(f"/api/provider/services/{PLUMB}", json={"is_active": False})
+    paused.post("/api/provider/go-online")
+    rq2 = client.post("/api/client/requests", json={
+        "title": "Otra fuga en tubería",
+        "description": "Segunda fuga distinta bajo el lavabo del baño.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": PLUMB})
+    board3 = paused.get("/api/provider/board")
+    check("Paused service -> request not on board",
+          rq2.json()["id"] not in [x["id"] for x in board3.json()], board3.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -813,3 +890,4 @@ def test_pytest_guayaquil():  test_guayaquil_market()
 def test_pytest_customer_ratings(): test_customer_ratings()
 def test_pytest_email_ci():   test_email_case_insensitive()
 def test_pytest_minimum_age(): test_minimum_age()
+def test_pytest_multi_profession(): test_multi_profession_matching()
