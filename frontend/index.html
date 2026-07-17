@@ -157,6 +157,24 @@ input,textarea,select{font-family:inherit}
 .wb4{bottom:26%;left:12%;animation-delay:1.7s}
 .wb5{bottom:30%;right:10%;animation-delay:2.8s}
 @keyframes bubbleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+/* Provider app intro: its own contextual identity — Lever's teal (the
+   earnings color) instead of indigo, plus gig-style value bullets. */
+.welcome-page.pro{background:linear-gradient(160deg,var(--teal) 0%,var(--teal-dark) 55%,#134e4a 100%)}
+/* Pro layout is taller (value bullets) — keep bottom bubbles clear of it */
+.welcome-page.pro .wb2{top:39%}
+.welcome-page.pro .wb3{top:42%}
+.welcome-page.pro .wb4{bottom:11%;left:6%}
+.welcome-page.pro .wb5{bottom:13%;right:6%}
+.welcome-page.pro .welcome-logo svg g{stroke:var(--teal)}
+.welcome-page.pro .welcome-logo svg path[fill="#6366f1"],.welcome-page.pro .welcome-logo svg circle[fill="#6366f1"]{fill:var(--teal)}
+.welcome-word-pro{font-size:.45em;font-weight:800;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:2px 8px;vertical-align:middle;letter-spacing:.5px}
+.welcome-btn.pro{color:var(--teal-dark)}
+.welcome-points{list-style:none;padding:0;margin:18px 0 0;display:flex;flex-direction:column;gap:8px;text-align:left}
+.welcome-points li{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:10px 14px;color:#fff;font-size:.88rem;font-weight:600;animation:welcomeUp .5s var(--ease) both}
+.welcome-points .wp0{animation-delay:.55s}
+.welcome-points .wp1{animation-delay:.7s}
+.welcome-points .wp2{animation-delay:.85s}
+@media(prefers-reduced-motion:reduce){.welcome-points li{animation:none}}
 @media(prefers-reduced-motion:reduce){.welcome-page,.welcome-page.choice,.welcome-logo svg,.welcome-ring,.welcome-word,.welcome-title2,.welcome-tagline,.welcome-btn,.welcome-ghost,.welcome-bubble{animation:none}.welcome-ring{stroke-dashoffset:0}}
 /* In-app legal document viewer (native) */
 .legal-body{font-size:.9rem;line-height:1.65;color:var(--gray-800);padding:4px 2px 16px;word-wrap:break-word}
@@ -1192,6 +1210,9 @@ var _translations = {
   'welcome.signup': {es:'Crear cuenta', en:'Create account'},
   'welcome.signin': {es:'Ya tengo cuenta', en:'I already have an account'},
   'welcome.explore': {es:'Explorar sin cuenta', en:'Explore without an account'},
+  'welcome.proPoint1': {es:'Recibes el 100% del pago — sin comisión', en:'You keep 100% of the payment — no commission'},
+  'welcome.proPoint2': {es:'Elige tus servicios y tus horarios', en:'Choose your services and your schedule'},
+  'welcome.proPoint3': {es:'Trabajos cerca de ti en Guayaquil', en:'Jobs near you in Guayaquil'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -5165,20 +5186,33 @@ function _welcomeLogo(px) {
       '<path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
     '</g></svg></span>';
 }
+// Role detection for the intro, in one place (the provider app gets its own
+// contextual intro: teal identity, earnings-focused copy and iconography).
+function _welcomeIsPro() { return APP_FLAVOR_ROLE === 'mechanic'; }
+
 function renderWelcome() {
-  var isPro = APP_FLAVOR_ROLE === 'mechanic';
+  var isPro = _welcomeIsPro();
   var tagline = _t(isPro ? 'welcome.taglineProvider' : 'welcome.taglineClient');
-  var bubbles = ['🔧','🧹','⚡','🎨','🚿','💻'].map(function(e, i) {
+  // Client: trades you can hire. Provider: work, earnings, schedule, growth.
+  var icons = isPro ? ['🛠️','💵','⭐','🕒','📋','📈'] : ['🔧','🧹','⚡','🎨','🚿','💻'];
+  var bubbles = icons.map(function(e, i) {
     return '<span class="welcome-bubble wb' + i + '" aria-hidden="true">' + e + '</span>';
   }).join('');
+  var proPoints = isPro
+    ? '<ul class="welcome-points">' +
+        ['welcome.proPoint1', 'welcome.proPoint2', 'welcome.proPoint3'].map(function(k, i) {
+          return '<li class="wp' + i + '">✓ ' + escapeHtml(_t(k)) + '</li>';
+        }).join('') + '</ul>'
+    : '';
   document.getElementById('app').innerHTML =
-    '<div class="welcome-page">' + bubbles +
+    '<div class="welcome-page' + (isPro ? ' pro' : '') + '">' + bubbles +
       '<div class="welcome-center">' +
         _welcomeLogo(104) +
-        '<div class="welcome-word">Lever</div>' +
+        '<div class="welcome-word">Lever' + (isPro ? ' <span class="welcome-word-pro">Pro</span>' : '') + '</div>' +
         '<p class="welcome-tagline">' + escapeHtml(tagline) + '</p>' +
+        proPoints +
       '</div>' +
-      '<button class="welcome-btn" onclick="welcomeStart()">' + escapeHtml(_t('welcome.start')) + ' →</button>' +
+      '<button class="welcome-btn' + (isPro ? ' pro' : '') + '" onclick="welcomeStart()">' + escapeHtml(_t('welcome.start')) + ' →</button>' +
     '</div>';
 }
 function welcomeStart() {
@@ -5186,17 +5220,17 @@ function welcomeStart() {
   route('#/welcome/choice');
 }
 function renderWelcomeChoice() {
-  var isPro = APP_FLAVOR_ROLE === 'mechanic';
+  var isPro = _welcomeIsPro();
   var signupHash = isPro ? '#/registro/profesional' : '#/registro/cliente';
   document.getElementById('app').innerHTML =
-    '<div class="welcome-page choice">' +
+    '<div class="welcome-page choice' + (isPro ? ' pro' : '') + '">' +
       '<div class="welcome-center">' +
         _welcomeLogo(72) +
-        '<h1 class="welcome-title2">' + escapeHtml(_t('welcome.title2')) + '</h1>' +
+        '<h1 class="welcome-title2">' + escapeHtml(_t('welcome.title2')) + (isPro ? ' <span class="welcome-word-pro">Pro</span>' : '') + '</h1>' +
         '<p class="welcome-tagline">' + escapeHtml(_t(isPro ? 'welcome.sub2Provider' : 'welcome.sub2Client')) + '</p>' +
       '</div>' +
       '<div class="welcome-actions">' +
-        '<button class="welcome-btn" onclick="route(\'' + signupHash + '\')">' + escapeHtml(_t('welcome.signup')) + '</button>' +
+        '<button class="welcome-btn' + (isPro ? ' pro' : '') + '" onclick="route(\'' + signupHash + '\')">' + escapeHtml(_t('welcome.signup')) + '</button>' +
         '<button class="welcome-btn outline" onclick="route(\'#/login\')">' + escapeHtml(_t('welcome.signin')) + '</button>' +
         (!isPro ? '<button class="welcome-ghost" onclick="route(\'#/services\')">' + escapeHtml(_t('welcome.explore')) + '</button>' : '') +
       '</div>' +
