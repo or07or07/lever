@@ -26,6 +26,8 @@ from jose import JWTError
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from age import MINIMUM_AGE_POLICY_VERSION, assert_minimum_age
+
 from auth import (
     create_access_token,
     create_mfa_pending_token,
@@ -89,6 +91,16 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
     ISO 27001 A.9.2.1 — Formal user registration process.
     """
+    # ── Minimum age (18+) — checked FIRST, before any account state exists ──
+    # Recomputed server-side from the submitted date of birth against Lever's
+    # own Guayaquil business date (age.market_today()). The device clock and any
+    # client-sent flag are ignored. Running this before the duplicate-email
+    # lookup also means age validation can never reveal whether an account
+    # already exists. Raises 403 MINIMUM_AGE_REQUIREMENT_NOT_MET / 422
+    # INVALID_DATE_OF_BIRTH — no user, profile, role or device registration is
+    # created for an ineligible applicant.
+    assert_minimum_age(payload.date_of_birth)
+
     # Email is case-insensitive: store it normalized and reject duplicates
     # regardless of capitalization (also catches any legacy mixed-case rows).
     email = payload.email.strip().lower()
@@ -104,6 +116,11 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         # validator rejects registration otherwise.
         terms_accepted_version=CURRENT_TERMS_VERSION,
         terms_accepted_at=datetime.now(timezone.utc),
+        # Age eligibility was proven above, in this same transaction — the DOB
+        # cannot be swapped between validation and account creation.
+        date_of_birth=payload.date_of_birth,
+        age_verified_at=datetime.now(timezone.utc),
+        minimum_age_policy_version=MINIMUM_AGE_POLICY_VERSION,
     )
     db.add(user)
     db.flush()

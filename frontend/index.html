@@ -125,6 +125,7 @@ input,textarea,select{font-family:inherit}
 .form-group{margin-bottom:16px}
 .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--gray-700);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.95rem;transition:.15s;background:#fff}
+.dob-help{margin-top:6px;font-size:.76rem;color:var(--gray-500);line-height:1.45}
 /* Password field with show/hide eye toggle */
 .pass-wrap{position:relative}
 .pass-wrap input{padding-right:44px}
@@ -1047,6 +1048,14 @@ var _translations = {
   'nav.primary': {es:'Navegación principal', en:'Primary navigation'},
   'nav.pendingAction': {es:'acción pendiente', en:'pending action'},
   'nav.pendingActions': {es:'acciones pendientes', en:'pending actions'},
+  // -- Minimum age (18+) --
+  'auth.dob': {es:'Fecha de nacimiento', en:'Date of birth'},
+  'auth.dobHelp': {es:'Debes tener al menos 18 años para crear una cuenta en Lever.', en:'You must be at least 18 years old to create a Lever account.'},
+  'auth.dobWhy': {es:'Usamos tu fecha de nacimiento para confirmar que cumples con la edad mínima requerida para usar Lever.', en:'We use your date of birth to confirm you meet the minimum age required to use Lever.'},
+  'auth.dobRequired': {es:'Ingresa tu fecha de nacimiento.', en:'Enter your date of birth.'},
+  'auth.dobInvalid': {es:'Ingresa una fecha de nacimiento válida.', en:'Enter a valid date of birth.'},
+  'auth.underageTitle': {es:'No puedes crear una cuenta', en:"You can't create an account"},
+  'auth.underage': {es:'Debes tener al menos 18 años para registrarte en Lever.', en:'You must be at least 18 years old to register on Lever.'},
   'tab.home': {es:'Inicio', en:'Home'},
   'tab.services': {es:'Servicios', en:'Services'},
   'tab.activity': {es:'Actividad', en:'Activity'},
@@ -4829,6 +4838,11 @@ function renderAuth(initialTab, presetRole) {
             <input type="email" id="r-email" placeholder="you@example.com" inputmode="email" autocomplete="email">
           </div>
           <div class="form-group">
+            <label for="r-dob">${_t('auth.dob')}</label>
+            <input type="date" id="r-dob" max="${new Date().toISOString().slice(0,10)}" autocomplete="bday" aria-describedby="r-dob-help">
+            <p id="r-dob-help" class="dob-help">${_t('auth.dobHelp')} ${_t('auth.dobWhy')}</p>
+          </div>
+          <div class="form-group">
             <label>${_t('auth.password')}</label>
             ${passField('r-pass', 'Create a strong password', 'new-password')}
           </div>
@@ -4934,17 +4948,32 @@ async function doRegister() {
   const role  = document.getElementById('r-role').value;
   const profession = role === 'mechanic' ? document.getElementById('r-profession').value : undefined;
   const acceptedTerms = document.getElementById('r-accept-terms').checked;
+  const dob = document.getElementById('r-dob').value;   // YYYY-MM-DD
   if (!acceptedTerms) {
     document.getElementById('r-err').innerHTML = alert_el('error', _t('auth.mustAcceptTerms'));
     return;
   }
+  // Usability only — the backend recomputes eligibility and is authoritative.
+  if (!dob) {
+    document.getElementById('r-err').innerHTML = alert_el('error', _t('auth.dobRequired'));
+    return;
+  }
   try {
-    const data = await post('/api/auth/register', {email, password:pass, role, accepted_terms: acceptedTerms, ...(profession && {profession})});
+    const data = await post('/api/auth/register', {email, password:pass, role, accepted_terms: acceptedTerms, date_of_birth: dob, ...(profession && {profession})});
     login(data.access_token, {id:data.user_id, email, role:data.role, profession:data.profession||profession||null, email_verified:false});
     await loadProfessions();
     route('#/verify-email');
   } catch(e) {
-    document.getElementById('r-err').innerHTML = alert_el('error', e.message);
+    const msg = e.message || '';
+    let html;
+    if (/MINIMUM_AGE_REQUIREMENT_NOT_MET/i.test(msg)) {
+      html = '<strong>' + escapeHtml(_t('auth.underageTitle')) + '</strong><br>' + escapeHtml(_t('auth.underage'));
+    } else if (/INVALID_DATE_OF_BIRTH/i.test(msg)) {
+      html = escapeHtml(_t('auth.dobInvalid'));
+    } else {
+      html = escapeHtml(msg);
+    }
+    document.getElementById('r-err').innerHTML = alert_el('error', html);
   }
 }
 

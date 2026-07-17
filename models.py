@@ -13,7 +13,7 @@ ISO 27001 Controls Referenced:
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean,
-    DateTime, ForeignKey, Enum as SAEnum, JSON, Index
+    Date, DateTime, ForeignKey, Enum as SAEnum, JSON, Index
 )
 from sqlalchemy.orm import relationship
 from database import Base
@@ -86,6 +86,16 @@ class User(Base):
     # this manually after reviewing identity documents sent out-of-band
     # (email/WhatsApp), via the existing PATCH /api/admin/users/{id}.
     verification_level = Column(String(20), default="none", nullable=False)
+
+    # ── Minimum-age policy (18+) — see age.py ────────────────────────────────
+    # A birthday is a calendar date, not a moment in time, so this is a DATE.
+    # Nullable: accounts created before this policy have no DOB on file and are
+    # handled by a phased verification migration, not by deletion.
+    # Personal data: never exposed in job requests, offers, chat, notifications,
+    # public profiles or analytics — only the account owner's own flows.
+    date_of_birth = Column(Date, nullable=True)
+    age_verified_at = Column(DateTime, nullable=True)
+    minimum_age_policy_version = Column(String(32), nullable=True)
 
     # Relationships
     client_profile = relationship("ClientProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")

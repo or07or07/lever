@@ -7,7 +7,7 @@ CIA Triad Alignment:
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
@@ -23,6 +23,15 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     role: str = Field(pattern="^(client|mechanic)$")
     profession: Optional[str] = Field(default=None)
+    # Minimum-age policy (18+). REQUIRED and with no default on purpose: a
+    # registration that omits it fails validation (422) rather than defaulting
+    # to "adult". Eligibility itself is always recomputed server-side in
+    # routes/auth.register via age.assert_minimum_age — this validator only
+    # rejects impossible dates early. A client-sent flag like isAdult is
+    # never read.
+    date_of_birth: date = Field(
+        description="Calendar date of birth (YYYY-MM-DD). Age is recomputed by the backend.",
+    )
     accepted_terms: bool = Field(
         default=False,
         validate_default=True,  # Pydantic v2 skips validators on defaults otherwise —
@@ -44,6 +53,16 @@ class UserCreate(BaseModel):
     def must_accept_terms(cls, v: bool) -> bool:
         if not v:
             raise ValueError("You must accept the Terms & Conditions and Privacy Policy to create an account.")
+        return v
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def dob_is_sane(cls, v: date) -> date:
+        """Reject empty/future/absurd dates early. (An impossible calendar date
+        such as 31-Feb never parses into a `date`, so it 422s before this.)"""
+        from age import is_valid_dob
+        if not is_valid_dob(v):
+            raise ValueError("Invalid date of birth")
         return v
 
     @model_validator(mode="after")

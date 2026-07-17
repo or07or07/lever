@@ -19,6 +19,8 @@ import requests
 import traceback
 
 BASE = "http://127.0.0.1:8500"
+# Registration now requires a date of birth (18+ policy — see age.py).
+ADULT_DOB = "1990-01-01"
 PASS = "\033[92m[PASS]\033[0m"
 FAIL = "\033[91m[FAIL]\033[0m"
 INFO = "\033[94m[INFO]\033[0m"
@@ -116,7 +118,7 @@ def test_auth():
     r = anon.post("/api/auth/register", json={
         "email": f"testclient_{uid}@test.com",
         "password": "Test1234!",
-        "role": "client", "accepted_terms": True
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     check("Client registration returns 201", r.status_code == 201, r.text)
     token_data = r.json()
@@ -127,7 +129,7 @@ def test_auth():
     r2 = anon.post("/api/auth/register", json={
         "email": f"testclient_{uid}@test.com",
         "password": "Test1234!",
-        "role": "client", "accepted_terms": True
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     check("Duplicate registration rejected (409)", r2.status_code == 409, r2.text)
 
@@ -135,7 +137,7 @@ def test_auth():
     r3 = anon.post("/api/auth/register", json={
         "email": f"weak_{uid}@test.com",
         "password": "weak",
-        "role": "client", "accepted_terms": True
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     check("Weak password rejected (422)", r3.status_code == 422, r3.text)
 
@@ -175,7 +177,7 @@ def test_full_orchestration():
     client_r = anon.post("/api/auth/register", json={
         "email": f"client_{uid}@test.com",
         "password": "Client123!",
-        "role": "client", "accepted_terms": True
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     check("Register fresh client", client_r.status_code == 201)
     client = Session(client_r.json()["access_token"])
@@ -183,7 +185,7 @@ def test_full_orchestration():
     mech_r = anon.post("/api/auth/register", json={
         "email": f"mech_{uid}@test.com",
         "password": "Mech1234!",
-        "role": "mechanic", "accepted_terms": True
+        "role": "mechanic", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     check("Register fresh provider", mech_r.status_code == 201)
     mech = Session(mech_r.json()["access_token"])
@@ -478,13 +480,13 @@ def test_message_isolation():
     uid = str(uuid.uuid4())[:8]
 
     c1_r = anon.post("/api/auth/register", json={
-        "email": f"c1_{uid}@test.com", "password": "C1234567!", "role": "client", "accepted_terms": True
+        "email": f"c1_{uid}@test.com", "password": "C1234567!", "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     c2_r = anon.post("/api/auth/register", json={
-        "email": f"c2_{uid}@test.com", "password": "C2234567!", "role": "client", "accepted_terms": True
+        "email": f"c2_{uid}@test.com", "password": "C2234567!", "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     m1_r = anon.post("/api/auth/register", json={
-        "email": f"m1_{uid}@test.com", "password": "M1234567!", "role": "mechanic", "accepted_terms": True
+        "email": f"m1_{uid}@test.com", "password": "M1234567!", "role": "mechanic", "accepted_terms": True, "date_of_birth": ADULT_DOB
     })
     c1 = Session(c1_r.json()["access_token"])
     c2 = Session(c2_r.json()["access_token"])
@@ -546,7 +548,7 @@ def test_guayaquil_market():
     uid = uuid.uuid4().hex[:8]
     c = requests.Session()
     reg = c.post(f"{BASE}/api/auth/register", json={
-        "email": f"gye_{uid}@test.com", "password": "Passw0rd!", "role": "client", "accepted_terms": True,
+        "email": f"gye_{uid}@test.com", "password": "Passw0rd!", "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB,
     })
     tok = reg.json()["access_token"]
     h = {"Authorization": f"Bearer {tok}"}
@@ -593,6 +595,7 @@ def run_all():
         test_guayaquil_market,
         test_customer_ratings,
         test_email_case_insensitive,
+        test_minimum_age,
     ]
 
     for test_fn in tests:
@@ -628,19 +631,19 @@ def test_customer_ratings():
 
     cr = anon.post("/api/auth/register", json={
         "email": f"crat_{uid}@test.com", "password": "Client123!",
-        "role": "client", "accepted_terms": True})
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     check("Register client", cr.status_code == 201, cr.text)
     client = Session(cr.json()["access_token"])
 
     mr = anon.post("/api/auth/register", json={
         "email": f"mrat_{uid}@test.com", "password": "Mech1234!",
-        "role": "mechanic", "accepted_terms": True})
+        "role": "mechanic", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     check("Register mechanic A", mr.status_code == 201, mr.text)
     mech = Session(mr.json()["access_token"])
 
     mr2 = anon.post("/api/auth/register", json={
         "email": f"mrat2_{uid}@test.com", "password": "Mech1234!",
-        "role": "mechanic", "accepted_terms": True})
+        "role": "mechanic", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     other_mech = Session(mr2.json()["access_token"])
 
     rq = client.post("/api/client/requests", json={
@@ -696,7 +699,7 @@ def test_customer_ratings():
 
     cr2 = anon.post("/api/auth/register", json={
         "email": f"crat_b_{uid}@test.com", "password": "Client123!",
-        "role": "client", "accepted_terms": True})
+        "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     client_b = Session(cr2.json()["access_token"])
     repb = client_b.get("/api/client/reputation").json()
     check("Other client's reputation empty (isolation)", repb.get("rating_count") == 0, str(repb))
@@ -707,14 +710,88 @@ def test_email_case_insensitive():
     uid = str(uuid.uuid4())[:8]
     email_lower = f"case_{uid}@test.com"
     r = anon.post("/api/auth/register", json={
-        "email": email_lower, "password": "Client123!", "role": "client", "accepted_terms": True})
+        "email": email_lower, "password": "Client123!", "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     check("Register lowercase email (201)", r.status_code == 201, r.text)
     dup = anon.post("/api/auth/register", json={
-        "email": email_lower.upper(), "password": "Client123!", "role": "client", "accepted_terms": True})
+        "email": email_lower.upper(), "password": "Client123!", "role": "client", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     check("Duplicate with different case rejected (409)", dup.status_code == 409, dup.text)
     li = anon.post("/api/auth/login", json={"email": email_lower.upper(), "password": "Client123!"})
     check("Login with uppercase email works (200)",
           li.status_code == 200 and bool(li.json().get("access_token")), li.text)
+
+
+def test_minimum_age():
+    section("11. Minimum age (18+) enforcement")
+    from datetime import date, timedelta
+    uid = str(uuid.uuid4())[:8]
+
+    def reg(suffix, dob, role="client"):
+        body = {"email": f"age_{suffix}_{uid}@test.com", "password": "Client123!",
+                "role": role, "accepted_terms": True}
+        if dob is not None:
+            body["date_of_birth"] = dob
+        return anon.post("/api/auth/register", json=body)
+
+    today = date.today()
+
+    def dob_for_age(years, days_offset=0):
+        try:
+            b = today.replace(year=today.year - years)
+        except ValueError:
+            b = date(today.year - years, 3, 1)
+        return (b + timedelta(days=days_offset)).isoformat()
+
+    # ---- Boundary ----
+    r = reg("today18", dob_for_age(18))
+    check("Turns 18 TODAY -> allowed (201)", r.status_code == 201, r.text)
+
+    r = reg("tomorrow18", dob_for_age(18, 1))
+    check("Turns 18 TOMORROW -> rejected (403)",
+          r.status_code == 403 and "MINIMUM_AGE_REQUIREMENT_NOT_MET" in r.text, r.text)
+
+    r = reg("yesterday18", dob_for_age(18, -1))
+    check("Turned 18 YESTERDAY -> allowed (201)", r.status_code == 201, r.text)
+
+    r = reg("child", dob_for_age(10))
+    check("10-year-old rejected (403)",
+          r.status_code == 403 and "MINIMUM_AGE_REQUIREMENT_NOT_MET" in r.text, r.text)
+
+    # ---- Provider channel: underage must not reach professional onboarding ----
+    r = reg("minorpro", dob_for_age(15), role="mechanic")
+    check("Underage PROVIDER rejected (403)",
+          r.status_code == 403 and "MINIMUM_AGE_REQUIREMENT_NOT_MET" in r.text, r.text)
+
+    # ---- Invalid input ----
+    r = reg("nodob", None)
+    check("Missing date_of_birth rejected (422)", r.status_code == 422, r.text)
+
+    r = reg("future", (today + timedelta(days=1)).isoformat())
+    check("Future DOB rejected", r.status_code in (403, 422), r.text)
+
+    r = reg("badcal", "2000-02-31")
+    check("Impossible calendar date (31 Feb) rejected (422)", r.status_code == 422, r.text)
+
+    r = reg("nontext", "not-a-date")
+    check("Non-date text rejected (422)", r.status_code == 422, r.text)
+
+    r = reg("ancient", "0001-01-01")
+    check("Absurdly old DOB rejected", r.status_code in (403, 422), r.text)
+
+    # ---- Bypass attempts: client-supplied adult flags are ignored ----
+    r = anon.post("/api/auth/register", json={
+        "email": f"age_flag_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "isAdult": True, "age": 30})
+    check("isAdult/age flags cannot replace DOB (422)", r.status_code == 422, r.text)
+
+    r = anon.post("/api/auth/register", json={
+        "email": f"age_flag2_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": dob_for_age(12), "isAdult": True})
+    check("isAdult=true does not override a minor's DOB (403)",
+          r.status_code == 403 and "MINIMUM_AGE_REQUIREMENT_NOT_MET" in r.text, r.text)
+
+    # ---- DOB must not leak back in the error ----
+    r = reg("leak", dob_for_age(9))
+    check("Underage error does not echo the DOB", dob_for_age(9) not in r.text, r.text)
 
 
 if __name__ == "__main__":
@@ -735,3 +812,4 @@ def test_pytest_isolation():  test_message_isolation()
 def test_pytest_guayaquil():  test_guayaquil_market()
 def test_pytest_customer_ratings(): test_customer_ratings()
 def test_pytest_email_ci():   test_email_case_insensitive()
+def test_pytest_minimum_age(): test_minimum_age()
