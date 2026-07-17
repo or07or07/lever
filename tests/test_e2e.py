@@ -591,6 +591,8 @@ def run_all():
         test_admin_flows,
         test_message_isolation,
         test_guayaquil_market,
+        test_customer_ratings,
+        test_email_case_insensitive,
     ]
 
     for test_fn in tests:
@@ -620,6 +622,101 @@ def run_all():
         print("\n  All tests passed.")
 
 
+def test_customer_ratings():
+    section("9. Customer ratings + reputation (two-way)")
+    uid = str(uuid.uuid4())[:8]
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"crat_{uid}@test.com", "password": "Client123!",
+        "role": "client", "accepted_terms": True})
+    check("Register client", cr.status_code == 201, cr.text)
+    client = Session(cr.json()["access_token"])
+
+    mr = anon.post("/api/auth/register", json={
+        "email": f"mrat_{uid}@test.com", "password": "Mech1234!",
+        "role": "mechanic", "accepted_terms": True})
+    check("Register mechanic A", mr.status_code == 201, mr.text)
+    mech = Session(mr.json()["access_token"])
+
+    mr2 = anon.post("/api/auth/register", json={
+        "email": f"mrat2_{uid}@test.com", "password": "Mech1234!",
+        "role": "mechanic", "accepted_terms": True})
+    other_mech = Session(mr2.json()["access_token"])
+
+    rq = client.post("/api/client/requests", json={
+        "title": "Fuga de agua en la cocina",
+        "description": "Hay una fuga bajo el fregadero desde ayer.",
+        "location": "Urdesa Central, Guayaquil",
+        "city": "Guayaquil", "province": "Guayas", "country_code": "EC",
+        "urgency": "immediate", "budget_max": 100.0, "profession_type": "plumbing"})
+    check("Create request (201)", rq.status_code == 201, rq.text)
+    request_id = rq.json()["id"]
+
+    mech.post("/api/provider/go-online")
+    acc = mech.post(f"/api/provider/board/{request_id}/accept")
+    check("Mechanic accepts (201)", acc.status_code == 201, acc.text)
+    job_id = acc.json()["id"]
+
+    early = mech.post(f"/api/provider/jobs/{job_id}/rate-customer", json={"rating": 5})
+    check("Rate before completion rejected (400)",
+          early.status_code == 400 and "JOB_NOT_ELIGIBLE" in early.text, early.text)
+
+    for s in ["en_route", "diagnosing", "repairing"]:
+        mech.patch(f"/api/provider/jobs/{job_id}/status", json={"status": s})
+    comp = mech.patch(f"/api/provider/jobs/{job_id}/status",
+                      json={"status": "completed", "final_price": 80.0})
+    check("Complete job (200)", comp.status_code == 200, comp.text)
+
+    rep0 = client.get("/api/client/reputation")
+    check("Reputation reachable (200)", rep0.status_code == 200, rep0.text)
+    check("No rating yet -> average null + count 0",
+          rep0.json().get("average_rating") is None and rep0.json().get("rating_count") == 0, rep0.text)
+
+    bad = other_mech.post(f"/api/provider/jobs/{job_id}/rate-customer", json={"rating": 5})
+    check("Non-assigned mechanic rejected (403)",
+          bad.status_code == 403 and "PROFESSIONAL_NOT_ASSIGNED" in bad.text, bad.text)
+
+    invalid = mech.post(f"/api/provider/jobs/{job_id}/rate-customer", json={"rating": 6})
+    check("Rating > 5 rejected (422)", invalid.status_code == 422, invalid.text)
+
+    rate = mech.post(f"/api/provider/jobs/{job_id}/rate-customer",
+                     json={"rating": 5, "comment": "Cliente puntual y claro."})
+    check("Mechanic rates customer (201)", rate.status_code == 201, rate.text)
+
+    dup = mech.post(f"/api/provider/jobs/{job_id}/rate-customer", json={"rating": 4})
+    check("Duplicate customer rating rejected (409)",
+          dup.status_code == 409 and "ALREADY_EXISTS" in dup.text, dup.text)
+
+    rep = client.get("/api/client/reputation").json()
+    check("Reputation count = 1", rep.get("rating_count") == 1, str(rep))
+    check("Reputation average = 5.0", rep.get("average_rating") == 5.0, str(rep))
+    check("Completed job count >= 1", rep.get("completed_job_count", 0) >= 1, str(rep))
+    check("Recent ratings hide professional identity",
+          all("mechanic_id" not in rr and "professional_id" not in rr for rr in rep.get("recent_ratings", [])), str(rep))
+
+    cr2 = anon.post("/api/auth/register", json={
+        "email": f"crat_b_{uid}@test.com", "password": "Client123!",
+        "role": "client", "accepted_terms": True})
+    client_b = Session(cr2.json()["access_token"])
+    repb = client_b.get("/api/client/reputation").json()
+    check("Other client's reputation empty (isolation)", repb.get("rating_count") == 0, str(repb))
+
+
+def test_email_case_insensitive():
+    section("10. Case-insensitive email")
+    uid = str(uuid.uuid4())[:8]
+    email_lower = f"case_{uid}@test.com"
+    r = anon.post("/api/auth/register", json={
+        "email": email_lower, "password": "Client123!", "role": "client", "accepted_terms": True})
+    check("Register lowercase email (201)", r.status_code == 201, r.text)
+    dup = anon.post("/api/auth/register", json={
+        "email": email_lower.upper(), "password": "Client123!", "role": "client", "accepted_terms": True})
+    check("Duplicate with different case rejected (409)", dup.status_code == 409, dup.text)
+    li = anon.post("/api/auth/login", json={"email": email_lower.upper(), "password": "Client123!"})
+    check("Login with uppercase email works (200)",
+          li.status_code == 200 and bool(li.json().get("access_token")), li.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -636,3 +733,5 @@ def test_pytest_mechanic():   test_mechanic_flows()
 def test_pytest_admin():      test_admin_flows()
 def test_pytest_isolation():  test_message_isolation()
 def test_pytest_guayaquil():  test_guayaquil_market()
+def test_pytest_customer_ratings(): test_customer_ratings()
+def test_pytest_email_ci():   test_email_case_insensitive()
