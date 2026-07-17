@@ -113,7 +113,10 @@ input,textarea,select{font-family:inherit}
 
 /* ---- Auth screens ---- */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff}
-.auth-card{background:#fff;border-radius:var(--radius-lg);padding:40px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);border:1px solid var(--gray-100)}
+.auth-card{background:#fff;border-radius:var(--radius-lg);padding:40px;width:100%;max-width:440px;box-shadow:var(--shadow-lg);border:1px solid var(--gray-100);animation:authIn .35s var(--ease)}
+@keyframes authIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.auth-mode-title{text-align:center;font-size:1.15rem;font-weight:800;letter-spacing:-.3px;color:var(--gray-900);margin:6px 0 16px}
+@media(prefers-reduced-motion:reduce){.auth-card{animation:none}}
 .auth-logo{text-align:center;margin-bottom:24px}
 .auth-logo h1{color:var(--brand);font-size:1.8rem;font-weight:800}
 .auth-logo p{color:var(--gray-600);font-size:.9rem;margin-top:4px}
@@ -5221,6 +5224,10 @@ function renderAuth(initialTab, presetRole) {
   if (presetRole) initialTab = 'register';
   // A role locked in via a /registro/* entry point (or the native app flavor).
   const lockedRole = presetRole || APP_FLAVOR_ROLE || null;
+  // Login and signup are SEPARATE pages (the combined tabbed card is
+  // deprecated): cross-links navigate between routes.
+  const signupHash = lockedRole === 'mechanic' ? '#/registro/profesional'
+    : lockedRole === 'client' ? '#/registro/cliente' : '#/signup';
   const profKeys = Object.keys(_professions);
   const profOptions = profKeys.map(k =>
     `<option value="${k}">${profIcon(k)} ${profLabel(k)}</option>`
@@ -5229,7 +5236,7 @@ function renderAuth(initialTab, presetRole) {
   document.getElementById('app').innerHTML = `
     <div class="auth-wrap">
       <div class="auth-card">
-        <div style="text-align:center;margin-bottom:4px"><button class="btn-ghost" style="font-size:.82rem;color:var(--gray-500)" onclick="route('#/')">\u2190 Volver al inicio</button></div>
+        <div style="text-align:center;margin-bottom:4px"><button class="btn-ghost" style="font-size:.82rem;color:var(--gray-500)" onclick="route('${IS_NATIVE ? '#/welcome/choice' : '#/'}')">\u2190 ${_t('acct.back')}</button></div>
         <div class="auth-logo">
           <h1 style="display:inline-flex;align-items:center;gap:4px"><svg width="28" height="28" viewBox="0 0 100 100" fill="none" style="display:inline-block;vertical-align:middle"><rect width="100" height="100" rx="21" fill="#6366f1"/><g stroke="white" fill="none"><circle cx="50" cy="50" r="36" stroke-width="3" fill="none"/><path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/><line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/><circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/><path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/></g></svg><span style="letter-spacing:-.5px;margin-left:5px">Lever</span></h1>
           <p>${_t('auth.tagline')}</p>
@@ -5240,13 +5247,11 @@ function renderAuth(initialTab, presetRole) {
           </div>
         </div>
 
-        <div class="tab-row">
-          <button class="tab-btn ${initialTab!=='register'?'active':''}" id="tab-login" onclick="switchAuthTab('login')">${_t('auth.signIn')}</button>
-          <button class="tab-btn ${initialTab==='register'?'active':''}" id="tab-register" onclick="switchAuthTab('register')">${_t('auth.register')}</button>
-        </div>
+        <h2 class="auth-mode-title">${initialTab==='register' ? _t('auth.register') : _t('auth.signIn')}</h2>
 
-        <!-- Login Pane -->
-        <div id="pane-login" class="${initialTab==='register'?'hidden':''}">
+        <!-- Login page (register lives on its own route) -->
+        ${initialTab !== 'register' ? `
+        <div id="pane-login">
           <div id="l-err"></div>
           <div class="form-group">
             <label>${_t('auth.email')}</label>
@@ -5261,12 +5266,13 @@ function renderAuth(initialTab, presetRole) {
             <button class="btn-ghost" style="font-size:.82rem;color:var(--brand)" onclick="route('#/reset-password')">${_t('auth.forgotPassword')}</button>
           </div>
           <div style="text-align:center;margin-top:6px">
-            <button class="btn-ghost" style="font-size:.82rem" onclick="switchAuthTab('register')">${_t('auth.noAccount')}</button>
+            <button class="btn-ghost" style="font-size:.82rem" onclick="route('${signupHash}')">${_t('auth.noAccount')}</button>
           </div>
-        </div>
+        </div>` : ''}
 
-        <!-- Register Pane -->
-        <div id="pane-register" class="${initialTab==='register'?'':'hidden'}">
+        <!-- Signup page (login lives on its own route) -->
+        ${initialTab === 'register' ? `
+        <div id="pane-register">
           <div id="r-err"></div>
           ${lockedRole ? `<div style="text-align:center;margin-bottom:12px"><span style="display:inline-block;background:var(--brand-50);color:var(--brand-dark);border-radius:999px;padding:5px 14px;font-size:.82rem;font-weight:700">${lockedRole==='mechanic'?_t('nav2.soyProfesional'):_t('nav2.soyCliente')}</span></div>` : ''}
           ${lockedRole==='mechanic' ? `<div class="alert" style="background:var(--brand-50);color:var(--gray-700);border:1px solid var(--brand-100);font-size:.82rem;margin-bottom:12px">📍 ${_t('proreg.notice')}</div>` : ''}
@@ -5303,18 +5309,18 @@ function renderAuth(initialTab, presetRole) {
           </div>
           <button class="btn btn-primary btn-full" onclick="doRegister()">${_t('auth.createAccount')}</button>
           <div style="text-align:center;margin-top:12px">
-            <button class="btn-ghost" style="font-size:.82rem" onclick="switchAuthTab('login')">${_t('auth.hasAccount')}</button>
+            <button class="btn-ghost" style="font-size:.82rem" onclick="route('#/login')">${_t('auth.hasAccount')}</button>
           </div>
-        </div>
+        </div>` : ''}
       </div>
     </div>`;
 }
 
+// DEPRECATED: the combined tabbed auth card is gone — sign-in and sign-up are
+// separate routed pages (welcome/choice buttons + in-page cross-links
+// navigate). Kept as a routing shim for any stray caller.
 function switchAuthTab(tab) {
-  ['login','register'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
-    document.getElementById('pane-'+t).classList.toggle('hidden', t!==tab);
-  });
+  route(tab === 'register' ? '#/signup' : '#/login');
 }
 
 async function doLogin() {
