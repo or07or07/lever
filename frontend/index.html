@@ -870,7 +870,27 @@ tr:hover td{background:var(--gray-50)}
 .bottom-tabs-inner{display:flex;justify-content:space-around;align-items:stretch;height:var(--bottom-nav-height);max-width:520px;margin:0 auto;padding:0 4px}
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 0;min-height:44px;border:none;background:none;cursor:pointer;color:var(--gray-500);font-size:.66rem;font-weight:600;transition:color .15s ease;-webkit-tap-highlight-color:transparent;position:relative;border-radius:14px}
 .tab-item .tab-icon{font-size:1.3rem;line-height:1;display:flex;transition:transform .15s ease;position:relative}
-.tab-badge{position:absolute;top:-7px;right:-11px;background:var(--coral);color:#fff;font-size:.6rem;font-weight:700;line-height:1;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.tab-badge{position:absolute;top:-7px;right:-11px;background:var(--coral);color:#fff;font-size:.6rem;font-weight:700;line-height:1;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px;z-index:1}
+/* Stylish "new notification" highlight: expanding ring behind the badge + icon glow */
+.tab-ping{position:absolute;top:-7px;right:-11px;width:16px;height:16px;border-radius:8px;pointer-events:none}
+.tab-ping::before{content:'';position:absolute;inset:0;border-radius:inherit;background:var(--coral);opacity:.55;animation:tabPing 1.7s cubic-bezier(0,0,.2,1) infinite}
+@keyframes tabPing{0%{transform:scale(1);opacity:.55}75%,100%{transform:scale(2.2);opacity:0}}
+.tab-item.has-notif .tab-icon svg{filter:drop-shadow(0 0 5px rgba(244,63,94,.55))}
+/* Incoming job-offer popup (provider) */
+.offer-popup{position:fixed;left:12px;right:12px;bottom:calc(var(--bottom-nav-height) + var(--bottom-nav-gap) + 12px + env(safe-area-inset-bottom,0px));z-index:400;background:#fff;border:1px solid var(--gray-200);border-radius:20px;padding:16px;box-shadow:0 12px 40px rgba(15,23,42,.25);max-width:560px;margin:0 auto;animation:offerUp .28s var(--ease)}
+@keyframes offerUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.offer-head{display:flex;align-items:center;gap:8px;color:var(--nav-green);font-size:.95rem;margin-bottom:8px}
+.offer-bolt{animation:tabPingBolt 1.2s ease-in-out infinite}
+@keyframes tabPingBolt{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.offer-close{margin-left:auto;border:none;background:none;color:var(--gray-400);font-size:1rem;cursor:pointer;padding:6px;min-width:32px;min-height:32px}
+.offer-title{font-weight:800;font-size:1.05rem;color:var(--gray-900);margin-bottom:6px}
+.offer-pay{font-size:.92rem;color:var(--gray-800)}
+.offer-keep{font-size:.76rem;color:var(--nav-green);font-weight:600;margin:2px 0 10px}
+.offer-timer-track{height:6px;border-radius:3px;background:var(--gray-100);overflow:hidden}
+.offer-timer-fill{height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,var(--coral),var(--accent));transition:width .2s linear}
+.offer-timer-text{font-size:.76rem;color:var(--gray-500);margin:6px 0 12px}
+.offer-accept{width:100%;padding:14px;border:none;border-radius:14px;background:var(--success);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;min-height:50px}
+@media(prefers-reduced-motion:reduce){.tab-ping::before,.offer-bolt,.offer-popup{animation:none}}
 .tab-item.active{color:var(--nav-green)}
 .tab-item.active .tab-icon{transform:translateY(-1px) scale(1.05)}
 .tab-item:focus-visible{outline:2px solid var(--nav-green);outline-offset:-3px}
@@ -1117,6 +1137,12 @@ var _translations = {
   'price.refLabel': {es:'Precio del servicio', en:'Service price'},
   'price.refNote': {es:'Precio fijado por Lever según tarifas de mano de obra en Guayaquil. El cobro final estará dentro de este rango según el trabajo realizado.', en:'Price set by Lever from Guayaquil labor rates. The final charge stays within this range based on the work performed.'},
   'price.setByLever': {es:'Precio del servicio (fijado por Lever)', en:'Service price (set by Lever)'},
+  // -- Incoming job-offer popup (provider) --
+  'offer.new': {es:'Nueva oportunidad', en:'New opportunity'},
+  'offer.accept': {es:'Aceptar trabajo', en:'Accept job'},
+  'offer.later': {es:'Ver después', en:'View later'},
+  'offer.secondsLeft': {es:'segundos para aceptar', en:'seconds to accept'},
+  'offer.taken': {es:'Este trabajo ya no está disponible.', en:'This job is no longer available.'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -1691,23 +1717,35 @@ function applyAuthLang(lang) {
 let _notifications = [];
 let _notifPanelOpen = false;
 
+var _locallyRead = new Set();
 async function fetchNotifications() {
   if (!_token) return;
   try {
-    const res = await api('/notifications', 'GET');
+    const res = await api('GET', '/api/notifications');
     _notifications = Array.isArray(res) ? res : (res.items || []);
+    // A refetch racing an in-flight mark-as-read must not resurrect badges.
+    _notifications.forEach(function(n) { if (_locallyRead.has(n.id)) n.read = true; });
     updateNotifBadges();
   } catch(e) { /* silent */ }
 }
 
+var _lastBadgeSig = '';
 function updateNotifBadges() {
   const unread = _notifications.filter(n => !n.read).length;
   if (_lastNotifCount >= 0 && unread > _lastNotifCount) { playNotifSound(); }
   _lastNotifCount = unread;
-  const bellCount = document.getElementById('bell-count');
+  const bellCount = document.getElementById('bell-count');   // admin only
   if (bellCount) bellCount.textContent = unread > 0 ? (unread > 9 ? '9+' : unread) : '';
-  const tabDot = document.getElementById('tab-notif-dot');
-  if (tabDot) tabDot.classList.toggle('visible', unread > 0);
+  // Tabs light up per feature: re-render the bottom nav when counts change.
+  // (updateBottomTabs calls back into here; the unchanged signature stops it.)
+  const sig = JSON.stringify(notifTabCounts());
+  if (sig !== _lastBadgeSig) {
+    _lastBadgeSig = sig;
+    const role = _user && _user.role;
+    if (role && document.getElementById('bottom-tabs') && document.getElementById('app-shell')) {
+      updateBottomTabs(role, currentRoute());
+    }
+  }
 }
 
 function toggleNotifPanel() {
@@ -1748,7 +1786,7 @@ function renderNotifPanel() {
 
 async function markAllRead() {
   try {
-    await api('/notifications/read-all', 'PUT');
+    await api('PUT', '/api/notifications/read-all');
     _notifications.forEach(function(n) { n.read = true; });
     updateNotifBadges();
     renderNotifPanel();
@@ -1756,7 +1794,7 @@ async function markAllRead() {
 }
 
 async function handleNotifClick(id, link) {
-  try { await api('/notifications/' + id + '/read', 'PUT'); } catch(e) {}
+  try { await api('PUT', '/api/notifications/' + id + '/read'); } catch(e) {}
   var n = _notifications.find(function(x) { return x.id === id; });
   if (n) n.read = true;
   updateNotifBadges();
@@ -1832,6 +1870,36 @@ function getNavBadges() {
   }
   return b;
 }
+
+// The bell is gone for clients/providers: unread notifications light up the
+// tab that owns the feature instead. Map notification type → owning tab.
+var _notifTabMap = {
+  client:   { job_update: '#/requests', new_request: '#/requests', message: '#/requests', review: '#/profile', system: '#/profile' },
+  mechanic: { job_offer: '#/board', new_request: '#/board', job_update: '#/jobs', message: '#/messages', review: '#/profile', system: '#/profile' },
+};
+function notifTabCounts() {
+  var role = _user && _user.role;
+  var map = _notifTabMap[role] || {};
+  var out = {};
+  (_notifications || []).forEach(function(n) {
+    if (n.read) return;
+    var h = map[n.type];
+    if (h) out[h] = (out[h] || 0) + 1;
+  });
+  return out;
+}
+// Opening a tab clears the notifications that lit it up.
+async function clearTabNotifs(tabHash) {
+  var role = _user && _user.role;
+  var map = _notifTabMap[role] || {};
+  var mine = (_notifications || []).filter(function(n) { return !n.read && map[n.type] === tabHash; });
+  if (!mine.length) return;
+  mine.forEach(function(n) { n.read = true; _locallyRead.add(n.id); });
+  updateNotifBadges();
+  for (var i = 0; i < mine.length; i++) {
+    try { await api('PUT', '/api/notifications/' + mine[i].id + '/read'); } catch (e) {}
+  }
+}
 async function refreshNavBadges() {
   if (!_user || _user.role !== 'client') return;
   try { _activityReqs = await get('/api/client/requests'); } catch(e) { return; }
@@ -1842,17 +1910,20 @@ function buildBottomTabs(role, currentHash) {
   var tabs = BOTTOM_TABS[role];
   if (!tabs) return '';
   var active = activeTabHash(currentHash, role);
+  // Actionable counts + unread notifications, per owning tab (the topbar bell
+  // is gone for clients/providers — tabs light up instead).
   var badges = role === 'client' ? getNavBadges() : {};
+  var nb = notifTabCounts();
+  Object.keys(nb).forEach(function(h) { badges[h] = (badges[h] || 0) + nb[h]; });
   var html = '<nav class="bottom-tabs" id="bottom-tabs" aria-label="' + escapeHtml(_t('nav.primary')) + '"><div class="bottom-tabs-inner">';
   tabs.forEach(function(t) {
     var isActive = active === t.hash;
     var n = badges[t.hash] || 0;
     var label = _t(t.label);
     var aria = label + (n > 0 ? ', ' + n + ' ' + _t(n === 1 ? 'nav.pendingAction' : 'nav.pendingActions') : '');
-    html += '<button class="tab-item ' + (isActive ? 'active' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + escapeHtml(aria) + '"' + (isActive ? ' aria-current="page"' : '') + '>';
-    html += '<span class="tab-icon" aria-hidden="true">' + t.icon + (n > 0 ? '<span class="tab-badge">' + (n > 9 ? '9+' : n) + '</span>' : '') + '</span>';
+    html += '<button class="tab-item ' + (isActive ? 'active' : '') + (n > 0 ? ' has-notif' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + escapeHtml(aria) + '"' + (isActive ? ' aria-current="page"' : '') + '>';
+    html += '<span class="tab-icon" aria-hidden="true">' + t.icon + (n > 0 ? '<span class="tab-ping"></span><span class="tab-badge">' + (n > 9 ? '9+' : n) + '</span>' : '') + '</span>';
     html += '<span>' + escapeHtml(label) + '</span>';
-    if (t.hash === '#/messages') html += '<span class="tab-dot" id="tab-notif-dot"></span>';
     html += '</button>';
   });
   html += '</div></nav>';
@@ -2319,9 +2390,7 @@ async function render() {
         <div class="topbar-right">
           <span class="topbar-page-title" id="topbar-page-title"></span>
           ${role==='mechanic' ? `<button class="provider-status-toggle" id="provider-status-toggle" onclick="toggleProviderOnline()">${_t('provider.offline')}</button>` : ''}
-          <button class="topbar-bell" onclick="toggleNotifPanel()" aria-label="Notificaciones">
-            \ud83d\udd14<span class="bell-count" id="bell-count"></span>
-          </button>
+          ${role==='admin' ? `<button class="topbar-bell" onclick="toggleNotifPanel()" aria-label="Notificaciones">\ud83d\udd14<span class="bell-count" id="bell-count"></span></button>` : ''}
           <span class="topbar-user">${_user?.email || ''}</span>
           <button class="topbar-signout" onclick="logout()">${_t('shell.signOut')}</button>
         </div>
@@ -2339,6 +2408,10 @@ async function render() {
   buildSidebarImproved(role, hash);
   updateBottomTabs(role, hash);
   if (role === 'client' && _activityReqs === null) refreshNavBadges();
+  // Opening a tab clears the notifications that lit it up (bell-less model).
+  clearTabNotifs(activeTabHash(hash, role));
+  // Providers get the incoming-job popup with its acceptance countdown.
+  if (role === 'mechanic') startOfferPolling();
   startNotifPolling();
   await initProviderStatus();
   var ptEl = document.getElementById('topbar-page-title');
@@ -4085,6 +4158,75 @@ async function acceptRequest(id) {
     const job = await post('/api/provider/board/'+id+'/accept');
     route('#/job/'+job.id);
   } catch(e) { alert('Could not accept job: ' + e.message); }
+}
+
+// ---- Incoming job-offer popup with acceptance countdown (provider) ----
+// Polls GET /api/provider/offer every 5s and pops a bottom sheet the moment a
+// dispatch offer targets this provider — no need to open the board manually.
+// The countdown uses the SERVER-computed expires_in_seconds (device clock is
+// never trusted); at 0 the sheet closes (the offer rotates server-side).
+let _offerPoll = null, _offerShownId = null, _offerTick = null;
+function startOfferPolling() {
+  if (_offerPoll) return;
+  _offerPoll = setInterval(pollProviderOffer, 5000);
+  pollProviderOffer();
+}
+async function pollProviderOffer() {
+  if (!_token || !_user || _user.role !== 'mechanic') return;
+  if (document.getElementById('offer-popup')) return;   // one at a time
+  try {
+    const r = await get('/api/provider/offer');
+    const o = r && r.offer;
+    if (o && o.dispatch_id !== _offerShownId) showOfferPopup(o);
+  } catch (e) { /* offline or gated — silent */ }
+}
+function showOfferPopup(o) {
+  _offerShownId = o.dispatch_id;
+  closeOfferPopup();
+  const pay = o.budget_max != null
+    ? (o.budget_min != null && o.budget_min !== o.budget_max ? fmtMoney(o.budget_min) + ' – ' : '') + fmtMoney(o.budget_max)
+    : null;
+  const el = document.createElement('div');
+  el.id = 'offer-popup';
+  el.className = 'offer-popup';
+  el.setAttribute('role', 'alertdialog');
+  el.setAttribute('aria-label', _t('offer.new'));
+  el.innerHTML =
+    '<div class="offer-head"><span class="offer-bolt" aria-hidden="true">⚡</span><strong>' + _t('offer.new') + '</strong>' +
+      '<button class="offer-close" aria-label="' + _t('offer.later') + '" onclick="closeOfferPopup()">✕</button></div>' +
+    '<div class="offer-title">' + escapeHtml(o.title || '') + '</div>' +
+    (pay ? '<div class="offer-pay">💵 ' + _t('price.clientPays') + ': <strong>' + pay + '</strong></div>' +
+           '<div class="offer-keep">' + _t('price.youKeep100') + '</div>' : '') +
+    '<div class="offer-timer-track"><div class="offer-timer-fill" id="offer-timer-fill"></div></div>' +
+    '<div class="offer-timer-text"><span id="offer-seconds">' + o.expires_in_seconds + '</span> ' + _t('offer.secondsLeft') + '</div>' +
+    '<button class="offer-accept" onclick="acceptOfferFromPopup(' + o.request_id + ')">✓ ' + _t('offer.accept') + '</button>';
+  document.body.appendChild(el);
+  try { playNotifSound(); } catch (e) {}
+  const deadline = Date.now() + o.expires_in_seconds * 1000;
+  const windowMs = (o.window_seconds || 30) * 1000;
+  _offerTick = setInterval(function () {
+    const left = deadline - Date.now();
+    if (left <= 0) { closeOfferPopup(); return; }
+    const fill = document.getElementById('offer-timer-fill');
+    const sec = document.getElementById('offer-seconds');
+    if (fill) fill.style.width = Math.max(0, Math.min(100, (left / windowMs) * 100)) + '%';
+    if (sec) sec.textContent = Math.ceil(left / 1000);
+  }, 200);
+}
+async function acceptOfferFromPopup(requestId) {
+  try {
+    const job = await post('/api/provider/board/' + requestId + '/accept');
+    closeOfferPopup();
+    route('#/job/' + job.id);
+  } catch (e) {
+    closeOfferPopup();
+    showToast(_t('offer.taken'), 'error');
+  }
+}
+function closeOfferPopup() {
+  if (_offerTick) { clearInterval(_offerTick); _offerTick = null; }
+  const el = document.getElementById('offer-popup');
+  if (el) el.remove();
 }
 
 async function renderMyJobs(el) {

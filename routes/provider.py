@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from auth import require_provider
 from database import get_db
-from models import ClientProfile, CustomerRating, Job, MechanicProfile, Notification, ProviderService, ServiceRequest, User
+from models import ClientProfile, CustomerRating, Job, MechanicProfile, Notification, ProviderService, RequestDispatch, ServiceRequest, User
 from professions import DEFAULT_PROFESSION, get_job_statuses
 from routes.moderation import blocked_user_ids_involving, is_blocked_pair
 from schemas import (
@@ -636,6 +636,59 @@ def my_reviews(
         .order_by(Review.created_at.desc())
         .all()
     )
+
+
+# ---------------------------------------------------------------------------
+# Current active job offer (drives the in-app offer popup + countdown)
+# ---------------------------------------------------------------------------
+
+@router.get("/offer")
+def current_offer(
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """The provider's currently active dispatch offer, if any, with the
+    seconds remaining in its acceptance window. The Provider APK polls this to
+    pop up an incoming-job window with a countdown instead of requiring the
+    provider to open the board manually. Sends expires_in_seconds (server-
+    computed) so a wrong device clock can't distort the timer, and only a
+    minimal job preview (title/payment/urgency — no exact address)."""
+    from dispatch import DISPATCH_TIMEOUT_SECONDS
+
+    d = (
+        db.query(RequestDispatch)
+        .filter(
+            RequestDispatch.provider_user_id == current_user.id,
+            RequestDispatch.status == "offered",
+        )
+        .order_by(RequestDispatch.offered_at.desc())
+        .first()
+    )
+    if not d or not d.offered_at:
+        return {"offer": None}
+
+    offered = d.offered_at
+    if offered.tzinfo is None:  # stored naive-UTC by the DB driver
+        offered = offered.replace(tzinfo=timezone.utc)
+    remaining = DISPATCH_TIMEOUT_SECONDS - (datetime.now(timezone.utc) - offered).total_seconds()
+    if remaining <= 0:
+        return {"offer": None}   # window over; the rotation task handles the row
+
+    req = db.query(ServiceRequest).filter(ServiceRequest.id == d.request_id).first()
+    if not req or req.status != "pending":
+        return {"offer": None}
+
+    return {"offer": {
+        "dispatch_id": d.id,
+        "request_id": req.id,
+        "title": req.title,
+        "urgency": req.urgency,
+        "service_key": req.service_key,
+        "budget_min": req.budget_min,
+        "budget_max": req.budget_max,
+        "expires_in_seconds": int(remaining),
+        "window_seconds": DISPATCH_TIMEOUT_SECONDS,
+    }}
 
 
 # ---------------------------------------------------------------------------
