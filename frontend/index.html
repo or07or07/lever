@@ -850,7 +850,8 @@ tr:hover td{background:var(--gray-50)}
 .bottom-tabs{display:none;position:fixed;bottom:calc(var(--bottom-nav-gap) + env(safe-area-inset-bottom,0px));left:var(--bottom-nav-gap);right:var(--bottom-nav-gap);height:var(--bottom-nav-height);background:#fff;border:1px solid var(--gray-200);border-radius:20px;z-index:100;box-shadow:0 8px 28px rgba(15,23,42,.13),0 2px 6px rgba(15,23,42,.06)}
 .bottom-tabs-inner{display:flex;justify-content:space-around;align-items:stretch;height:var(--bottom-nav-height);max-width:520px;margin:0 auto;padding:0 4px}
 .tab-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 0;min-height:44px;border:none;background:none;cursor:pointer;color:var(--gray-500);font-size:.66rem;font-weight:600;transition:color .15s ease;-webkit-tap-highlight-color:transparent;position:relative;border-radius:14px}
-.tab-item .tab-icon{font-size:1.3rem;line-height:1;display:flex;transition:transform .15s ease}
+.tab-item .tab-icon{font-size:1.3rem;line-height:1;display:flex;transition:transform .15s ease;position:relative}
+.tab-badge{position:absolute;top:-7px;right:-11px;background:var(--coral);color:#fff;font-size:.6rem;font-weight:700;line-height:1;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .tab-item.active{color:var(--nav-green)}
 .tab-item.active .tab-icon{transform:translateY(-1px) scale(1.05)}
 .tab-item:focus-visible{outline:2px solid var(--nav-green);outline-offset:-3px}
@@ -1044,6 +1045,8 @@ var _lang = localStorage.getItem('lever_lang') || 'es';
 var _translations = {
   // -- Customer bottom navigation (4 tabs) --
   'nav.primary': {es:'Navegación principal', en:'Primary navigation'},
+  'nav.pendingAction': {es:'acción pendiente', en:'pending action'},
+  'nav.pendingActions': {es:'acciones pendientes', en:'pending actions'},
   'tab.home': {es:'Inicio', en:'Home'},
   'tab.services': {es:'Servicios', en:'Services'},
   'tab.activity': {es:'Actividad', en:'Activity'},
@@ -1780,16 +1783,36 @@ function activeTabHash(hash, role) {
   return hash;
 }
 
+// Bottom-nav badges from REAL data only, used selectively (spec §32).
+// Activity (#/requests): completed jobs the customer hasn't reviewed yet
+// ("review required"). No Account badge — email verification is already
+// enforced by the gate before the nav is ever shown, so it can't apply here.
+function getNavBadges() {
+  var b = { '#/requests': 0 };
+  if (Array.isArray(_activityReqs)) {
+    b['#/requests'] = _activityReqs.filter(function(r){ return r.status === 'completed' && r.has_review === false; }).length;
+  }
+  return b;
+}
+async function refreshNavBadges() {
+  if (!_user || _user.role !== 'client') return;
+  try { _activityReqs = await get('/api/client/requests'); } catch(e) { return; }
+  if (document.getElementById('bottom-tabs')) updateBottomTabs('client', currentRoute());
+}
+
 function buildBottomTabs(role, currentHash) {
   var tabs = BOTTOM_TABS[role];
   if (!tabs) return '';
   var active = activeTabHash(currentHash, role);
+  var badges = role === 'client' ? getNavBadges() : {};
   var html = '<nav class="bottom-tabs" id="bottom-tabs" aria-label="' + escapeHtml(_t('nav.primary')) + '"><div class="bottom-tabs-inner">';
   tabs.forEach(function(t) {
     var isActive = active === t.hash;
+    var n = badges[t.hash] || 0;
     var label = _t(t.label);
-    html += '<button class="tab-item ' + (isActive ? 'active' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + escapeHtml(label) + '"' + (isActive ? ' aria-current="page"' : '') + '>';
-    html += '<span class="tab-icon" aria-hidden="true">' + t.icon + '</span>';
+    var aria = label + (n > 0 ? ', ' + n + ' ' + _t(n === 1 ? 'nav.pendingAction' : 'nav.pendingActions') : '');
+    html += '<button class="tab-item ' + (isActive ? 'active' : '') + '" onclick="closeSidebarMobile();route(\'' + t.hash + '\')" aria-label="' + escapeHtml(aria) + '"' + (isActive ? ' aria-current="page"' : '') + '>';
+    html += '<span class="tab-icon" aria-hidden="true">' + t.icon + (n > 0 ? '<span class="tab-badge">' + (n > 9 ? '9+' : n) + '</span>' : '') + '</span>';
     html += '<span>' + escapeHtml(label) + '</span>';
     if (t.hash === '#/messages') html += '<span class="tab-dot" id="tab-notif-dot"></span>';
     html += '</button>';
@@ -2277,6 +2300,7 @@ async function render() {
 
   buildSidebarImproved(role, hash);
   updateBottomTabs(role, hash);
+  if (role === 'client' && _activityReqs === null) refreshNavBadges();
   startNotifPolling();
   await initProviderStatus();
   var ptEl = document.getElementById('topbar-page-title');
