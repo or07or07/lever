@@ -890,6 +890,21 @@ tr:hover td{background:var(--gray-50)}
 .home-cat:hover{border-color:var(--nav-green);background:var(--gray-50)}
 .home-cat-icon{font-size:1.6rem;line-height:1}
 .home-cat-name{font-size:.72rem;font-weight:600;color:var(--gray-700);line-height:1.2}
+/* ===== Activity: status filter chips + mobile-friendly cards ===== */
+.act-chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 14px;-webkit-overflow-scrolling:touch}
+.act-chip{flex-shrink:0;border:1.5px solid var(--gray-200);background:#fff;border-radius:999px;padding:7px 14px;font-size:.82rem;font-weight:600;color:var(--gray-600);cursor:pointer;white-space:nowrap;min-height:36px}
+.act-chip.active{background:var(--nav-green);border-color:var(--nav-green);color:#fff}
+.act-chip-n{opacity:.85;font-size:.75rem}
+.act-list{display:flex;flex-direction:column;gap:10px}
+.act-card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:14px;cursor:pointer}
+.act-card:hover{border-color:var(--nav-green)}
+.act-card:focus-visible{outline:2px solid var(--nav-green);outline-offset:2px}
+.act-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.act-card-title{font-weight:700;font-size:.95rem;color:var(--gray-900)}
+.act-card-meta{font-size:.8rem;color:var(--gray-500);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.act-card-price{font-size:.82rem;color:var(--gray-700);font-weight:600;margin-top:6px}
+.act-card-cta{margin-top:8px;font-size:.8rem;font-weight:700;color:var(--nav-green)}
+.act-none{text-align:center;padding:28px 16px;color:var(--gray-500);font-size:.88rem}
 /* ===== Account: identity + reputation + grouped rows ===== */
 .acct-wrap{max-width:600px;margin:0 auto}
 .acct-identity{display:flex;align-items:flex-start;gap:14px;padding:18px;background:#fff;border:1px solid var(--gray-200);border-radius:16px;margin-bottom:18px}
@@ -1043,6 +1058,18 @@ var _translations = {
   'home.emptyBody': {es:'Busca un servicio o explora las categorías disponibles en Guayaquil.', en:'Search for a service or explore the categories available in Guayaquil.'},
   'home.viewAllResults': {es:'Ver todos los resultados', en:'View all results'},
   'home.searchFailed': {es:'No pudimos buscar servicios en este momento.', en:"We couldn't search for services right now."},
+  // -- Activity section --
+  'activity.title': {es:'Actividad', en:'Activity'},
+  'activity.all': {es:'Todos', en:'All'},
+  'activity.active': {es:'Activos', en:'Active'},
+  'activity.completed': {es:'Completados', en:'Completed'},
+  'activity.cancelled': {es:'Cancelados', en:'Cancelled'},
+  'activity.emptyTitle': {es:'Todavía no tienes actividad', en:'No activity yet'},
+  'activity.emptyBody': {es:'Cuando solicites un servicio, podrás seguir su progreso desde aquí.', en:'When you request a service, you can track its progress here.'},
+  'activity.explore': {es:'Explorar servicios', en:'Explore services'},
+  'activity.noneInFilter': {es:'No hay solicitudes en esta categoría.', en:'No requests in this category.'},
+  'activity.loadFailed': {es:'No pudimos cargar tu actividad.', en:"We couldn't load your activity."},
+  'activity.rateHint': {es:'Toca para ver y calificar', en:'Tap to view and rate'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -2504,27 +2531,72 @@ async function renderClientDash(el) {
 }
 
 // ---- Client Requests (with profession filter) ----
+// ---- Activity: status-filtered, mobile-friendly request cards (spec \u00a713) ----
+let _activityFilter = 'all';
+let _activityReqs = null;
+const _ACTIVITY_ACTIVE = ['pending', 'assigned', 'in_progress'];
+
 async function renderClientRequests(el) {
-  const url = '/api/client/requests';
-  const reqs = await get(url);
-  el.innerHTML = pageHeader(_t('req.title'),
-    `<button class="btn btn-primary" onclick="showNewRequest()">${_t("req.newRequest")}</button>`);
-  if (reqs.length===0) {
-    el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',_t('req.noRequests'),_t('req.submitFirst'));
+  el.innerHTML = pageHeader(_t('activity.title'),
+      `<button class="btn btn-primary" onclick="showNewRequest()">${_t('req.newRequest')}</button>`) +
+    '<div class="act-list"><div class="gskel" style="height:80px;border-radius:14px;margin-bottom:10px"></div>' +
+    '<div class="gskel" style="height:80px;border-radius:14px"></div></div>';
+  try {
+    _activityReqs = await get('/api/client/requests');
+  } catch (e) {
+    el.innerHTML = pageHeader(_t('activity.title')) + alert_el('error', _t('activity.loadFailed'));
     return;
   }
-  el.innerHTML += `<div class="table-wrap"><div class="card"><table>
-    <thead><tr><th>${_t('th.title')}</th><th>${_t('th.profession')}</th><th>${_t('th.status')}</th><th>${_t('th.urgency')}</th><th>${_t('th.budget')}</th><th>${_t('th.date')}</th><th></th></tr></thead>
-    <tbody>${reqs.map(r=>`<tr>
-      <td><strong>${escapeHtml(r.title)}</strong></td>
-      <td>${profBadge(r.profession_type)}</td>
-      <td>${badge(r.status)}</td>
-      <td>${badge(r.urgency)}</td>
-      <td>${r.budget_min!=null?fmtMoney(r.budget_min)+' \u2013 '+fmtMoney(r.budget_max):'\u2014'}</td>
-      <td>${fmtDate(r.created_at)}</td>
-      <td><button class="btn btn-ghost" onclick="route('#/request/${r.id}')">${_t('dash.view')}</button></td>
-    </tr>`).join('')}</tbody>
-  </table></div></div>`;
+  renderActivityBody(el);
+}
+
+function setActivityFilter(f) {
+  _activityFilter = f;
+  const el = document.getElementById('content');
+  if (el) renderActivityBody(el);
+}
+
+function renderActivityBody(el) {
+  const reqs = _activityReqs || [];
+  const counts = {
+    all: reqs.length,
+    active: reqs.filter(r => _ACTIVITY_ACTIVE.includes(r.status)).length,
+    completed: reqs.filter(r => r.status === 'completed').length,
+    cancelled: reqs.filter(r => r.status === 'cancelled').length,
+  };
+  const chips = [['all', 'activity.all'], ['active', 'activity.active'], ['completed', 'activity.completed'], ['cancelled', 'activity.cancelled']]
+    .map(([k, label]) => `<button class="act-chip ${_activityFilter === k ? 'active' : ''}" aria-pressed="${_activityFilter === k}" onclick="setActivityFilter('${k}')">${escapeHtml(_t(label))}${counts[k] ? ` <span class="act-chip-n">${counts[k]}</span>` : ''}</button>`)
+    .join('');
+
+  let list = reqs;
+  if (_activityFilter === 'active') list = reqs.filter(r => _ACTIVITY_ACTIVE.includes(r.status));
+  else if (_activityFilter === 'completed') list = reqs.filter(r => r.status === 'completed');
+  else if (_activityFilter === 'cancelled') list = reqs.filter(r => r.status === 'cancelled');
+
+  let html = pageHeader(_t('activity.title'),
+    `<button class="btn btn-primary" onclick="showNewRequest()">${_t('req.newRequest')}</button>`);
+
+  if (!reqs.length) {
+    html += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+      _t('activity.emptyTitle'), _t('activity.emptyBody'));
+    html += `<div style="text-align:center;margin-top:-6px"><button class="btn btn-primary" onclick="route('#/services')">${_t('activity.explore')}</button></div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  html += `<div class="act-chips" role="tablist" aria-label="${escapeHtml(_t('activity.title'))}">${chips}</div>`;
+  if (!list.length) {
+    html += `<div class="act-none">${escapeHtml(_t('activity.noneInFilter'))}</div>`;
+  } else {
+    html += `<div class="act-list">${list.map(r => `
+      <button class="act-card" onclick="route('#/request/${r.id}')">
+        <div class="act-card-top"><span class="act-card-title">${escapeHtml(r.title)}</span>${badge(r.status)}</div>
+        <div class="act-card-meta">${profBadge(r.profession_type)}<span aria-hidden="true">\u00b7</span>${fmtDate(r.created_at)}</div>
+        ${r.budget_min != null ? `<div class="act-card-price">${fmtMoney(r.budget_min)} \u2013 ${fmtMoney(r.budget_max)}</div>` : ''}
+        ${r.status === 'completed' ? `<div class="act-card-cta">\u2b50 ${escapeHtml(_t('activity.rateHint'))}</div>` : ''}
+      </button>`).join('')}</div>`;
+  }
+  el.innerHTML = html;
 }
 
 // setClientReqFilter removed — filter chips removed from requests page
