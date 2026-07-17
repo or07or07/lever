@@ -24,25 +24,37 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "customer_ratings",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("job_id", sa.Integer(), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, unique=True),
-        sa.Column("mechanic_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("client_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
-        sa.Column("rating", sa.Integer(), nullable=False),
-        sa.Column("comment", sa.Text(), server_default="", nullable=True),
-        sa.Column("communication", sa.Integer(), nullable=True),
-        sa.Column("punctuality", sa.Integer(), nullable=True),
-        sa.Column("respect", sa.Integer(), nullable=True),
-        sa.Column("request_accuracy", sa.Integer(), nullable=True),
-        sa.Column("moderation_status", sa.String(length=16), server_default="visible", nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False),
-    )
-    op.create_index("ix_customer_ratings_client_id", "customer_ratings", ["client_id"])
+    # IDEMPOTENT: the app's create_all() at boot may already have created the
+    # customer_ratings table (it creates missing tables but never adds columns
+    # to existing ones), so guard every step against partial state.
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
 
-    op.add_column("client_profiles", sa.Column("avg_rating", sa.Float(), server_default="0", nullable=False))
-    op.add_column("client_profiles", sa.Column("total_ratings", sa.Integer(), server_default="0", nullable=False))
+    if not insp.has_table("customer_ratings"):
+        op.create_table(
+            "customer_ratings",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("job_id", sa.Integer(), sa.ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, unique=True),
+            sa.Column("mechanic_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("client_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+            sa.Column("rating", sa.Integer(), nullable=False),
+            sa.Column("comment", sa.Text(), server_default="", nullable=True),
+            sa.Column("communication", sa.Integer(), nullable=True),
+            sa.Column("punctuality", sa.Integer(), nullable=True),
+            sa.Column("respect", sa.Integer(), nullable=True),
+            sa.Column("request_accuracy", sa.Integer(), nullable=True),
+            sa.Column("moderation_status", sa.String(length=16), server_default="visible", nullable=False),
+            sa.Column("created_at", sa.DateTime(), nullable=False),
+        )
+    existing_ix = {ix["name"] for ix in insp.get_indexes("customer_ratings")} if insp.has_table("customer_ratings") else set()
+    if "ix_customer_ratings_client_id" not in existing_ix:
+        op.create_index("ix_customer_ratings_client_id", "customer_ratings", ["client_id"])
+
+    cp_cols = {c["name"] for c in insp.get_columns("client_profiles")}
+    if "avg_rating" not in cp_cols:
+        op.add_column("client_profiles", sa.Column("avg_rating", sa.Float(), server_default="0", nullable=False))
+    if "total_ratings" not in cp_cols:
+        op.add_column("client_profiles", sa.Column("total_ratings", sa.Integer(), server_default="0", nullable=False))
 
 
 def downgrade() -> None:

@@ -40,4 +40,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 EXPOSE 8500
 
-CMD ["python", "-m", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8500"]
+# Run migrations BEFORE the app starts. The app's lifespan queries User at
+# boot, so booting with pending column migrations crash-loops — and the old
+# "exec alembic in the running app" deploy step could never run against a
+# container that can't boot (the 2026-07-17 outage). Migrations are idempotent,
+# so this is safe on every start; if a migration genuinely fails, failing fast
+# here (before serving traffic) is the correct behaviour.
+CMD ["sh", "-c", "python -m alembic upgrade head && python -m uvicorn app:app --host 0.0.0.0 --port 8500"]

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
+import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0013"
@@ -20,11 +21,17 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_index(
-        "ix_provider_services_service_active",
-        "provider_services",
-        ["service_key", "is_active"],
-    )
+    # IDEMPOTENT: on a fresh database create_all() creates this index from the
+    # model's __table_args__, so create it only when missing.
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    existing = {ix["name"] for ix in insp.get_indexes("provider_services")}
+    if "ix_provider_services_service_active" not in existing:
+        op.create_index(
+            "ix_provider_services_service_active",
+            "provider_services",
+            ["service_key", "is_active"],
+        )
 
 
 def downgrade() -> None:
