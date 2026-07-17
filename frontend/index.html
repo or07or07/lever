@@ -126,6 +126,13 @@ input,textarea,select{font-family:inherit}
 .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--gray-700);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.95rem;transition:.15s;background:#fff}
 .dob-help{margin-top:6px;font-size:.76rem;color:var(--gray-500);line-height:1.45}
+/* Branded Lever loading spinner (the L stays still, the ring spins) */
+.lever-spinner{display:inline-flex}
+.lever-spinner svg{animation:leverPulse 1.8s ease-in-out infinite;border-radius:12px;box-shadow:0 4px 14px rgba(99,102,241,.28)}
+.lever-spinner-ring{transform-origin:50px 50px;animation:leverSpin 1.1s linear infinite}
+@keyframes leverSpin{to{transform:rotate(360deg)}}
+@keyframes leverPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@media(prefers-reduced-motion:reduce){.lever-spinner svg,.lever-spinner-ring{animation:none}}
 /* Provider multi-profession service selection */
 .psvc-search{width:100%;height:44px;padding:0 14px;border:1.5px solid var(--gray-200);border-radius:12px;font-size:16px;background:var(--gray-50);margin-bottom:10px}
 .psvc-search:focus{outline:none;border-color:var(--nav-green);background:#fff}
@@ -2318,7 +2325,7 @@ async function render() {
       <div class="main-wrap">
         <aside class="sidebar" id="sidebar"></aside>
         <div class="mobile-overlay" id="mobile-overlay" onclick="toggleSidebar()"></div>
-        <main class="content" id="content"><div class="empty"><div class="empty-icon">\u{23F3}</div><h3>${_t('shell.loading')}</h3></div></main>
+        <main class="content" id="content"><div class="empty"><div class="empty-icon">${leverSpinner(52)}</div><h3>${_t('shell.loading')}</h3></div></main>
       </div>
     </div>`;
 
@@ -2429,6 +2436,24 @@ function pageHeader(title, btnHtml='') {
 
 function emptyState(icon, title, sub='') {
   return `<div class="empty"><div class="empty-icon">${icon}</div><h3>${title}</h3><p>${sub}</p></div>`;
+}
+
+// Branded loading indicator: the Lever mark with its ring animated as a
+// spinner (replaces the old hourglass emoji). Decorative parts are
+// aria-hidden; the wrapper announces "Cargando" to screen readers.
+// prefers-reduced-motion disables the animation via CSS.
+function leverSpinner(px) {
+  px = px || 52;
+  return '<span class="lever-spinner" role="status" aria-label="' + (_lang === 'es' ? 'Cargando' : 'Loading') + '">' +
+    '<svg width="' + px + '" height="' + px + '" viewBox="0 0 100 100" fill="none" aria-hidden="true">' +
+      '<rect width="100" height="100" rx="21" fill="#6366f1"/>' +
+      '<g stroke="white" fill="none">' +
+        '<circle class="lever-spinner-ring" cx="50" cy="50" r="36" stroke-width="4" stroke-linecap="round" stroke-dasharray="150 76"/>' +
+        '<path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="white" stroke="none"/>' +
+        '<line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/>' +
+        '<circle cx="72" cy="21" r="4" fill="white" stroke-width="1.5"/>' +
+        '<path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
+      '</g></svg></span>';
 }
 
 function professionFilterBar(selected, onClickFn) {
@@ -3328,7 +3353,7 @@ async function renderRequestDetail(el, id) {
     </div>
     ${renderClientTrackingCard(job.id, job.status, req.latitude, req.longitude)}
     ` : req.status==='pending' ? `
-    <div class="card"><div class="empty"><div class="empty-icon">\u23F3</div><h3>${_t('reqdet.waiting')}</h3><p>${_t('reqdet.waitingSub')}</p></div></div>`:''}`
+    <div class="card"><div class="empty"><div class="empty-icon">${leverSpinner(52)}</div><h3>${_t('reqdet.waiting')}</h3><p>${_t('reqdet.waitingSub')}</p></div></div>`:''}`
     + `<div id="status-tracker-${req.id}">${buildStatusTracker(req)}</div>`;
   // Start live polling if request is active
   if (req.status !== 'completed' && req.status !== 'cancelled') {
@@ -3628,7 +3653,7 @@ async function deleteVehicleConfirm(id) {
 
 // ---- Account root: customer identity + reputation + grouped sections ----
 async function renderClientProfile(el) {
-  el.innerHTML = pageHeader(_t('tab.account')) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">⏳</div></div></div>';
+  el.innerHTML = pageHeader(_t('tab.account')) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">' + leverSpinner(52) + '</div></div></div>';
   let profile = {}, rep = null;
   try { profile = await get('/api/client/profile'); } catch(e) {}
   try { rep = await get('/api/client/reputation'); } catch(e) {}   // optional — never blocks Account
@@ -3715,7 +3740,7 @@ async function renderProfileEdit(el) {
 // Reputation detail (#/account/reputation)
 async function renderReputation(el) {
   const back = '<button class="btn btn-outline" onclick="route(\'#/account\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>';
-  el.innerHTML = pageHeader(_t('acct.myReputation'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">⏳</div></div></div>';
+  el.innerHTML = pageHeader(_t('acct.myReputation'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">' + leverSpinner(52) + '</div></div></div>';
   let rep = null;
   try { rep = await get('/api/client/reputation'); }
   catch(e) {
