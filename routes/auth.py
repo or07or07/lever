@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 import pyotp
 from fastapi import APIRouter, Depends, HTTPException, status
 from jose import JWTError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import (
@@ -88,11 +89,14 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
     ISO 27001 A.9.2.1 — Formal user registration process.
     """
-    if db.query(User).filter(User.email == payload.email).first():
+    # Email is case-insensitive: store it normalized and reject duplicates
+    # regardless of capitalization (also catches any legacy mixed-case rows).
+    email = payload.email.strip().lower()
+    if db.query(User).filter(func.lower(User.email) == email).first():
         raise HTTPException(status_code=409, detail="Email already registered")
 
     user = User(
-        email=payload.email,
+        email=email,
         password_hash=hash_password(payload.password),
         role=payload.role,
         email_verified=False,  # Must verify email before full access
@@ -150,7 +154,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     ISO 27001 A.9.4.2 — Secure log-on procedures.
     Consistent timing and error messages prevent account enumeration.
     """
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = db.query(User).filter(func.lower(User.email) == payload.email.strip().lower()).first()
     if not user or not user.password_hash or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
@@ -444,7 +448,7 @@ def request_password_reset(
     # Always return success to prevent enumeration
     generic_msg = "If an account with this email exists, a reset code has been sent."
 
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = db.query(User).filter(func.lower(User.email) == payload.email.strip().lower()).first()
     if not user:
         logger.info(f"Password reset requested for non-existent email: {payload.email}")
         return PasswordResetResponse(success=True, message=generic_msg)
@@ -471,7 +475,7 @@ def verify_password_reset(
     """
     from password_reset import verify_reset_code
 
-    user = db.query(User).filter(User.email == payload.email).first()
+    user = db.query(User).filter(func.lower(User.email) == payload.email.strip().lower()).first()
     if not user:
         raise HTTPException(status_code=400, detail="Invalid email or code")
 
