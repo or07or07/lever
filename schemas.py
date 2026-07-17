@@ -440,6 +440,12 @@ class ServiceRequestOut(BaseModel):
     service_key: Optional[str] = None
     answers: Optional[dict] = None
     market_code: Optional[str] = None
+    # Assigned-professional summary (populated for requests with a job) + whether
+    # the customer has already reviewed it — surfaced on Activity cards.
+    professional_name: Optional[str] = None
+    professional_rating: Optional[float] = None
+    professional_verified: Optional[bool] = None
+    has_review: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 

@@ -168,7 +168,35 @@ def list_requests(
         q = q.filter(ServiceRequest.status == status_filter)
     if profession_type:
         q = q.filter(ServiceRequest.profession_type == profession_type)
-    return q.order_by(ServiceRequest.created_at.desc()).all()
+    reqs = (
+        q.options(joinedload(ServiceRequest.job).joinedload(Job.review))
+        .order_by(ServiceRequest.created_at.desc())
+        .all()
+    )
+
+    # Attach the assigned professional's summary + whether the customer has
+    # reviewed the job, for the Activity cards. Batched to avoid N+1.
+    mech_ids = {r.job.mechanic_id for r in reqs if r.job and r.job.mechanic_id}
+    profiles, verified = {}, {}
+    if mech_ids:
+        for mp in db.query(MechanicProfile).filter(MechanicProfile.user_id.in_(mech_ids)).all():
+            profiles[mp.user_id] = mp
+        for u in db.query(User).filter(User.id.in_(mech_ids)).all():
+            verified[u.id] = (u.verification_level == "enhanced")
+    for r in reqs:
+        r.professional_name = None
+        r.professional_rating = None
+        r.professional_verified = None
+        r.has_review = None
+        job = r.job
+        if job and job.mechanic_id:
+            mp = profiles.get(job.mechanic_id)
+            if mp:
+                r.professional_name = mp.full_name or None
+                r.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
+            r.professional_verified = verified.get(job.mechanic_id, False)
+            r.has_review = job.review is not None
+    return reqs
 
 
 @router.post("/requests", response_model=ServiceRequestOut, status_code=status.HTTP_201_CREATED)

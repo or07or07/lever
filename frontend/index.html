@@ -904,6 +904,9 @@ tr:hover td{background:var(--gray-50)}
 .act-card-meta{font-size:.8rem;color:var(--gray-500);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .act-card-price{font-size:.82rem;color:var(--gray-700);font-weight:600;margin-top:6px}
 .act-card-cta{margin-top:8px;font-size:.8rem;font-weight:700;color:var(--nav-green)}
+.act-card-done{margin-top:8px;font-size:.8rem;font-weight:600;color:var(--gray-500)}
+.act-card-pro{margin-top:6px;font-size:.82rem;color:var(--gray-700);display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.act-verif{color:var(--nav-green);font-weight:700}
 .act-none{text-align:center;padding:28px 16px;color:var(--gray-500);font-size:.88rem}
 /* ===== Account: identity + reputation + grouped rows ===== */
 .acct-wrap{max-width:600px;margin:0 auto}
@@ -1070,6 +1073,9 @@ var _translations = {
   'activity.noneInFilter': {es:'No hay solicitudes en esta categoría.', en:'No requests in this category.'},
   'activity.loadFailed': {es:'No pudimos cargar tu actividad.', en:"We couldn't load your activity."},
   'activity.rateHint': {es:'Toca para ver y calificar', en:'Tap to view and rate'},
+  'activity.rateProfessional': {es:'Calificar al profesional', en:'Rate the professional'},
+  'activity.reviewSent': {es:'Reseña enviada', en:'Review submitted'},
+  'activity.verified': {es:'Verificado', en:'Verified'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -2592,8 +2598,9 @@ function renderActivityBody(el) {
       <button class="act-card" onclick="route('#/request/${r.id}')">
         <div class="act-card-top"><span class="act-card-title">${escapeHtml(r.title)}</span>${badge(r.status)}</div>
         <div class="act-card-meta">${profBadge(r.profession_type)}<span aria-hidden="true">\u00b7</span>${fmtDate(r.created_at)}</div>
+        ${r.professional_name ? `<div class="act-card-pro"><span aria-hidden="true">\ud83d\udc77</span> ${escapeHtml(r.professional_name)}${r.professional_rating != null ? ` <span aria-hidden="true">\u00b7</span> <span aria-hidden="true">\u2605</span> ${r.professional_rating.toFixed(1)}` : ''}${r.professional_verified ? ` <span aria-hidden="true">\u00b7</span> <span class="act-verif">\u2713 ${escapeHtml(_t('activity.verified'))}</span>` : ''}</div>` : ''}
         ${r.budget_min != null ? `<div class="act-card-price">${fmtMoney(r.budget_min)} \u2013 ${fmtMoney(r.budget_max)}</div>` : ''}
-        ${r.status === 'completed' ? `<div class="act-card-cta">\u2b50 ${escapeHtml(_t('activity.rateHint'))}</div>` : ''}
+        ${r.status === 'completed' ? (r.has_review ? `<div class="act-card-done">\u2713 ${escapeHtml(_t('activity.reviewSent'))}</div>` : `<div class="act-card-cta">\u2b50 ${escapeHtml(_t('activity.rateProfessional'))}</div>`) : ''}
       </button>`).join('')}</div>`;
   }
   el.innerHTML = html;
