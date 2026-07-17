@@ -5696,7 +5696,9 @@ function renderGuestHome() {
         (!_token ? '<div class="gnotice">' + _t('guest.notice') + '</div>' : '') +
       '</div>' +
     '</div>';
-  setTimeout(() => document.getElementById('gsearch-input')?.focus(), 60);
+  // No auto-focus on the search input: on mobile it pops the keyboard over
+  // half the catalog every time the Services tab opens. The field is at the
+  // top — one tap away when the user actually wants to search.
 }
 function gSvcRow(s) {
   return '<div class="gsvc-row" role="button" tabindex="0" onclick="route(\'#/service/' + s.key + '\')" onkeydown="if(event.key===\'Enter\')route(\'#/service/' + s.key + '\')">' +
