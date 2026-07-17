@@ -269,13 +269,25 @@ def list_professions():
 @app.get("/api/catalog", tags=["catalog"])
 def get_catalog(response: Response):
     """Categories + every active service, both languages. Public and cacheable."""
+    from pricing import ESTIMATES, PRICING_POLICY_VERSION
     from services_catalog import ALL_SERVICES
     response.headers["Cache-Control"] = "public, max-age=300"
     categories = [
         {"key": key, "label": p["label"], "icon": p["icon"], "description": p["description"]}
         for key, p in PROFESSIONS.items()
     ]
-    return {"categories": categories, "services": [s for s in ALL_SERVICES if s["is_active"]]}
+    # Attach the backend-owned reference estimate (Guayaquil labor rates ×
+    # the service's duration range — see pricing.py). Purely referential:
+    # the final price is agreed between client and professional.
+    services = []
+    for s in ALL_SERVICES:
+        if not s["is_active"]:
+            continue
+        est = ESTIMATES.get(s["key"])
+        services.append({**s, "estimate_min": est[0] if est else None,
+                         "estimate_max": est[1] if est else None})
+    return {"categories": categories, "services": services,
+            "pricing_policy_version": PRICING_POLICY_VERSION}
 
 
 @app.get("/api/catalog/search", tags=["catalog"])

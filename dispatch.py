@@ -159,13 +159,21 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
     ).first()
 
     if request:
+        # Payment shown up-front: the client's real budget when set, otherwise
+        # the backend reference estimate (labelled as such) — never fabricated.
+        # Lever charges no commission, so this is what the professional
+        # receives. Deliberately NO exact address here (privacy): the zone is
+        # enough for a preview; full details come from the board after opening.
+        from pricing import payment_line_es
+        pay = payment_line_es(request.budget_min, request.budget_max, request.service_key)
         notif = Notification(
             user_id=dispatch.provider_user_id,
             type="job_offer",
-            title="New job request for you!",
+            title="Nueva oportunidad de trabajo",
             message=(
-                f'"{request.title}" at {request.location}. '
-                f"You have 30 seconds to accept before it's offered to the next provider."
+                f'"{request.title}"'
+                + (f" — {pay} (recibes el 100%)" if pay else "")
+                + ". Tienes 30 segundos para aceptar antes de que se ofrezca al siguiente profesional."
             ),
             link=f"/provider/board",
         )

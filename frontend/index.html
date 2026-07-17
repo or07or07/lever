@@ -1110,6 +1110,12 @@ var _translations = {
   'psvc.search': {es:'Buscar un servicio…', en:'Search a service…'},
   'psvc.selectedCount': {es:'{n} servicios seleccionados', en:'{n} services selected'},
   'psvc.noMatch': {es:'Ningún servicio coincide con tu búsqueda.', en:'No services match your search.'},
+  // -- Reference pricing (Guayaquil labor rates — pricing.py) --
+  'price.clientPays': {es:'El cliente pagará', en:'The client will pay'},
+  'price.reference': {es:'Pago referencial', en:'Reference payment'},
+  'price.youKeep100': {es:'Recibes el 100% — Lever no cobra comisión.', en:'You keep 100% — Lever charges no commission.'},
+  'price.refLabel': {es:'Precio referencial en Guayaquil', en:'Reference price in Guayaquil'},
+  'price.refNote': {es:'Estimado según tarifas de mano de obra en Guayaquil. El precio final lo acuerdas con el profesional.', en:'Estimated from Guayaquil labor rates. You agree the final price with the professional.'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -4054,7 +4060,7 @@ async function renderJobBoard(el) {
     el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',_t('board.noOpen'),_t('board.checkBack'));
     return;
   }
-  el.innerHTML += board.map(r=>`
+  el.innerHTML += '<div class="gnotice" style="margin-bottom:12px">\ud83d\udcb5 ' + _t('price.youKeep100') + '</div>' + board.map(r=>`
     <div class="card board-card" data-request-id="${r.id}">
       <div class="card-header">
         <div>
@@ -4067,7 +4073,9 @@ async function renderJobBoard(el) {
         </div>
       </div>
       <p class="text-sm">${escapeHtml(r.description)}</p>
-      ${r.budget_max!=null?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> ${_t('board.budgetUpTo')} ${fmtMoney(r.budget_max)}</div>`:''}
+      ${r.budget_max!=null
+        ?`<div class="text-sm mt-4"><strong>\ud83d\udcb5 ${_t('price.clientPays')}: ${r.budget_min!=null&&r.budget_min!==r.budget_max?fmtMoney(r.budget_min)+' \u2013 ':_t('board.budgetUpTo')+' '}${fmtMoney(r.budget_max)}</strong></div>`
+        :(r.estimate_min!=null?`<div class="text-sm mt-4"><strong>\ud83d\udcb5 ${_t('price.reference')}: USD ${r.estimate_min} \u2013 ${r.estimate_max}</strong></div>`:'')}
     </div>`).join('');
   // Mark new cards with pulse animation
   setTimeout(markNewBoardCards, 100);
@@ -5596,6 +5604,8 @@ function renderGuestServiceDetail(key) {
     '<p style="color:var(--gray-600);font-size:.92rem;margin:8px 0 16px">' + escapeHtml(svcDesc(s)) + '</p>' +
     '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
     '<div class="gsum-row"><span class="k">' + _t('guest.durationApprox') + '</span><span class="v">' + dur + '</span></div>' +
+    (s.estimate_min != null ? '<div class="gsum-row"><span class="k">' + _t('price.refLabel') + '</span><span class="v">USD ' + s.estimate_min + ' – ' + s.estimate_max + '</span></div>' +
+      '<p style="font-size:.78rem;color:var(--gray-500);margin:8px 0 0">' + _t('price.refNote') + '</p>' : '') +
     '<div class="gnotice">' + (s.booking_type === 'estimate' ? _t('guest.estimateNote') : _t('guest.instantNote')) + '</div>' +
     '<button class="gbtn-primary" onclick="startServiceRequest(\'' + s.key + '\')">' + _t('guest.requestThis') + '</button>' +
     (!_token ? '<div class="gnotice" style="margin-top:10px">' + _t('guest.notice') + '</div>' : '') +

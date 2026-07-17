@@ -597,6 +597,7 @@ def run_all():
         test_email_case_insensitive,
         test_minimum_age,
         test_multi_profession_matching,
+        test_pricing_estimates,
     ]
 
     for test_fn in tests:
@@ -871,6 +872,38 @@ def test_multi_profession_matching():
           rq2.json()["id"] not in [x["id"] for x in board3.json()], board3.text)
 
 
+def test_pricing_estimates():
+    section("13. Reference pricing (Guayaquil labor rates)")
+    r = anon.get("/api/catalog")
+    check("Catalog reachable", r.status_code == 200, r.text[:200])
+    services = r.json().get("services", [])
+    with_est = [s for s in services if s.get("estimate_min") is not None]
+    check("Catalog services carry estimates", len(with_est) > 250, f"{len(with_est)}/{len(services)}")
+    check("All estimates sane (0 < min <= max)",
+          all(0 < s["estimate_min"] <= s["estimate_max"] for s in with_est))
+
+    # Board rows carry the estimate so providers see payment without a budget.
+    uid = str(uuid.uuid4())[:8]
+    mr = anon.post("/api/auth/register", json={
+        "email": f"pr_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "plumbing", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    mech = Session(mr.json()["access_token"])
+    cr = anon.post("/api/auth/register", json={
+        "email": f"cl_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    client.post("/api/client/requests", json={
+        "title": "Fuga sin presupuesto",
+        "description": "Fuga en tubería, sin presupuesto definido.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": "pipe_leak_repair"})
+    mech.post("/api/provider/go-online")
+    board = mech.get("/api/provider/board").json()
+    mine = [b for b in board if b["title"] == "Fuga sin presupuesto"]
+    check("Board row has estimate when client set no budget",
+          bool(mine) and mine[0].get("estimate_min") is not None, str(mine[:1]))
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -891,3 +924,4 @@ def test_pytest_customer_ratings(): test_customer_ratings()
 def test_pytest_email_ci():   test_email_case_insensitive()
 def test_pytest_minimum_age(): test_minimum_age()
 def test_pytest_multi_profession(): test_multi_profession_matching()
+def test_pytest_pricing(): test_pricing_estimates()

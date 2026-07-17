@@ -369,7 +369,15 @@ def job_board(
             | (ServiceRequest.service_key.is_(None) & (ServiceRequest.profession_type == profession))
         )
 
-    return q.order_by(ServiceRequest.created_at.asc()).all()
+    rows = q.order_by(ServiceRequest.created_at.asc()).all()
+    # Attach the reference payment estimate for cards without a client budget
+    # (Lever takes no commission, so this is what the professional receives).
+    from pricing import ESTIMATES
+    for r in rows:
+        est = ESTIMATES.get(r.service_key or "")
+        r.estimate_min = est[0] if est else None
+        r.estimate_max = est[1] if est else None
+    return rows
 
 
 def _active_service_keys(db: Session, provider_user_id: int) -> Optional[set[str]]:

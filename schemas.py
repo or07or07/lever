@@ -497,6 +497,10 @@ class ServiceRequestBoardOut(BaseModel):
     # Catalog context is job-relevant and contains no location/identity data
     service_key: Optional[str] = None
     answers: Optional[dict] = None
+    # Backend reference estimate (pricing.py) — shown when the client set no
+    # budget. Lever charges no commission, so this is the provider's payment.
+    estimate_min: Optional[int] = None
+    estimate_max: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
