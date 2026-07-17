@@ -1216,6 +1216,9 @@ var _translations = {
   'welcome.sub2Client': {es:'Tu trabajo bien hecho, por profesionales de confianza.', en:'Your job done right, by trusted professionals.'},
   'welcome.sub2Provider': {es:'Conecta con clientes que necesitan tu talento.', en:'Connect with clients who need your skills.'},
   'auth.taglineClient': {es:'Trabajos bien hechos, por profesionales de confianza', en:'Jobs done right, by trusted professionals'},
+  'auth.emailPlaceholder': {es:'tucorreo@ejemplo.com', en:'you@example.com'},
+  'auth.passPlaceholder': {es:'Tu contraseña', en:'Your password'},
+  'auth.newPassPlaceholder': {es:'Crea una contraseña segura', en:'Create a strong password'},
   'auth.taglinePro': {es:'Conecta con clientes y gana con tu oficio', en:'Connect with clients and earn with your trade'},
   'welcome.signup': {es:'Crear cuenta', en:'Create account'},
   'welcome.signin': {es:'Ya tengo cuenta', en:'I already have an account'},
@@ -1791,9 +1794,10 @@ function setLanguage(lang) {
 }
 
 function applyAuthLang(lang) {
-  var isRegister = document.getElementById('tab-register')?.classList.contains('active');
+  // The auth pages are separate routes now — re-render the CURRENT route so
+  // the mode and any role lock (registro/cliente|profesional) are preserved.
   setLanguage(lang);
-  renderAuth(isRegister ? 'register' : 'login');
+  render();
 }
 
 // ============================================================
@@ -2169,8 +2173,24 @@ const API = IS_NATIVE ? PROD_API_ORIGIN : '';  // native: absolute URL, web/PWA:
 
 // Which native app shell this is ('client' | 'provider'), read from the
 // native capacitor.config.json — null on web/PWA, where both roles coexist.
-const APP_FLAVOR = (IS_NATIVE && window.Capacitor.getConfig && window.Capacitor.getConfig().appFlavor) || null;
-const APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : (APP_FLAVOR === 'client' ? 'client' : null);
+// Which native shell this is ('client' | 'provider'). Capacitor does NOT
+// expose custom capacitor.config.json keys to the WebView (getConfig() was
+// silently returning nothing, so BOTH apps ran flavorless: no Pro identity,
+// no role lock). The reliable source is the App plugin's getInfo(), which
+// returns the real applicationId (com.lever.app / com.lever.provider).
+// Resolved async in detectAppFlavor() BEFORE the first render.
+let APP_FLAVOR = (IS_NATIVE && window.Capacitor.getConfig && window.Capacitor.getConfig().appFlavor) || null;
+let APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : (APP_FLAVOR === 'client' ? 'client' : null);
+async function detectAppFlavor() {
+  if (!IS_NATIVE || APP_FLAVOR) return;
+  try {
+    const info = await window.Capacitor.Plugins.App.getInfo();
+    if (info && info.id) {
+      APP_FLAVOR = info.id.indexOf('provider') >= 0 ? 'provider' : 'client';
+      APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : 'client';
+    }
+  } catch (e) { /* web or plugin unavailable — stays flavorless */ }
+}
 let _token = localStorage.getItem('lever_token') || null;
 let _user  = JSON.parse(localStorage.getItem('lever_user') || 'null');
 let _professions = {}; // loaded from API
@@ -2397,6 +2417,7 @@ function markDecorativeSvgs(root) {
   });
 }
 window.addEventListener('load', async () => {
+  await detectAppFlavor();   // must resolve before the first render (Pro identity, role lock)
   await loadProfessions();
   render();
   markDecorativeSvgs();
@@ -5313,11 +5334,11 @@ function renderAuth(initialTab, presetRole) {
           <div id="l-err"></div>
           <div class="form-group">
             <label>${_t('auth.email')}</label>
-            <input type="email" id="l-email" placeholder="you@example.com" autocomplete="email">
+            <input type="email" id="l-email" placeholder="${_t('auth.emailPlaceholder')}" autocomplete="email">
           </div>
           <div class="form-group">
             <label>${_t('auth.password')}</label>
-            ${passField('l-pass', 'Your password', 'current-password')}
+            ${passField('l-pass', _t('auth.passPlaceholder'), 'current-password')}
           </div>
           <button class="btn btn-primary btn-full" onclick="doLogin()">${_t('auth.signIn')}</button>
           <div style="text-align:center;margin-top:10px">
@@ -5336,7 +5357,7 @@ function renderAuth(initialTab, presetRole) {
           ${lockedRole==='mechanic' ? `<div class="alert" style="background:var(--brand-50);color:var(--gray-700);border:1px solid var(--brand-100);font-size:.82rem;margin-bottom:12px">📍 ${_t('proreg.notice')}</div>` : ''}
           <div class="form-group">
             <label>${_t('auth.email')}</label>
-            <input type="email" id="r-email" placeholder="you@example.com" inputmode="email" autocomplete="email">
+            <input type="email" id="r-email" placeholder="${_t('auth.emailPlaceholder')}" inputmode="email" autocomplete="email">
           </div>
           <div class="form-group">
             <label for="r-dob">${_t('auth.dob')}</label>
@@ -5345,7 +5366,7 @@ function renderAuth(initialTab, presetRole) {
           </div>
           <div class="form-group">
             <label>${_t('auth.password')}</label>
-            ${passField('r-pass', 'Create a strong password', 'new-password')}
+            ${passField('r-pass', _t('auth.newPassPlaceholder'), 'new-password')}
           </div>
           ${lockedRole ? `<input type="hidden" id="r-role" value="${lockedRole}">` : `
           <div class="form-group">
@@ -5510,7 +5531,7 @@ function renderResetPassword(step) {
           '<div id="reset-msg"></div>' +
           '<div class="form-group" style="text-align:left;margin:20px 0 24px">' +
             '<label>' + _t('auth.email') + '</label>' +
-            '<input type="email" id="reset-email" placeholder="you@example.com" autocomplete="email" value="' + (_resetEmail || '') + '">' +
+            '<input type="email" id="reset-email" placeholder="' + _t('auth.emailPlaceholder') + '" autocomplete="email" value="' + (_resetEmail || '') + '">' +
           '</div>' +
           '<button class="btn btn-primary btn-full" id="reset-send-btn" onclick="doResetRequest()">' + _t('auth.sendCode') + '</button>' +
           '<div style="text-align:center;margin-top:16px">' +
@@ -5543,7 +5564,7 @@ function renderResetPassword(step) {
           '<div id="reset-msg"></div>' +
           '<div class="form-group" style="text-align:left;margin:0 0 8px">' +
             '<label>' + _t('auth.newPassword') + '</label>' +
-            passField('reset-new-pass', 'New password', 'new-password') +
+            passField('reset-new-pass', _t('auth.newPassPlaceholder'), 'new-password') +
             '<div style="font-size:.75rem;color:var(--gray-400);margin-top:4px">' + _t('auth.passwordHint') + '</div>' +
           '</div>' +
           '<button class="btn btn-primary btn-full" id="reset-confirm-btn" onclick="doResetVerify()">' + _t('auth.confirmReset') + '</button>' +
