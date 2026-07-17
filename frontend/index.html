@@ -126,6 +126,35 @@ input,textarea,select{font-family:inherit}
 .form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--gray-700);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px 12px;border:1.5px solid var(--gray-200);border-radius:var(--radius);font-size:.95rem;transition:.15s;background:#fff}
 .dob-help{margin-top:6px;font-size:.76rem;color:var(--gray-500);line-height:1.45}
+/* ===== First-launch welcome (native onboarding) ===== */
+.welcome-page{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:24px 20px calc(28px + env(safe-area-inset-bottom,0px));background:linear-gradient(160deg,var(--brand) 0%,var(--brand-dark) 55%,#312e81 100%);overflow:hidden;animation:welcomeFade .45s var(--ease)}
+.welcome-page.choice{animation:welcomeSlide .38s var(--ease)}
+@keyframes welcomeFade{from{opacity:0}to{opacity:1}}
+@keyframes welcomeSlide{from{opacity:0;transform:translateX(48px)}to{opacity:1;transform:translateX(0)}}
+.welcome-center{display:flex;flex-direction:column;align-items:center;text-align:center;flex:1;justify-content:center}
+.welcome-logo svg{animation:welcomeLogoIn .7s cubic-bezier(.34,1.4,.5,1) both;border-radius:24px;box-shadow:0 16px 48px rgba(0,0,0,.28)}
+@keyframes welcomeLogoIn{from{transform:scale(.5);opacity:0}60%{transform:scale(1.07)}to{transform:scale(1);opacity:1}}
+.welcome-ring{stroke-dasharray:226;stroke-dashoffset:226;animation:welcomeRing 1.1s .35s var(--ease) forwards}
+@keyframes welcomeRing{to{stroke-dashoffset:0}}
+.welcome-word{font-size:2.6rem;font-weight:800;letter-spacing:-1px;color:#fff;margin-top:18px;animation:welcomeUp .6s .25s var(--ease) both}
+.welcome-title2{font-size:1.6rem;font-weight:800;letter-spacing:-.5px;color:#fff;margin-top:16px;animation:welcomeUp .5s .1s var(--ease) both}
+.welcome-tagline{color:rgba(255,255,255,.85);font-size:1rem;line-height:1.5;max-width:300px;margin-top:10px;animation:welcomeUp .6s .45s var(--ease) both}
+@keyframes welcomeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.welcome-btn{width:100%;max-width:420px;padding:16px;border:none;border-radius:16px;background:#fff;color:var(--brand-dark);font-size:1.05rem;font-weight:800;cursor:pointer;min-height:54px;animation:welcomeUp .6s .6s var(--ease) both;box-shadow:0 8px 24px rgba(0,0,0,.22);transition:transform .12s var(--ease)}
+.welcome-btn:active{transform:scale(.97)}
+.welcome-btn.outline{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.65);box-shadow:none;animation-delay:.7s}
+.welcome-ghost{border:none;background:none;color:rgba(255,255,255,.75);font-size:.9rem;font-weight:600;cursor:pointer;padding:12px;animation:welcomeUp .6s .8s var(--ease) both}
+.welcome-actions{display:flex;flex-direction:column;gap:12px;width:100%;align-items:center}
+/* Floating trade bubbles — app colors only, decorative */
+.welcome-bubble{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.35rem;animation:bubbleFloat 5.5s ease-in-out infinite}
+.wb0{top:9%;left:10%;animation-delay:0s}
+.wb1{top:16%;right:12%;animation-delay:1.1s}
+.wb2{top:38%;left:5%;animation-delay:2.2s;width:44px;height:44px;font-size:1.1rem}
+.wb3{top:33%;right:6%;animation-delay:.6s;width:44px;height:44px;font-size:1.1rem}
+.wb4{bottom:26%;left:12%;animation-delay:1.7s}
+.wb5{bottom:30%;right:10%;animation-delay:2.8s}
+@keyframes bubbleFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@media(prefers-reduced-motion:reduce){.welcome-page,.welcome-page.choice,.welcome-logo svg,.welcome-ring,.welcome-word,.welcome-title2,.welcome-tagline,.welcome-btn,.welcome-ghost,.welcome-bubble{animation:none}.welcome-ring{stroke-dashoffset:0}}
 /* In-app legal document viewer (native) */
 .legal-body{font-size:.9rem;line-height:1.65;color:var(--gray-800);padding:4px 2px 16px;word-wrap:break-word}
 .legal-body h1,.legal-body h2,.legal-body h3{margin:18px 0 8px;line-height:1.3}
@@ -1150,6 +1179,16 @@ var _translations = {
   'offer.later': {es:'Ver después', en:'View later'},
   'offer.secondsLeft': {es:'segundos para aceptar', en:'seconds to accept'},
   'offer.taken': {es:'Este trabajo ya no está disponible.', en:'This job is no longer available.'},
+  // -- First-launch welcome (native onboarding) --
+  'welcome.taglineClient': {es:'Profesionales de confianza, a tu puerta en Guayaquil', en:'Trusted professionals, at your door in Guayaquil'},
+  'welcome.taglineProvider': {es:'Recibe trabajos y gana con tu oficio en Guayaquil', en:'Get jobs and earn with your trade in Guayaquil'},
+  'welcome.start': {es:'Comenzar', en:'Get started'},
+  'welcome.title2': {es:'Bienvenido a Lever', en:'Welcome to Lever'},
+  'welcome.sub2Client': {es:'Solicita servicios para tu hogar en minutos.', en:'Request home services in minutes.'},
+  'welcome.sub2Provider': {es:'Conecta con clientes que necesitan tu talento.', en:'Connect with clients who need your skills.'},
+  'welcome.signup': {es:'Crear cuenta', en:'Create account'},
+  'welcome.signin': {es:'Ya tengo cuenta', en:'I already have an account'},
+  'welcome.explore': {es:'Explorar sin cuenta', en:'Explore without an account'},
   // -- Account (Cuenta) --
   'acct.edit': {es:'Editar', en:'Edit'},
   'acct.back': {es:'Volver', en:'Back'},
@@ -2356,6 +2395,8 @@ async function render() {
     renderLegalDoc(_hash.split('/')[2]); return;
   }
   if (!_token) {
+    if (_hash === '#/welcome') { renderWelcome(); return; }
+    if (_hash === '#/welcome/choice') { renderWelcomeChoice(); return; }
     if (_hash === '#/login') { renderAuth('login'); return; }
     if (_hash === '#/signup') { renderAuth('register'); return; }
     // Role-specific registration entry points (kept distinct per spec).
@@ -2369,6 +2410,9 @@ async function render() {
     // Native provider app: providers must sign in first. The CLIENT native
     // app opens into guest discovery instead of forcing a login screen.
     if (IS_NATIVE) {
+      // First launch after install: animated welcome → auth choice. Shown
+      // once (flag set when the user taps "Comenzar").
+      if (!localStorage.getItem('lever_welcome_done')) { renderWelcome(); return; }
       if (APP_FLAVOR_ROLE === 'client') { renderGuestFlowRoute('#/services'); return; }
       renderAuth('login'); return;
     }
@@ -5102,6 +5146,60 @@ async function doResendCode() {
 
 //  AUTH SCREEN — Login / Register
 // ============================================================
+// ---- First-launch welcome (native onboarding) ----
+// Welcome (animated logo + tagline + Comenzar) → auth choice (create account /
+// sign in / explore). Shown once per install; pure app-theme colors, CSS-only
+// animations, prefers-reduced-motion respected.
+function _welcomeLogo(px) {
+  return '<span class="welcome-logo" aria-hidden="true"><svg width="' + px + '" height="' + px + '" viewBox="0 0 100 100" fill="none">' +
+    '<rect width="100" height="100" rx="21" fill="#fff" fill-opacity=".12"/>' +
+    '<rect x="6" y="6" width="88" height="88" rx="18" fill="#fff"/>' +
+    '<g stroke="#6366f1" fill="none" transform="translate(50 50) scale(.88) translate(-50 -50)">' +
+      '<circle class="welcome-ring" cx="50" cy="50" r="36" stroke-width="4" stroke-linecap="round"/>' +
+      '<path d="M35 25 L35 68 Q35 74 41 74 L60 74 Q64 74 64 70 L64 67 Q64 63 60 63 L49 63 Q45 63 45 59 L45 25 Q45 21 41 21 L39 21 Q35 21 35 25Z" fill="#6366f1" stroke="none"/>' +
+      '<line x1="42" y1="33" x2="70" y2="22" stroke-width="4" stroke-linecap="round"/>' +
+      '<circle cx="72" cy="21" r="4" fill="#6366f1" stroke-width="1.5"/>' +
+      '<path d="M39 68 Q45 58 50 60 Q56 58 62 68" fill="none" stroke-width="2.5" stroke-linecap="round"/>' +
+    '</g></svg></span>';
+}
+function renderWelcome() {
+  var isPro = APP_FLAVOR_ROLE === 'mechanic';
+  var tagline = _t(isPro ? 'welcome.taglineProvider' : 'welcome.taglineClient');
+  var bubbles = ['🔧','🧹','⚡','🎨','🚿','💻'].map(function(e, i) {
+    return '<span class="welcome-bubble wb' + i + '" aria-hidden="true">' + e + '</span>';
+  }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="welcome-page">' + bubbles +
+      '<div class="welcome-center">' +
+        _welcomeLogo(104) +
+        '<div class="welcome-word">Lever</div>' +
+        '<p class="welcome-tagline">' + escapeHtml(tagline) + '</p>' +
+      '</div>' +
+      '<button class="welcome-btn" onclick="welcomeStart()">' + escapeHtml(_t('welcome.start')) + ' →</button>' +
+    '</div>';
+}
+function welcomeStart() {
+  try { localStorage.setItem('lever_welcome_done', '1'); } catch (e) {}
+  route('#/welcome/choice');
+}
+function renderWelcomeChoice() {
+  var isPro = APP_FLAVOR_ROLE === 'mechanic';
+  var signupHash = isPro ? '#/registro/profesional' : '#/registro/cliente';
+  document.getElementById('app').innerHTML =
+    '<div class="welcome-page choice">' +
+      '<div class="welcome-center">' +
+        _welcomeLogo(72) +
+        '<h1 class="welcome-title2">' + escapeHtml(_t('welcome.title2')) + '</h1>' +
+        '<p class="welcome-tagline">' + escapeHtml(_t(isPro ? 'welcome.sub2Provider' : 'welcome.sub2Client')) + '</p>' +
+      '</div>' +
+      '<div class="welcome-actions">' +
+        '<button class="welcome-btn" onclick="route(\'' + signupHash + '\')">' + escapeHtml(_t('welcome.signup')) + '</button>' +
+        '<button class="welcome-btn outline" onclick="route(\'#/login\')">' + escapeHtml(_t('welcome.signin')) + '</button>' +
+        (!isPro ? '<button class="welcome-ghost" onclick="route(\'#/services\')">' + escapeHtml(_t('welcome.explore')) + '</button>' : '') +
+      '</div>' +
+    '</div>';
+}
+
 // ---- Password field with show/hide eye toggle ----
 function _eyeShow(){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';}
 function _eyeHide(){return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';}
