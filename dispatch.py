@@ -98,10 +98,14 @@ def find_eligible_providers(
 
         scored.append((provider, distance))
 
-    # Sort: by distance first (None = infinity), then by rating descending
+    # Sort: BEST-QUALIFIED FIRST — the marketplace policy is that opportunities
+    # go to the best-rated professionals before anyone else. Rating is the
+    # primary key, proven experience (completed jobs) breaks ties, and
+    # distance only orders otherwise-equal candidates.
     scored.sort(key=lambda x: (
-        x[1] if x[1] is not None else float('inf'),
         -(x[0].avg_rating or 0),
+        -(x[0].total_jobs or 0),
+        x[1] if x[1] is not None else float('inf'),
     ))
 
     return [provider for provider, _ in scored]
@@ -224,10 +228,10 @@ def _notify_client_no_providers(db: Session, request_id: int) -> None:
     notif = Notification(
         user_id=request.client_id,
         type="system",
-        title="No providers available right now",
+        title="Buscando profesionales disponibles",
         message=(
-            f'Your request "{request.title}" has been posted but no providers are currently online. '
-            f"Providers will be able to find your request on the job board when they come online."
+            f'Tu solicitud "{request.title}" fue publicada, pero por ahora no hay profesionales conectados. '
+            f"Los profesionales la verán en su tablero en cuanto se conecten."
         ),
         link=f"/client/requests/{request_id}",
     )
@@ -255,10 +259,10 @@ def _notify_client_timeout_all(db: Session, request_id: int) -> None:
     notif = Notification(
         user_id=request.client_id,
         type="system",
-        title="Still looking for a provider",
+        title="Seguimos buscando un profesional",
         message=(
-            f'No provider has accepted your request "{request.title}" yet. '
-            f"Your request remains active and visible on the job board."
+            f'Ningún profesional ha aceptado tu solicitud "{request.title}" todavía. '
+            f"Tu solicitud sigue activa y visible en el tablero."
         ),
         link=f"/client/requests/{request_id}",
     )

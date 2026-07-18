@@ -6,7 +6,7 @@ The job board is filtered by the provider's profession.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -36,6 +36,9 @@ logger = logging.getLogger("lever.provider")
 
 router = APIRouter(prefix="/api/provider", tags=["provider"])
 
+# Minutes a professional has to reach the service location after accepting.
+ARRIVAL_WINDOW_MINUTES = 45
+
 
 # ---------------------------------------------------------------------------
 # Helpers - notification creation
@@ -43,32 +46,32 @@ router = APIRouter(prefix="/api/provider", tags=["provider"])
 
 # Human-readable status messages for client notifications
 _STATUS_MESSAGES = {
-    "en_route": "is on the way to your location",
-    "diagnosing": "has arrived and is diagnosing the issue",
-    "repairing": "has started the repair work",
-    "inspecting": "has arrived and is inspecting",
-    "servicing": "has started servicing",
-    "working": "has started working on your project",
-    "assessing": "has arrived and is assessing the job",
-    "prepping": "is prepping your vehicle",
-    "washing": "is washing your vehicle",
-    "completed": "has completed the job - please leave a review!",
-    "cancelled": "has cancelled the job",
+    "en_route": "va en camino a tu ubicación",
+    "diagnosing": "llegó y está iniciando el trabajo",
+    "repairing": "está trabajando en tu solicitud",
+    "inspecting": "llegó y está iniciando el trabajo",
+    "servicing": "está trabajando en tu solicitud",
+    "working": "está trabajando en tu solicitud",
+    "assessing": "llegó y está iniciando el trabajo",
+    "prepping": "está trabajando en tu solicitud",
+    "washing": "está trabajando en tu solicitud",
+    "completed": "marcó el trabajo como terminado — confirma que todo quedó bien y califícalo",
+    "cancelled": "canceló el trabajo",
 }
 
 # Next-step guidance for the worker after each status transition
 _WORKER_NEXT_STEPS = {
-    "accepted": "Head to the client's location and update your status to 'En Route' when you leave.",
-    "en_route": "Once you arrive, update your status to begin the work phase.",
-    "diagnosing": "Diagnose the issue and update your status when you start repairs.",
-    "repairing": "Complete the repair and mark the job as 'Completed' when done.",
-    "inspecting": "Complete the inspection and update your status when you start work.",
-    "servicing": "Complete the service and mark the job as 'Completed' when done.",
-    "working": "Complete the work and mark the job as 'Completed' when done.",
-    "assessing": "Complete the assessment and update your status when you start work.",
-    "prepping": "Finish prepping and update your status to start washing.",
-    "washing": "Complete the wash and mark the job as 'Completed' when done.",
-    "completed": "Job complete! Wait for the client's review.",
+    "accepted": "Dirígete al lugar del servicio.",
+    "en_route": "Al llegar, presiona \"Iniciar trabajo\".",
+    "diagnosing": "Cuando termines, presiona \"Completar trabajo\".",
+    "repairing": "Cuando termines, presiona \"Completar trabajo\".",
+    "inspecting": "Cuando termines, presiona \"Completar trabajo\".",
+    "servicing": "Cuando termines, presiona \"Completar trabajo\".",
+    "working": "Cuando termines, presiona \"Completar trabajo\".",
+    "assessing": "Cuando termines, presiona \"Completar trabajo\".",
+    "prepping": "Cuando termines, presiona \"Completar trabajo\".",
+    "washing": "Cuando termines, presiona \"Completar trabajo\".",
+    "completed": "¡Trabajo terminado! El cliente confirmará y podrá calificarte.",
 }
 
 
@@ -437,39 +440,45 @@ def accept_request(
             detail="You must be online to accept job requests."
         )
 
-    job = Job(request_id=request_id, mechanic_id=current_user.id)
+    # Simplified flow: accepting means the professional is heading to the site
+    # NOW — the job starts en route with a fixed arrival window.
+    job = Job(
+        request_id=request_id,
+        mechanic_id=current_user.id,
+        status="en_route",
+        arrival_deadline=datetime.now(timezone.utc) + timedelta(minutes=ARRIVAL_WINDOW_MINUTES),
+    )
     db.add(job)
     req.status = "assigned"
     db.flush()  # Get job.id before creating notifications
 
     # ── Notify the CLIENT that their request was accepted ──
-    provider_name = profile.full_name if profile and profile.full_name else "A professional"
-    profession_label = profile.profession.replace("_", " ").title() if profile else "Professional"
+    provider_name = profile.full_name if profile and profile.full_name else "Un profesional"
+    profession_label = profile.profession.replace("_", " ").title() if profile else "Profesional"
 
     _create_notification(
         db,
         user_id=req.client_id,
         notif_type="job_update",
-        title=f"Your request has been accepted!",
+        title="¡Tu solicitud fue aceptada!",
         message=(
-            f"{provider_name} ({profession_label}) has accepted your request "
-            f"\"{req.title}\" and is now processing it. "
-            f"You can message them directly from your request details."
+            f"{provider_name} ({profession_label}) aceptó tu solicitud "
+            f"\"{req.title}\" y ya va en camino. "
+            f"Puedes escribirle directamente desde el detalle de tu solicitud."
         ),
         link=f"/client/requests/{req.id}",
     )
 
     # ── Notify the WORKER with next steps ──
-    next_step = _WORKER_NEXT_STEPS.get("accepted", "Check the job details for next steps.")
     _create_notification(
         db,
         user_id=current_user.id,
         notif_type="job_update",
-        title="Job accepted - here are your next steps",
+        title="Trabajo aceptado — ve al lugar del servicio",
         message=(
-            f"You accepted \"{req.title}\". "
-            f"Next step: {next_step} "
-            f"You can message the client from the job details page."
+            f"Aceptaste \"{req.title}\". "
+            f"Tienes {ARRIVAL_WINDOW_MINUTES} minutos para llegar al lugar. "
+            f"Al llegar, presiona \"Iniciar trabajo\" en el detalle del trabajo."
         ),
         link=f"/provider/jobs/{job.id}",
     )
@@ -553,6 +562,15 @@ def update_job_status(
         else:
             next_statuses.add("completed")
         next_statuses.add("cancelled")
+        # ── Simplified provider flow ──
+        # "Iniciar trabajo": from en_route jump straight to the working phase
+        # (3rd status) — arrival and start are one button press.
+        if st == "en_route" and len(work_statuses) >= 3:
+            next_statuses.add(work_statuses[2])
+        # "Completar trabajo": any working-phase status can complete directly —
+        # the profession's intermediate statuses are optional detail, not gates.
+        if i >= 2:
+            next_statuses.add("completed")
         _ALLOWED_TRANSITIONS[st] = next_statuses
 
     allowed = _ALLOWED_TRANSITIONS.get(job.status, set())
@@ -593,13 +611,12 @@ def update_job_status(
             payload.status,
             f"updated job status to {payload.status.replace('_', ' ').title()}"
         )
-        status_title = payload.status.replace("_", " ").title()
         _create_notification(
             db,
             user_id=req.client_id,
             notif_type="job_update",
-            title=f"Job update: {status_title}",
-            message=f"Your service provider {status_msg}.",
+            title="Actualización de tu servicio",
+            message=f"Tu profesional {status_msg}.",
             link=f"/client/requests/{req.id}",
         )
 
@@ -610,8 +627,8 @@ def update_job_status(
             db,
             user_id=current_user.id,
             notif_type="job_update",
-            title=f"Status updated to {payload.status.replace('_', ' ').title()}",
-            message=f"Next step: {next_step}",
+            title="Estado actualizado",
+            message=next_step,
             link=f"/provider/jobs/{job.id}",
         )
 

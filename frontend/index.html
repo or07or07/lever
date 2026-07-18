@@ -1519,6 +1519,14 @@ var _translations = {
   'jdet.title': {es:'Trabajo', en:'Job'},
   'jdet.back': {es:'\u2190 Volver', en:'\u2190 Back'},
   'jdet.updateStatus': {es:'Actualizar Estado', en:'Update Status'},
+  'jdet.arriveBy': {es:'Llega antes de las', en:'Arrive by'},
+  'jdet.goEnRoute': {es:'🚗 Voy en camino', en:'🚗 On my way'},
+  'jdet.startJob': {es:'🛠️ Iniciar trabajo', en:'🛠️ Start job'},
+  'jdet.completeJob': {es:'✅ Completar trabajo', en:'✅ Complete job'},
+  'jdet.waitingConfirm': {es:'⏳ Esperando que el cliente confirme el trabajo…', en:'⏳ Waiting for the client to confirm the job…'},
+  'jdet.clientConfirmed': {es:'✅ El cliente confirmó el trabajo', en:'✅ The client confirmed the job'},
+  'reqdet.confirmDone': {es:'✅ Confirmar trabajo completado', en:'✅ Confirm job completed'},
+  'reqdet.confirmHint': {es:'Confirma que el profesional terminó el trabajo para poder calificarlo.', en:'Confirm the professional finished the job so you can rate them.'},
   'jdet.notes': {es:'Notas', en:'Notes'},
   'jdet.finalPrice': {es:'Precio Final ($)', en:'Final Price ($)'},
   'jdet.chat': {es:'\u{1F4AC} Chat', en:'\u{1F4AC} Chat'},
@@ -2334,7 +2342,7 @@ async function toggleProviderOnline() {
     // Refresh the current screen so board/dashboard reflect the new status
     render();
   } catch (e) {
-    alert(e.message || 'Could not update status');
+    alert(e.message || (_lang==='es' ? 'No se pudo actualizar el estado' : 'Could not update status'));
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -2698,7 +2706,7 @@ async function clientView(hash, el) {
   if (hash==='#/map')                return renderMapView(el);
   if (hash==='#/vehicles')           return renderVehicles(el);
   if (hash==='#/settings')           return renderSettings(el);
-  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
+  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',_t('misc.pageNotFound'));
 }
 
 // ---- Customer Home (floating Lever header + service search + overview) ----
@@ -3536,7 +3544,8 @@ async function renderRequestDetail(el, id) {
       ${job.completed_at?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${_t('jdet.completed')}: ${fmtTime(job.completed_at)}</div>`:''}
       <div class="mt-4" style="display:flex;gap:8px">
         <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('reqdet.openChat')}</button>
-        ${job.status==='completed'&&!req.review?`<button class="btn btn-success" onclick="showReviewModal(${job.id})">${_t('reqdet.leaveReview')}</button>`:''}
+        ${job.status==='completed'&&!job.client_confirmed_at?`<div style="width:100%"><p class="text-sm" style="margin-bottom:8px;color:var(--gray-600)">${_t('reqdet.confirmHint')}</p><button class="btn btn-success" onclick="confirmJobCompletion(${job.id})">${_t('reqdet.confirmDone')}</button></div>`:''}
+        ${job.status==='completed'&&job.client_confirmed_at&&!req.review?`<button class="btn btn-success" onclick="showReviewModal(${job.id})">${_t('reqdet.leaveReview')}</button>`:''}
         ${job.status==='completed'&&req.review?`<div class="text-sm" style="display:flex;align-items:center;gap:6px">\u2B50 ${_t('reqdet.youRated')} <span class="stars">${stars(req.review?.rating||0)}</span></div>`:''}
         ${job.status!=='cancelled'?`<button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>`:''}
         <button class="btn btn-ghost" onclick="showReportModal('user',${job.mechanic_id})">${_t('report.userBtn')}</button>
@@ -3564,6 +3573,19 @@ async function cancelRequest(id) {
   if (!confirm(_t('reqdet.cancelConfirm'))) return;
   try { await del('/api/client/requests/'+id); route('#/requests'); }
   catch(e) { showToast(e.message, 'error'); }
+}
+
+// Client confirms the work is done (unlocks rating — ratings drive who gets
+// offers first), then flows straight into the rating modal.
+async function confirmJobCompletion(jobId) {
+  try {
+    await post('/api/client/jobs/' + jobId + '/confirm-completion');
+    showToast(_lang === 'es' ? 'Trabajo confirmado ✓' : 'Job confirmed ✓', 'success');
+    showReviewModal(jobId);
+  } catch (e) {
+    if (/Already confirmed/i.test(e.message || '')) { showReviewModal(jobId); return; }
+    showToast(e.message, 'error');
+  }
 }
 
 function showReviewModal(jobId) {
@@ -4211,7 +4233,7 @@ async function mechanicView(hash, el) {
   if (hash==='#/my-services')         return renderMyServices(el);
   if (hash==='#/map')                 return renderMapView(el);
   if (hash==='#/settings')            return renderSettings(el);
-  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
+  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',_t('misc.pageNotFound'));
 }
 
 // ---- Provider Account (Cuenta) — grouped, mirrors the client Account ----
@@ -4360,7 +4382,7 @@ async function acceptRequest(id) {
   try {
     const job = await post('/api/provider/board/'+id+'/accept');
     route('#/job/'+job.id);
-  } catch(e) { alert('Could not accept job: ' + e.message); }
+  } catch(e) { alert((_lang==='es' ? 'No se pudo aceptar el trabajo: ' : 'Could not accept job: ') + e.message); }
 }
 
 // ---- Incoming job-offer popup with acceptance countdown (provider) ----
@@ -4484,8 +4506,23 @@ function statusLabel(s) {
 async function renderJobDetail(el, id) {
   const job = await get('/api/provider/jobs/'+id);
   const profKey = job.request?.profession_type || _user?.profession || 'mechanic';
-  const transitions = getJobTransitions(profKey);
-  const nextStates = transitions[job.status]||[];
+  // ── Simplified flow: one primary action per phase ──
+  // en_route → "Iniciar trabajo" (jump to the working phase); working →
+  // "Completar trabajo"; completed → wait for the client's confirmation.
+  const flow = (_professions[profKey] && _professions[profKey].job_statuses) || ['accepted','en_route','working','completed','cancelled'];
+  const work = flow.filter(s => s !== 'completed' && s !== 'cancelled');
+  const phaseIdx = work.indexOf(job.status);
+  let primaryBtn = '', arrivalChip = '', showPrice = false;
+  if (job.status === 'accepted') {
+    primaryBtn = `<button class="btn btn-primary btn-full" onclick="updateJobStatus(${job.id},'en_route')">${_t('jdet.goEnRoute')}</button>`;
+  } else if (job.status === 'en_route') {
+    if (job.arrival_deadline) arrivalChip = `<div class="gnotice" style="margin-bottom:10px">⏱️ ${_t('jdet.arriveBy')} <strong>${fmtTime(job.arrival_deadline)}</strong></div>`;
+    primaryBtn = work.length >= 3 ? `<button class="btn btn-success btn-full" onclick="updateJobStatus(${job.id},'${work[2]}')">${_t('jdet.startJob')}</button>` : '';
+  } else if (phaseIdx >= 2) {
+    showPrice = true;
+    primaryBtn = `<button class="btn btn-success btn-full" onclick="updateJobStatus(${job.id},'completed')">${_t('jdet.completeJob')}</button>`;
+  }
+  const nextStates = primaryBtn ? ['x'] : [];   // gate the action card
   el.innerHTML = `
     ${pageHeader(_t('jdet.title')+' #'+job.id, `<button class="btn btn-outline" onclick="route('#/jobs')">${_t('jdet.back')}</button>`)}
     <div class="card">
@@ -4503,24 +4540,26 @@ async function renderJobDetail(el, id) {
     </div>
     ${nextStates.length>0?`
     <div class="card">
-      <div class="card-title" style="margin-bottom:14px">${_t('jdet.updateStatus')}</div>
+      ${arrivalChip}
       <div class="form-group"><label>${_t('jdet.notes')}</label><textarea id="jb-notes">${job.mechanic_notes||''}</textarea></div>
-      <div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00"></div>
+      ${showPrice?`<div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00"></div>`:''}
       <div id="jb-err"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        ${nextStates.map(s=>`<button class="btn ${s==='cancelled'?'btn-danger':s==='completed'?'btn-success':'btn-primary'}" onclick="updateJobStatus(${job.id},'${s}')">${statusLabel(s)}</button>`).join('')}
+      ${primaryBtn}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
         <button class="btn btn-outline" onclick="route('#/chat/${job.id}')">${_t('jdet.chat')}</button>
         <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
         <button class="btn btn-ghost" onclick="showReportModal('user',${job.request.client_id})">${_t('report.userBtn')}</button>
-        <button class="btn btn-ghost" style="color:var(--danger)" onclick="blockUserWithConfirm(${job.request.client_id})">${_t('report.blockBtn')}</button>
+        <button class="btn btn-ghost" style="color:var(--danger)" onclick="updateJobStatus(${job.id},'cancelled')">${statusLabel('cancelled')}</button>
       </div>
     </div>`:``}
     ${renderProviderTrackingControls(job.id, job.status)}
-    ${job.status==='completed'?`<div class="card" style="text-align:center;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-success" onclick="showRateCustomerModal(${job.id})">${_t('jdet.rateCustomer')}</button>
-      <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
-      <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
-      <button class="btn btn-ghost" onclick="showReportModal('user',${job.request.client_id})">${_t('report.userBtn')}</button>
+    ${job.status==='completed'?`<div class="card" style="text-align:center">
+      <div class="gnotice" style="margin-bottom:12px">${job.client_confirmed_at?_t('jdet.clientConfirmed'):_t('jdet.waitingConfirm')}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-success" onclick="showRateCustomerModal(${job.id})">${_t('jdet.rateCustomer')}</button>
+        <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
+        <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
+      </div>
     </div>`:''}`;
 }
 
@@ -4579,13 +4618,13 @@ async function renderMyReviews(el) {
   const reviews = await get('/api/provider/reviews');
   const avg = reviews.length ? (reviews.reduce((a,r)=>a+r.rating,0)/reviews.length).toFixed(1) : '\u2014';
   el.innerHTML = `
-    ${pageHeader('My Reviews')}
+    ${pageHeader(_lang==='es'?'Mis Reseñas':'My Reviews')}
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-num">${reviews.length}</div><div class="stat-label">Total Reviews</div></div>
-      <div class="stat-card"><div class="stat-num">${avg}</div><div class="stat-label">Avg Rating</div></div>
+      <div class="stat-card"><div class="stat-num">${reviews.length}</div><div class="stat-label">${_lang==='es'?'Reseñas totales':'Total Reviews'}</div></div>
+      <div class="stat-card"><div class="stat-num">${avg}</div><div class="stat-label">${_lang==='es'?'Calificación promedio':'Avg Rating'}</div></div>
     </div>`;
   if (reviews.length===0) {
-    el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>','No reviews yet','Complete jobs to earn reviews');
+    el.innerHTML += emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',_lang==='es'?'Aún no tienes reseñas':'No reviews yet',_lang==='es'?'Completa trabajos para recibir reseñas':'Complete jobs to earn reviews');
     return;
   }
   el.innerHTML += reviews.map(r=>`
@@ -4594,7 +4633,7 @@ async function renderMyReviews(el) {
         <span class="stars" style="font-size:1.2rem">${stars(r.rating)}</span>
         <span class="text-sm">${fmtDate(r.created_at)}</span>
       </div>
-      ${r.comment?`<p class="text-sm">"${escapeHtml(r.comment)}"</p>`:'<p class="text-sm" style="color:var(--gray-400)">No comment</p>'}
+      ${r.comment?`<p class="text-sm">"${escapeHtml(r.comment)}"</p>`:`<p class="text-sm" style="color:var(--gray-400)">${_lang==='es'?'Sin comentario':'No comment'}</p>`}
       <div class="mt-4"><button class="btn btn-ghost" style="font-size:.78rem;padding:4px 10px" onclick="showReportModal('review',${r.id})">${_t('report.reviewBtn')}</button></div>
     </div>`).join('');
 }
@@ -4821,7 +4860,7 @@ async function sendMsg(jobId) {
     input.value = '';
     renderMessages(document.getElementById('content'), String(jobId));
   } catch(e) {
-    alert('Failed to send message: ' + e.message);
+    alert((_lang==='es' ? 'No se pudo enviar el mensaje: ' : 'Failed to send message: ') + e.message);
   }
 }
 
@@ -4835,7 +4874,7 @@ async function adminView(hash, el) {
   if (hash==='#/disputes')        return renderAdminDisputes(el);
   if (hash==='#/reports')         return renderAdminReports(el);
   if (hash==='#/settings')        return renderSettings(el);
-  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>','Page not found');
+  el.innerHTML = emptyState('<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',_t('misc.pageNotFound'));
 }
 
 async function renderAdminDash(el) {
@@ -5065,13 +5104,13 @@ function renderVerification() {
         <div id="verify-msg"></div>
 
         <div class="verify-actions">
-          <button class="btn btn-primary btn-full" id="verify-btn" onclick="doVerifyEmail()">Verify Email</button>
+          <button class="btn btn-primary btn-full" id="verify-btn" onclick="doVerifyEmail()">${_lang==='es'?'Verificar correo':'Verify Email'}</button>
           <button class="verify-resend" id="resend-btn" onclick="doResendCode()">Resend Code</button>
           <div class="verify-timer" id="resend-timer"></div>
         </div>
 
         <div class="verify-footer">
-          Wrong email? <button class="verify-logout" onclick="logout()">Sign out</button> and register again.
+          ${_lang==='es'?'¿Correo equivocado?':'Wrong email?'} <button class="verify-logout" onclick="logout()">${_lang==='es'?'Cierra sesión':'Sign out'}</button> ${_lang==='es'?'y regístrate de nuevo.':'and register again.'}
         </div>
       </div>
     </div>`;
@@ -5164,18 +5203,18 @@ async function doVerifyEmail() {
 
       // Show success animation
       inputs.forEach(inp => inp.classList.add('success'));
-      document.getElementById('verify-msg').innerHTML = alert_el('success', 'Email verified! Redirecting\u2026');
+      document.getElementById('verify-msg').innerHTML = alert_el('success', _lang==='es' ? '\u00a1Correo verificado! Redirigiendo\u2026' : 'Email verified! Redirecting\u2026');
 
       setTimeout(() => route('#/'), 1200);
     } else {
       inputs.forEach(inp => { inp.classList.add('error'); inp.value = ''; });
       setTimeout(() => inputs.forEach(inp => inp.classList.remove('error')), 500);
       document.getElementById('verify-msg').innerHTML = alert_el('error', data.message);
-      if (btn) { btn.disabled = false; btn.textContent = 'Verify Email'; }
+      if (btn) { btn.disabled = false; btn.textContent = _lang==='es' ? 'Verificar correo' : 'Verify Email'; }
       inputs[0]?.focus();
     }
   } catch (e) {
-    document.getElementById('verify-msg').innerHTML = alert_el('error', e.message || 'Verification failed');
+    document.getElementById('verify-msg').innerHTML = alert_el('error', e.message || (_lang==='es' ? 'No se pudo verificar' : 'Verification failed'));
     if (btn) { btn.disabled = false; btn.textContent = 'Verify Email'; }
   }
 }
@@ -5186,7 +5225,7 @@ async function doResendCode() {
   try {
     const data = await post('/api/auth/resend-verification', {});
     if (data.success) {
-      document.getElementById('verify-msg').innerHTML = alert_el('success', 'New code sent to your email');
+      document.getElementById('verify-msg').innerHTML = alert_el('success', _lang==='es' ? 'Nuevo código enviado a tu correo' : 'New code sent to your email');
       startResendCooldown(data.cooldown_seconds || 60);
     } else {
       document.getElementById('verify-msg').innerHTML = alert_el('error', data.message);
@@ -5195,7 +5234,7 @@ async function doResendCode() {
       }
     }
   } catch (e) {
-    document.getElementById('verify-msg').innerHTML = alert_el('error', e.message || 'Failed to resend');
+    document.getElementById('verify-msg').innerHTML = alert_el('error', e.message || (_lang==='es' ? 'No se pudo reenviar' : 'Failed to resend'));
   }
 }
 

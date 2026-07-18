@@ -528,6 +528,9 @@ class JobOut(BaseModel):
     completed_at: Optional[datetime]
     created_at: datetime
     updated_at: Optional[datetime]
+    # Simplified flow: arrival window after accept + client's completion confirm
+    arrival_deadline: Optional[datetime] = None
+    client_confirmed_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

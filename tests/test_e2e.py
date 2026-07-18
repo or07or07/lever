@@ -231,7 +231,8 @@ def test_full_orchestration():
     r = mech.post(f"/api/provider/board/{request_id}/accept")
     check("Provider accepts request (201)", r.status_code == 201, r.text)
     job_id = r.json()["id"]
-    check("Job status is accepted", r.json()["status"] == "accepted")
+    check("Job starts EN ROUTE on accept (simplified flow)", r.json()["status"] == "en_route")
+    check("Arrival window set on accept", r.json().get("arrival_deadline") is not None)
 
     # ---- Step 4b: Double-accept rejected ----
     r2 = mech.post(f"/api/provider/board/{request_id}/accept")
@@ -261,7 +262,6 @@ def test_full_orchestration():
 
     # ---- Step 8: Job status progression (en_route → diagnosing → repairing → completed) ----
     transitions = [
-        ("en_route",   "accepted",   True),
         ("diagnosing", "en_route",   True),
         ("repairing",  "diagnosing", True),
     ]
@@ -287,7 +287,14 @@ def test_full_orchestration():
     r = client.get(f"/api/client/requests/{request_id}")
     check("Request auto-completes when job done", r.json()["status"] == "completed")
 
-    # ---- Step 11: Client leaves review ----
+    # ---- Step 11: review requires client confirmation first ----
+    r0 = client.post(f"/api/client/jobs/{job_id}/review", json={"rating": 4, "comment": "x"})
+    check("Review blocked before client confirms (400)",
+          r0.status_code == 400 and "CONFIRM_COMPLETION_FIRST" in r0.text, r0.text)
+    rc = client.post(f"/api/client/jobs/{job_id}/confirm-completion")
+    check("Client confirms completion (200)", rc.status_code == 200, rc.text)
+    rc2 = client.post(f"/api/client/jobs/{job_id}/confirm-completion")
+    check("Duplicate confirmation rejected (409)", rc2.status_code == 409, rc2.text)
     r = client.post(f"/api/client/jobs/{job_id}/review", json={
         "rating": 4,
         "comment": "Quick and professional. Would use again."
@@ -667,7 +674,7 @@ def test_customer_ratings():
     check("Rate before completion rejected (400)",
           early.status_code == 400 and "JOB_NOT_ELIGIBLE" in early.text, early.text)
 
-    for s in ["en_route", "diagnosing", "repairing"]:
+    for s in ["diagnosing", "repairing"]:
         mech.patch(f"/api/provider/jobs/{job_id}/status", json={"status": s})
     comp = mech.patch(f"/api/provider/jobs/{job_id}/status",
                       json={"status": "completed", "final_price": 80.0})
@@ -939,7 +946,7 @@ def test_app_set_pricing():
     acc = mech.post(f"/api/provider/board/{body['id']}/accept")
     check("Accept (201)", acc.status_code == 201, acc.text)
     job_id = acc.json()["id"]
-    for s in ["en_route", "diagnosing", "repairing"]:
+    for s in ["diagnosing", "repairing"]:
         mech.patch(f"/api/provider/jobs/{job_id}/status", json={"status": s})
 
     over = mech.patch(f"/api/provider/jobs/{job_id}/status",

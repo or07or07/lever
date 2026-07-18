@@ -401,6 +401,11 @@ def leave_review(
         raise HTTPException(status_code=403, detail="Not your job")
     if job.status != "completed":
         raise HTTPException(status_code=400, detail="Job is not yet completed")
+    # The client must confirm the work was completed before rating — the
+    # rating is what drives dispatch priority, so it must follow an explicit
+    # confirmation, not just the professional's own "completed" claim.
+    if not job.client_confirmed_at:
+        raise HTTPException(status_code=400, detail="CONFIRM_COMPLETION_FIRST")
     if job.review:
         raise HTTPException(status_code=409, detail="Review already submitted")
 
@@ -426,6 +431,45 @@ def leave_review(
     db.commit()
     db.refresh(review)
     return review
+
+
+# ---------------------------------------------------------------------------
+# Client confirms the job was completed (unlocks rating)
+# ---------------------------------------------------------------------------
+
+@router.post("/jobs/{job_id}/confirm-completion")
+def confirm_completion(
+    job_id: int,
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """The client confirms the professional finished the work. Required before
+    the job can be rated (ratings drive who gets offers first). Owner-only,
+    completed jobs only, idempotent-safe (409 on repeat)."""
+    from datetime import datetime, timezone
+
+    job = db.query(Job).options(joinedload(Job.request)).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.request.client_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your job")
+    if job.status != "completed":
+        raise HTTPException(status_code=400, detail="Job is not yet completed")
+    if job.client_confirmed_at:
+        raise HTTPException(status_code=409, detail="Already confirmed")
+
+    job.client_confirmed_at = datetime.now(timezone.utc)
+
+    from models import Notification
+    db.add(Notification(
+        user_id=job.mechanic_id,
+        type="job_update",
+        title="El cliente confirmó tu trabajo",
+        message=f'El cliente confirmó que completaste "{job.request.title}". ¡Buen trabajo!',
+        link=f"/provider/jobs/{job.id}",
+    ))
+    db.commit()
+    return {"ok": True, "confirmed_at": job.client_confirmed_at.isoformat()}
 
 
 # ---------------------------------------------------------------------------

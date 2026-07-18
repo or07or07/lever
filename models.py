@@ -282,6 +282,11 @@ class Job(Base):
     final_price = Column(Float, nullable=True)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
+    # Simplified provider flow: accepting a job puts the professional en route
+    # with a fixed arrival window; the client must confirm completion before
+    # the job can be rated (ratings drive dispatch priority).
+    arrival_deadline = Column(DateTime, nullable=True)
+    client_confirmed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
