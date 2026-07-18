@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     app_version: str = "2.3.0"
     debug: bool = False
 
+    # Seconds a professional has to accept a job offer before it rotates to
+    # the next candidate. 90s while offers only reach an OPEN app (no push
+    # notifications yet); tighten toward 30-45s once FCM ships.
+    dispatch_offer_seconds: int = 90
+
     # Database
     database_url: str = f"sqlite:///{BASE_DIR}/data/lever.db"
 

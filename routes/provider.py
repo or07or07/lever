@@ -695,17 +695,63 @@ def current_offer(
     if not req or req.status != "pending":
         return {"offer": None}
 
+    # Job details so the professional can DECIDE (pay, what, where-ish, how
+    # long) — zone only, not the exact address (that comes after accepting).
+    svc = None
+    if req.service_key:
+        from services_catalog import SERVICES_BY_KEY
+        svc = SERVICES_BY_KEY.get(req.service_key)
+    zone = None
+    if req.location:
+        parts = req.location.split("—")
+        zone = parts[-1].strip() if len(parts) > 1 else None
+    duration_label = None
+    if svc and svc.get("duration_min") and svc.get("duration_max"):
+        dmin, dmax = svc["duration_min"], svc["duration_max"]
+        duration_label = (f"{dmin}–{dmax} min" if dmax < 60
+                          else f"{round(dmin/60, 1):g}–{round(dmax/60, 1):g} h")
+
     return {"offer": {
         "dispatch_id": d.id,
         "request_id": req.id,
         "title": req.title,
+        "description": (req.description or "")[:180],
         "urgency": req.urgency,
+        "zone": zone,
         "service_key": req.service_key,
+        "service_name": svc["name_es"] if svc else None,
+        "service_icon": svc["icon"] if svc else None,
+        "duration_label": duration_label,
         "budget_min": req.budget_min,
         "budget_max": req.budget_max,
         "expires_in_seconds": int(remaining),
         "window_seconds": DISPATCH_TIMEOUT_SECONDS,
     }}
+
+
+@router.post("/offer/decline")
+def decline_offer(
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """Explicitly pass on the current offer. The queue advances to the next
+    candidate IMMEDIATELY instead of waiting out the window — declining is a
+    courtesy to the client, never a penalty beyond losing this job."""
+    from dispatch import decline_and_advance
+
+    d = (
+        db.query(RequestDispatch)
+        .filter(
+            RequestDispatch.provider_user_id == current_user.id,
+            RequestDispatch.status == "offered",
+        )
+        .order_by(RequestDispatch.offered_at.desc())
+        .first()
+    )
+    if not d:
+        raise HTTPException(status_code=404, detail="No active offer")
+    decline_and_advance(db, d)
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------

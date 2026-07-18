@@ -27,7 +27,8 @@ from models import Job, MechanicProfile, Notification, RequestDispatch, ServiceR
 
 logger = logging.getLogger("lever.dispatch")
 
-DISPATCH_TIMEOUT_SECONDS = 30
+from config import settings
+DISPATCH_TIMEOUT_SECONDS = settings.dispatch_offer_seconds
 
 
 def find_eligible_providers(
@@ -177,7 +178,7 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
             message=(
                 f'"{request.title}"'
                 + (f" — {pay} (recibes el 100%)" if pay else "")
-                + ". Tienes 30 segundos para aceptar antes de que se ofrezca al siguiente profesional."
+                + f". Tienes {DISPATCH_TIMEOUT_SECONDS} segundos para aceptar antes de que se ofrezca al siguiente profesional."
             ),
             link=f"/provider/board",
         )
@@ -296,6 +297,35 @@ def _notify_provider_timeout(db: Session, dispatch: RequestDispatch) -> None:
     )
     db.add(notif)
     db.commit()
+
+
+def decline_and_advance(db: Session, dispatch: RequestDispatch) -> None:
+    """Provider explicitly declined the offer: resolve it NOW and immediately
+    offer the next queued candidate instead of waiting out the window.
+
+    The pending timer for the declined offer will still fire later, see the
+    status is no longer 'offered', and return without acting — so declining
+    never double-advances the queue.
+    """
+    dispatch.status = "timeout"   # reuse the existing enum value for "did not take it"
+    dispatch.responded_at = datetime.now(timezone.utc)
+    db.commit()
+    logger.info(
+        f"Dispatch: provider {dispatch.provider_user_id} DECLINED request "
+        f"{dispatch.request_id} (position {dispatch.position}) — advancing queue"
+    )
+    next_dispatch = db.query(RequestDispatch).filter(
+        RequestDispatch.request_id == dispatch.request_id,
+        RequestDispatch.position == dispatch.position + 1,
+        RequestDispatch.status == "queued",
+    ).first()
+    if next_dispatch:
+        offer_to_provider(db, next_dispatch)
+        asyncio.create_task(
+            _dispatch_timer(dispatch.request_id, next_dispatch.id, next_dispatch.position + 1)
+        )
+    else:
+        _notify_client_timeout_all(db, dispatch.request_id)
 
 
 async def _dispatch_timer(request_id: int, dispatch_id: int, next_position: int) -> None:

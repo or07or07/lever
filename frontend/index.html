@@ -955,6 +955,11 @@ tr:hover td{background:var(--gray-50)}
 .offer-timer-fill{height:100%;width:100%;border-radius:3px;background:linear-gradient(90deg,var(--coral),var(--accent));transition:width .2s linear}
 .offer-timer-text{font-size:.76rem;color:var(--gray-500);margin:6px 0 12px}
 .offer-accept{width:100%;padding:14px;border:none;border-radius:14px;background:var(--success);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;min-height:50px}
+.offer-decline{width:100%;padding:11px;border:1.5px solid var(--gray-200);border-radius:14px;background:#fff;color:var(--gray-600);font-size:.9rem;font-weight:700;cursor:pointer;min-height:44px;margin-top:8px}
+.offer-decline:hover{color:var(--danger);border-color:var(--danger-light)}
+.offer-urgency{font-size:.72rem;font-weight:700;background:var(--gray-100);border-radius:999px;padding:3px 10px;color:var(--gray-700)}
+.offer-desc{font-size:.85rem;color:var(--gray-600);line-height:1.45;margin:2px 0 8px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.offer-meta{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--gray-700);margin-bottom:8px}
 @media(prefers-reduced-motion:reduce){.tab-ping::before,.offer-bolt,.offer-popup{animation:none}}
 .tab-item.active{color:var(--nav-green)}
 .tab-item.active .tab-icon{transform:translateY(-1px) scale(1.05)}
@@ -1208,6 +1213,10 @@ var _translations = {
   'offer.later': {es:'Ver después', en:'View later'},
   'offer.secondsLeft': {es:'segundos para aceptar', en:'seconds to accept'},
   'offer.taken': {es:'Este trabajo ya no está disponible.', en:'This job is no longer available.'},
+  'offer.decline': {es:'Rechazar', en:'Decline'},
+  'offer.declinedToast': {es:'Trabajo rechazado — se ofrecerá a otro profesional.', en:'Job declined — it will be offered to another professional.'},
+  'offer.urgent': {es:'🔴 Urgente', en:'🔴 Urgent'},
+  'offer.scheduled': {es:'📅 Programado', en:'📅 Scheduled'},
   // -- First-launch welcome (native onboarding) --
   'welcome.taglineClient': {es:'Profesionales de confianza, a tu puerta en Guayaquil', en:'Trusted professionals, at your door in Guayaquil'},
   'welcome.taglineProvider': {es:'Recibe trabajos y gana con tu oficio en Guayaquil', en:'Get jobs and earn with your trade in Guayaquil'},
@@ -4418,13 +4427,20 @@ function showOfferPopup(o) {
   el.setAttribute('aria-label', _t('offer.new'));
   el.innerHTML =
     '<div class="offer-head"><span class="offer-bolt" aria-hidden="true">⚡</span><strong>' + _t('offer.new') + '</strong>' +
+      (o.urgency ? '<span class="offer-urgency">' + _t(o.urgency === 'immediate' ? 'offer.urgent' : 'offer.scheduled') + '</span>' : '') +
       '<button class="offer-close" aria-label="' + _t('offer.later') + '" onclick="closeOfferPopup()">✕</button></div>' +
-    '<div class="offer-title">' + escapeHtml(o.title || '') + '</div>' +
+    '<div class="offer-title">' + (o.service_icon ? o.service_icon + ' ' : '') + escapeHtml(o.service_name || o.title || '') + '</div>' +
+    (o.description ? '<p class="offer-desc">' + escapeHtml(o.description) + '</p>' : '') +
+    '<div class="offer-meta">' +
+      (o.zone ? '<span>📍 ' + escapeHtml(o.zone) + '</span>' : '') +
+      (o.duration_label ? '<span>⏱️ ' + escapeHtml(o.duration_label) + '</span>' : '') +
+    '</div>' +
     (pay ? '<div class="offer-pay">💵 ' + _t('price.clientPays') + ': <strong>' + pay + '</strong></div>' +
            '<div class="offer-keep">' + _t('price.youKeep100') + '</div>' : '') +
     '<div class="offer-timer-track"><div class="offer-timer-fill" id="offer-timer-fill"></div></div>' +
     '<div class="offer-timer-text"><span id="offer-seconds">' + o.expires_in_seconds + '</span> ' + _t('offer.secondsLeft') + '</div>' +
-    '<button class="offer-accept" onclick="acceptOfferFromPopup(' + o.request_id + ')">✓ ' + _t('offer.accept') + '</button>';
+    '<button class="offer-accept" onclick="acceptOfferFromPopup(' + o.request_id + ')">✓ ' + _t('offer.accept') + '</button>' +
+    '<button class="offer-decline" onclick="declineOfferFromPopup()">✕ ' + _t('offer.decline') + '</button>';
   document.body.appendChild(el);
   try { playNotifSound(); } catch (e) {}
   const deadline = Date.now() + o.expires_in_seconds * 1000;
@@ -4447,6 +4463,11 @@ async function acceptOfferFromPopup(requestId) {
     closeOfferPopup();
     showToast(_t('offer.taken'), 'error');
   }
+}
+async function declineOfferFromPopup() {
+  closeOfferPopup();
+  try { await post('/api/provider/offer/decline'); } catch (e) { /* window may have lapsed */ }
+  showToast(_t('offer.declinedToast'), 'success');
 }
 function closeOfferPopup() {
   if (_offerTick) { clearInterval(_offerTick); _offerTick = null; }
