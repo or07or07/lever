@@ -78,3 +78,4 @@ apps/*/android/keystore.properties
 ios/App/Pods/
 ios/App/build/
 ios/App/App/public/
+.codex-test-runtime*/
