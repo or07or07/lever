@@ -606,6 +606,7 @@ def run_all():
         test_multi_profession_matching,
         test_pricing_estimates,
         test_app_set_pricing,
+        test_redispatch_on_go_online,
     ]
 
     for test_fn in tests:
@@ -959,6 +960,43 @@ def test_app_set_pricing():
     check("Final price within app range accepted (200)", ok.status_code == 200, ok.text)
 
 
+def test_redispatch_on_go_online():
+    section("15. Pending request offered when a provider comes ONLINE")
+    uid = str(uuid.uuid4())[:8]
+    cr = anon.post("/api/auth/register", json={
+        "email": f"rdc_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    mr = anon.post("/api/auth/register", json={
+        "email": f"rdm_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "plumbing", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    mech = Session(mr.json()["access_token"])
+
+    # Request created while the provider is OFFLINE — previously this sat
+    # silently on the board forever.
+    rq = client.post("/api/client/requests", json={
+        "title": "Fuga creada sin nadie en línea",
+        "description": "Nadie estaba conectado cuando se creó esta solicitud.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": "pipe_leak_repair"})
+    check("Request created (201)", rq.status_code == 201, rq.text)
+    req_id = rq.json()["id"]
+
+    r0 = mech.get("/api/provider/offer")
+    check("No offer while offline", r0.status_code == 200 and r0.json().get("offer") is None, r0.text)
+
+    # Going online must trigger an immediate offer for the waiting request.
+    go = mech.post("/api/provider/go-online")
+    check("Go online (200)", go.status_code == 200, go.text)
+    r1 = mech.get("/api/provider/offer")
+    off = r1.json().get("offer") if r1.status_code == 200 else None
+    check("Pending request offered on go-online",
+          bool(off) and off.get("request_id") == req_id, r1.text[:300])
+    check("Offer carries decision details (pay + window)",
+          bool(off) and off.get("budget_max") is not None and off.get("window_seconds", 0) >= 60,
+          str(off)[:200])
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -981,3 +1019,4 @@ def test_pytest_minimum_age(): test_minimum_age()
 def test_pytest_multi_profession(): test_multi_profession_matching()
 def test_pytest_pricing(): test_pricing_estimates()
 def test_pytest_app_set_pricing(): test_app_set_pricing()
+def test_pytest_redispatch(): test_redispatch_on_go_online()

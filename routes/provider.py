@@ -286,6 +286,11 @@ def go_online(
     db.commit()
     db.refresh(profile)
     logger.info(f"Provider {current_user.id} went ONLINE")
+    # Offer any pending requests this provider is eligible for RIGHT AWAY —
+    # requests created while nobody was online must not sit silently on the
+    # board (the popup then appears within one poll cycle, ~5s).
+    from dispatch import redispatch_pending_for_provider
+    redispatch_pending_for_provider(db, current_user.id)
     return profile
 
 

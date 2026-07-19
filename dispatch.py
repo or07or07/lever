@@ -328,6 +328,96 @@ def decline_and_advance(db: Session, dispatch: RequestDispatch) -> None:
         _notify_client_timeout_all(db, dispatch.request_id)
 
 
+def _provider_eligible_for(db: Session, profile: MechanicProfile, request: ServiceRequest) -> bool:
+    """Single-provider eligibility, mirroring find_eligible_providers: exact
+    service match when the request has a service_key (with the legacy
+    profession fallback for providers who never configured services)."""
+    from models import ProviderService
+    if request.service_key:
+        mine = db.query(ProviderService).filter(
+            ProviderService.provider_user_id == profile.user_id
+        ).all()
+        if mine:
+            return any(s.service_key == request.service_key and s.is_active for s in mine)
+        return profile.profession == request.profession_type
+    return profile.profession == request.profession_type
+
+
+def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
+    """A provider just came ONLINE: offer them every pending request they're
+    eligible for that nobody is currently being offered.
+
+    Without this, dispatch only ever considered providers online at request-
+    creation time — a request created while everyone was offline sat silently
+    on the board forever. Re-offers requests this provider previously timed
+    out on (they were probably offline), never ones they accepted.
+    Returns the number of offers created.
+    """
+    from sqlalchemy import func as safunc
+
+    profile = db.query(MechanicProfile).filter(
+        MechanicProfile.user_id == provider_user_id
+    ).first()
+    if not profile or not profile.is_online or not profile.is_available:
+        return 0
+
+    pending = (
+        db.query(ServiceRequest)
+        .filter(ServiceRequest.status == "pending")
+        .order_by(ServiceRequest.created_at.asc())
+        .all()
+    )
+    offered = 0
+    for req in pending:
+        if not _provider_eligible_for(db, profile, req):
+            continue
+        # Someone is already holding an active offer for this request.
+        if db.query(RequestDispatch).filter(
+            RequestDispatch.request_id == req.id,
+            RequestDispatch.status == "offered",
+        ).first():
+            continue
+        mine = (
+            db.query(RequestDispatch)
+            .filter(
+                RequestDispatch.request_id == req.id,
+                RequestDispatch.provider_user_id == provider_user_id,
+            )
+            .order_by(RequestDispatch.id.desc())
+            .first()
+        )
+        if mine and mine.status == "accepted":
+            continue
+        if mine and mine.status in ("queued", "timeout"):
+            dispatch = mine
+        else:
+            max_pos = db.query(safunc.max(RequestDispatch.position)).filter(
+                RequestDispatch.request_id == req.id
+            ).scalar()
+            dispatch = RequestDispatch(
+                request_id=req.id,
+                provider_user_id=provider_user_id,
+                position=(max_pos if max_pos is not None else -1) + 1,
+                status="queued",
+            )
+            db.add(dispatch)
+            db.flush()
+        offer_to_provider(db, dispatch)
+        try:
+            asyncio.create_task(
+                _dispatch_timer(req.id, dispatch.id, dispatch.position + 1)
+            )
+        except RuntimeError:
+            pass  # no running loop (sync test context)
+        offered += 1
+    if offered:
+        logger.info(
+            f"Dispatch: re-offered {offered} pending request(s) to provider "
+            f"{provider_user_id} on go-online"
+        )
+    return offered
+
+
 async def _dispatch_timer(request_id: int, dispatch_id: int, next_position: int) -> None:
     """Wait 30 seconds, then check if the current offer was accepted.
 
