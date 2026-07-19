@@ -1214,6 +1214,8 @@ var _translations = {
   'choose.refPricing': {es:'Precio referencial de Lever', en:'Lever reference price'},
   'choose.gone': {es:'El profesional elegido ya no está disponible. Elige otro o usa el modo automático.', en:'The chosen professional is no longer available. Pick another or use automatic mode.'},
   'reqdet.waitingChosen': {es:'Esperando la respuesta del profesional que elegiste.', en:'Waiting for your chosen professional to respond.'},
+  'guest.optionalDetails': {es:'Detalles (opcional)', en:'Details (optional)'},
+  'guest.autoDesc': {es:'solicitud creada desde el catálogo de servicios', en:'request created from the service catalog'},
   'meter.worked': {es:'Tiempo trabajado', en:'Time worked'},
   'meter.soFar': {es:'Total según tiempo', en:'Metered total'},
   'meter.cap': {es:'Máximo autorizado', en:'Authorized maximum'},
@@ -6330,12 +6332,22 @@ function renderGuestServiceDetail(key) {
 function startServiceRequest(key) {
   const s = svcByKey(key);
   if (!s) return;
+  // EXPRESS flow: one screen, smart defaults. "Ahora" is preselected, the
+  // description is optional, the sector derives from the address, and
+  // dispatch defaults to automatic — the client only needs the address.
   const existing = getGuestDraft();
   if (!existing || existing.serviceKey !== key) {
     clearGuestDraft();
-    saveGuestDraft({serviceKey: key, categoryKey: s.category, description: '', answers: {}, urgency: null, date: null, timeWindow: null, city: '', sector: '', step: 'details', status: 'guest_draft'});
+    saveGuestDraft({serviceKey: key, categoryKey: s.category, description: '', answers: {},
+      urgency: 'asap', date: null, timeWindow: null,
+      city: _market.city, province: _market.province, marketCode: _market.code,
+      sector: '', status: 'ready'});
+  } else {
+    saveGuestDraft({urgency: existing.urgency || 'asap',
+      city: existing.city || _market.city, province: existing.province || _market.province,
+      marketCode: existing.marketCode || _market.code, status: 'ready'});
   }
-  route('#/request/new');
+  route('#/finish-request');
 }
 
 // ---- Request wizard (details → schedule → location) ----
@@ -6537,15 +6549,22 @@ function renderFinishRequest() {
   const d = getGuestDraft();
   if (!d || !d.serviceKey || !svcByKey(d.serviceKey)) { route('#/'); return; }
   const s = svcByKey(d.serviceKey);
-  const when = d.urgency === 'asap' ? _t('guest.asap') : (d.date || '') + (d.timeWindow ? ' · ' + _t('guest.' + d.timeWindow) : '');
   document.getElementById('app').innerHTML =
-    '<div class="gpage">' + gHeader('#/request/review', _t('guest.finishTitle')) +
+    '<div class="gpage">' + gHeader('#/service/' + s.key, _t('guest.finishTitle')) +
     '<div class="gsum-row"><span class="k">' + _t('guest.service') + '</span><span class="v">' + s.icon + ' ' + escapeHtml(svcName(s)) + '</span></div>' +
-    '<div class="gsum-row"><span class="k">' + _t('guest.description') + '</span><span class="v">' + escapeHtml(d.description) + '</span></div>' +
-    '<div class="gsum-row"><span class="k">' + _t('guest.when') + '</span><span class="v">' + when + '</span></div>' +
-    '<div class="gsum-row"><span class="k">' + _t('guest.where') + '</span><span class="v">' + escapeHtml(d.sector + ', ' + d.city) + '</span></div>' +
-    '<div class="gsum-row"><span class="k">' + _t('guest.pricing') + '</span><span class="v">' + _t('guest.pt.' + s.pricing_type) + '</span></div>' +
-    '<div class="form-group" style="margin-top:18px"><label for="gf-address">' + _t('guest.fullAddress') + ' *</label>' +
+    '<div class="form-group" style="margin-top:14px"><label>' + _t('guest.when') + '</label>' +
+      '<div class="gchip-row" role="radiogroup" aria-label="' + _t('guest.when') + '">' +
+        '<button class="gchip' + (d.urgency !== 'later' ? ' sel' : '') + '" id="gf-when-asap" onclick="gfSetWhen(\'asap\')">⚡ ' + _t('guest.asap') + '</button>' +
+        '<button class="gchip' + (d.urgency === 'later' ? ' sel' : '') + '" id="gf-when-later" onclick="gfSetWhen(\'later\')">📅 ' + _t('guest.later') + '</button>' +
+      '</div>' +
+      '<div id="gf-date-box" style="margin-top:10px;' + (d.urgency === 'later' ? '' : 'display:none') + '">' +
+        '<input type="date" id="gf-date" min="' + new Date().toISOString().slice(0, 10) + '" value="' + (d.date || '') + '" onchange="saveGuestDraft({date:this.value})">' +
+      '</div>' +
+    '</div>' +
+    '<div class="form-group"><label for="gf-desc">' + _t('guest.optionalDetails') + '</label>' +
+      '<textarea id="gf-desc" placeholder="' + _t('guest.descPlaceholder') + '" style="min-height:64px">' + escapeHtml(d.description || '') + '</textarea>' +
+    '</div>' +
+    '<div class="form-group" style="margin-top:4px"><label for="gf-address">' + _t('guest.fullAddress') + ' *</label>' +
     '<div class="gf-addr-wrap">' +
       '<input id="gf-address" placeholder="' + _t('guest.addressPlaceholder') + '" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="gf-addr-suggest" oninput="gfAddrInput()" value="' + escapeHtml(d.address || '') + '">' +
       '<div id="gf-addr-suggest" class="gf-suggest" role="listbox" hidden></div>' +
@@ -6572,6 +6591,17 @@ function renderFinishRequest() {
     '</div>';
   _gfChosenProvider = null;
   gfInitLocationPicker();
+}
+
+// Express-flow schedule chips: "Ahora" is the default; picking "Programar"
+// reveals the single date field.
+function gfSetWhen(u) {
+  saveGuestDraft({urgency: u, ...(u === 'asap' ? {date: null, timeWindow: null} : {})});
+  const a = document.getElementById('gf-when-asap'), l = document.getElementById('gf-when-later');
+  if (a) a.classList.toggle('sel', u === 'asap');
+  if (l) l.classList.toggle('sel', u === 'later');
+  const box = document.getElementById('gf-date-box');
+  if (box) box.style.display = u === 'later' ? '' : 'none';
 }
 
 // ---- Choose a professional (worker-set pricing Phase 2) ----
@@ -6754,16 +6784,28 @@ async function submitCatalogRequest() {
     errEl.innerHTML = alert_el('error', _lang === 'es' ? 'Ingresa la dirección exacta del servicio.' : 'Enter the exact service address.');
     return;
   }
+  // Express defaults: schedule and details are OPTIONAL selections.
+  const urgency = d.urgency === 'later' ? 'later' : 'asap';
+  const dateVal = document.getElementById('gf-date') ? document.getElementById('gf-date').value : (d.date || '');
+  if (urgency === 'later' && !dateVal) {
+    errEl.innerHTML = alert_el('error', _lang === 'es' ? 'Elige la fecha del servicio.' : 'Pick the service date.');
+    return;
+  }
+  let desc = (document.getElementById('gf-desc') ? document.getElementById('gf-desc').value : (d.description || '')).trim();
+  if (desc.length < 10) desc = svcName(s) + ' — ' + _t('guest.autoDesc');   // backend minimum, honest fallback
+  const cityName = d.city || _market.city;
+  const sector = (d.sector || '').trim();
+  const zone = sector && sector !== cityName ? sector + ', ' + cityName : cityName;
   const btn = document.getElementById('gf-submit');
   _submittingRequest = true;
   btn.disabled = true; btn.textContent = _t('guest.sending');
-  const answers = Object.assign({}, d.answers, {_approx_area: d.sector + ', ' + d.city, _time_window: d.timeWindow || null});
+  const answers = Object.assign({}, d.answers, {_approx_area: zone, _time_window: d.timeWindow || null});
   const payload = {
     service_key: d.serviceKey,
     title: svcName(s).slice(0, 300),
-    description: d.description,
-    location: address + ' — ' + d.sector + ', ' + d.city,
-    urgency: d.urgency === 'asap' ? 'immediate' : 'scheduled',
+    description: desc,
+    location: address + ' — ' + zone,
+    urgency: urgency === 'asap' ? 'immediate' : 'scheduled',
     answers,
     // Structured location so the backend can authoritatively validate the
     // market. The server re-checks this and assigns market_code itself.
@@ -6773,7 +6815,7 @@ async function submitCatalogRequest() {
     // Exact pin coordinates when the client set them — the server validates
     // these against the Guayaquil service area (coords take precedence over city).
     ...(typeof d.lat === 'number' && typeof d.lng === 'number' ? {latitude: d.lat, longitude: d.lng} : {}),
-    ...(d.urgency === 'later' && d.date ? {scheduled_date: d.date + 'T09:00:00'} : {}),
+    ...(urgency === 'later' && dateVal ? {scheduled_date: dateVal + 'T09:00:00'} : {}),
     // Phase 2: the client hand-picked a professional from the browse list.
     ...(_gfChosenProvider ? {preferred_provider_id: _gfChosenProvider} : {}),
     // No client budget: pricing comes from the professional's own rate
