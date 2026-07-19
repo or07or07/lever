@@ -17,7 +17,7 @@
 /* Primary Indigo + Black (Lever) */
 --brand-50:#eef2ff;--brand-100:#e0e7ff;--brand-200:#c7d2fe;--brand-300:#a5b4fc;
 --brand-400:#818cf8;--brand:#6366f1;--brand-dark:#4f46e5;--brand-900:#0a0a0a;
---brand-light:#e0e7ff;
+--brand-light:#e0e7ff;--brand-rgb:99,102,241;
 /* Accent: Warm Amber (CTA / highlights) */
 --accent:#f59e0b;--accent-light:#fef3c7;--accent-dark:#d97706;
 /* Accent: Teal (secondary actions / positive) */
@@ -43,6 +43,21 @@
 --content-bottom-pad:calc(var(--bottom-nav-height) + 32px + env(safe-area-inset-bottom,0px));
 --nav-green:#0d9488;--nav-green-soft:#ccfbf1;
 }
+/* ── Provider (Lever Pro) theme ──
+   The teal identity from the Pro welcome screen carries through the ENTIRE
+   provider experience: applyRoleTheme() puts .theme-pro on <html> whenever
+   the app runs as the provider flavor or a professional is signed in, and
+   every var(--brand*) surface (buttons, active tabs, links, chips, focus
+   rings) switches to the teal ramp. */
+:root.theme-pro{
+  --brand-50:#f0fdfa;--brand-100:#ccfbf1;--brand-200:#99f6e4;--brand-300:#5eead4;
+  --brand-400:#2dd4bf;--brand:#0d9488;--brand-dark:#0f766e;
+  --brand-light:#ccfbf1;--brand-rgb:13,148,136;
+}
+/* Inline logo SVGs carry literal indigo fills (the welcome screens already
+   re-skin them with these attribute selectors) — do it app-wide in Pro. */
+:root.theme-pro [fill="#6366f1"]{fill:var(--brand)}
+:root.theme-pro [stroke="#6366f1"]{stroke:var(--brand)}
 html{-webkit-text-size-adjust:100%;-moz-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#fff;color:var(--gray-900);min-height:100vh;-webkit-font-smoothing:antialiased}
 a{color:var(--brand);text-decoration:none}
@@ -52,8 +67,8 @@ input,textarea,select{font-family:inherit}
 /* ---- Global Enhancements ---- */
 ::selection{background:var(--brand-200);color:var(--brand-900)}
 :focus-visible{outline:2px solid var(--brand-400);outline-offset:2px}
-.btn-primary{background:var(--brand);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);font-weight:600;font-size:.9rem;cursor:pointer;transition:all var(--duration) var(--ease);box-shadow:0 1px 3px rgba(99,102,241,.3)}
-.btn-primary:hover{background:var(--brand-dark);box-shadow:0 4px 12px rgba(99,102,241,.35);transform:translateY(-1px)}
+.btn-primary{background:var(--brand);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);font-weight:600;font-size:.9rem;cursor:pointer;transition:all var(--duration) var(--ease);box-shadow:0 1px 3px rgba(var(--brand-rgb),.3)}
+.btn-primary:hover{background:var(--brand-dark);box-shadow:0 4px 12px rgba(var(--brand-rgb),.35);transform:translateY(-1px)}
 .btn-primary:active{transform:translateY(0)}
 .btn-accent{background:var(--accent);color:#fff;border:none;padding:10px 20px;border-radius:var(--radius);font-weight:600;font-size:.9rem;cursor:pointer;transition:all var(--duration) var(--ease)}
 .btn-accent:hover{background:var(--accent-dark);transform:translateY(-1px)}
@@ -96,7 +111,7 @@ input,textarea,select{font-family:inherit}
 .verify-email-highlight{font-weight:600;color:var(--brand)}
 .code-inputs{display:flex;gap:8px;justify-content:center;margin-bottom:24px}
 .code-inputs input{width:48px;height:56px;text-align:center;font-size:1.5rem;font-weight:700;border:2px solid var(--gray-200);border-radius:var(--radius);transition:.15s;color:var(--gray-900)}
-.code-inputs input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.code-inputs input:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(var(--brand-rgb),.15)}
 .code-inputs input.error{border-color:var(--danger);animation:shake .4s}
 .code-inputs input.success{border-color:var(--success);background:#f0fdf4}
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-4px)}40%,80%{transform:translateX(4px)}}
@@ -193,7 +208,7 @@ input,textarea,select{font-family:inherit}
 .legal-body table{width:100%;overflow-x:auto;display:block;font-size:.82rem}
 /* Branded Lever loading spinner (the L stays still, the ring spins) */
 .lever-spinner{display:inline-flex}
-.lever-spinner svg{animation:leverPulse 1.8s ease-in-out infinite;border-radius:12px;box-shadow:0 4px 14px rgba(99,102,241,.28)}
+.lever-spinner svg{animation:leverPulse 1.8s ease-in-out infinite;border-radius:12px;box-shadow:0 4px 14px rgba(var(--brand-rgb),.28)}
 .lever-spinner-ring{transform-origin:50px 50px;animation:leverSpin 1.1s linear infinite}
 @keyframes leverSpin{to{transform:rotate(360deg)}}
 @keyframes leverPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
@@ -309,7 +324,7 @@ tr:hover td{background:var(--gray-50)}
 .gsearch input{flex:1;border:none;background:transparent;font-size:1rem;outline:none;color:var(--gray-900)}
 .gcat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
 .gcat-card{display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:14px 6px;cursor:pointer;text-align:center;transition:.12s;min-height:88px;justify-content:center}
-.gcat-card:hover{border-color:var(--brand);box-shadow:0 2px 8px rgba(99,102,241,.12)}
+.gcat-card:hover{border-color:var(--brand);box-shadow:0 2px 8px rgba(var(--brand-rgb),.12)}
 .gcat-card .gc-icon{font-size:1.6rem;line-height:1}
 .gcat-card .gc-name{font-size:.72rem;font-weight:600;color:var(--gray-700);line-height:1.2}
 .gsvc-row{display:flex;align-items:center;gap:12px;padding:14px 4px;border-bottom:1px solid var(--gray-100);cursor:pointer}
@@ -457,7 +472,7 @@ tr:hover td{background:var(--gray-50)}
 .btn-hero-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 32px;font-size:1rem;font-weight:700;color:var(--brand);background:#fff;border:2px solid var(--brand);border-radius:var(--radius-lg);cursor:pointer;transition:all .2s var(--ease);min-height:50px}
 .btn-hero-secondary:hover{background:var(--brand-50)}
 .btn-hero-primary{display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:16px 40px;font-size:1.1rem;font-weight:700;color:#fff;background:var(--brand);border:2px solid var(--brand);border-radius:var(--radius-lg);cursor:pointer;transition:all .25s var(--ease);letter-spacing:.01em;min-height:52px}
-.btn-hero-primary:hover{background:var(--brand-dark);border-color:var(--brand-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.3)}
+.btn-hero-primary:hover{background:var(--brand-dark);border-color:var(--brand-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(var(--brand-rgb),.3)}
 .btn-hero-primary svg{flex-shrink:0}
 .hero-subtext{font-size:.85rem;color:var(--gray-500);margin-top:2px}
 .professions-section{padding:48px 24px;text-align:center;background:var(--gray-50)}
@@ -563,7 +578,7 @@ tr:hover td{background:var(--gray-50)}
 .waiting-step-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--gray-100); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; transition: all 0.5s ease; }
 .waiting-step.active .waiting-step-icon { background: var(--brand-100); animation: stepPulse 1.5s ease-in-out infinite; }
 .waiting-step.done .waiting-step-icon { background: var(--success-light); }
-@keyframes stepPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(99,102,241,0.3); } 50% { box-shadow: 0 0 0 8px rgba(99,102,241,0); } }
+@keyframes stepPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(var(--brand-rgb),0.3); } 50% { box-shadow: 0 0 0 8px rgba(var(--brand-rgb),0); } }
 .waiting-progress-bar { width: 100%; max-width: 360px; height: 4px; background: var(--gray-200); border-radius: 4px; margin-top: 32px; overflow: hidden; }
 .waiting-progress-fill { height: 100%; background: var(--brand); border-radius: 4px; width: 0%; transition: width 0.8s ease; }
 .waiting-dots { display: inline-flex; gap: 4px; margin-left: 4px; }
@@ -753,8 +768,8 @@ tr:hover td{background:var(--gray-50)}
 
 /* ---- Brand Wordmark ---- */
 .topbar-brand{display:inline-flex;align-items:center;gap:2px;font-weight:800;font-size:1.1rem;letter-spacing:-.3px}
-.topbar-brand svg[viewBox="0 0 28 28"]{border-radius:5px;box-shadow:0 1px 3px rgba(99,102,241,.2)}
-.logo-icon svg[viewBox="0 0 28 28"]{border-radius:5px;box-shadow:0 1px 3px rgba(99,102,241,.2)}
+.topbar-brand svg[viewBox="0 0 28 28"]{border-radius:5px;box-shadow:0 1px 3px rgba(var(--brand-rgb),.2)}
+.logo-icon svg[viewBox="0 0 28 28"]{border-radius:5px;box-shadow:0 1px 3px rgba(var(--brand-rgb),.2)}
 /* ---- Icon System v2 — Consistent SVG Stroke Icons ---- */
 .sidebar-icon svg,.tab-icon svg,.prof-dd-item-icon svg,.prof-icon-lg svg,.c-icon svg,
 .empty-icon svg,.tracker-step-dot svg,.badge-prof svg{
@@ -780,8 +795,8 @@ tr:hover td{background:var(--gray-50)}
 .logout-item .sidebar-icon svg{color:var(--danger)}
 
 /* ---- Feedback Widget ---- */
-.feedback-fab{position:fixed;bottom:24px;right:24px;z-index:90;width:48px;height:48px;border-radius:50%;background:var(--brand);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.35);display:flex;align-items:center;justify-content:center;transition:all .2s var(--ease)}
-.feedback-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(99,102,241,.45)}
+.feedback-fab{position:fixed;bottom:24px;right:24px;z-index:90;width:48px;height:48px;border-radius:50%;background:var(--brand);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(var(--brand-rgb),.35);display:flex;align-items:center;justify-content:center;transition:all .2s var(--ease)}
+.feedback-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(var(--brand-rgb),.45)}
 .feedback-fab svg{width:22px;height:22px}
 @media(max-width:768px){.feedback-fab{bottom:80px;right:16px;width:44px;height:44px}.feedback-fab svg{width:20px;height:20px}}
 .feedback-panel{position:fixed;bottom:84px;right:24px;z-index:91;width:340px;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);border:1px solid var(--gray-200);padding:20px;display:none;animation:feedbackSlideUp .25s ease-out}
@@ -832,7 +847,7 @@ tr:hover td{background:var(--gray-50)}
 .cta-section p{font-size:1rem;color:var(--gray-600);max-width:500px;margin:0 auto 28px;line-height:1.6}
 .cta-section .cta-btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .cta-section .btn-cta-primary{background:var(--brand);color:#fff;padding:12px 28px;border-radius:var(--radius);font-weight:700;font-size:.95rem;border:none;cursor:pointer;transition:all .2s}
-.cta-section .btn-cta-primary:hover{background:var(--brand-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.3)}
+.cta-section .btn-cta-primary:hover{background:var(--brand-dark);transform:translateY(-2px);box-shadow:0 8px 24px rgba(var(--brand-rgb),.3)}
 .cta-section .btn-cta-outline{background:transparent;color:var(--brand);padding:12px 28px;border-radius:var(--radius);font-weight:600;font-size:.95rem;border:2px solid var(--brand-200);cursor:pointer;transition:all .2s}
 .cta-section .btn-cta-outline:hover{border-color:var(--brand);background:var(--brand-50)}
 
@@ -908,7 +923,7 @@ tr:hover td{background:var(--gray-50)}
 .job-tracker{display:flex;align-items:center;gap:0;margin:20px 0;padding:16px 20px;background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow)}
 .tracker-step{display:flex;flex-direction:column;align-items:center;flex:1;position:relative;z-index:1}
 .tracker-dot{width:28px;height:28px;border-radius:50%;background:var(--gray-200);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--gray-400);transition:all .3s var(--ease);border:2px solid var(--gray-200)}
-.tracker-dot.active{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 0 0 4px rgba(99,102,241,.2)}
+.tracker-dot.active{background:var(--brand);color:#fff;border-color:var(--brand);box-shadow:0 0 0 4px rgba(var(--brand-rgb),.2)}
 .tracker-dot.done{background:var(--brand);color:#fff;border-color:var(--brand)}
 .tracker-dot.cancelled{background:var(--danger);color:#fff;border-color:var(--danger)}
 .tracker-label{font-size:.68rem;color:var(--gray-400);margin-top:6px;text-transform:capitalize;font-weight:500;text-align:center;max-width:70px;line-height:1.2}
@@ -1170,6 +1185,7 @@ var _translations = {
   'tab.services': {es:'Servicios', en:'Services'},
   'tab.activity': {es:'Actividad', en:'Activity'},
   'tab.account': {es:'Cuenta', en:'Account'},
+  'auth.badLogin': {es:'Correo o contraseña incorrectos.', en:'Incorrect email or password.'},
   'tab.board': {es:'Trabajos', en:'Jobs'},
   'tab.myJobs': {es:'Mis Trabajos', en:'My Jobs'},
   'tab.messages': {es:'Mensajes', en:'Messages'},
@@ -2211,7 +2227,7 @@ const API = IS_NATIVE ? PROD_API_ORIGIN : '';  // native: absolute URL, web/PWA:
 let APP_FLAVOR = (IS_NATIVE && window.Capacitor.getConfig && window.Capacitor.getConfig().appFlavor) || null;
 let APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : (APP_FLAVOR === 'client' ? 'client' : null);
 async function detectAppFlavor() {
-  if (!IS_NATIVE || APP_FLAVOR) return;
+  if (!IS_NATIVE || APP_FLAVOR) { applyRoleTheme(); return; }
   try {
     const info = await window.Capacitor.Plugins.App.getInfo();
     if (info && info.id) {
@@ -2219,6 +2235,18 @@ async function detectAppFlavor() {
       APP_FLAVOR_ROLE = APP_FLAVOR === 'provider' ? 'mechanic' : 'client';
     }
   } catch (e) { /* web or plugin unavailable — stays flavorless */ }
+  applyRoleTheme();
+}
+
+// ---- Role theme (Lever Pro = teal) ----
+// The provider app is teal from the very first welcome screen; the SAME
+// palette must hold across the whole session. Driven by the app flavor
+// (native) or the signed-in role (web).
+function applyRoleTheme() {
+  var isPro = APP_FLAVOR_ROLE === 'mechanic' || (_user && _user.role === 'mechanic');
+  document.documentElement.classList.toggle('theme-pro', !!isPro);
+  var meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', isPro ? '#0d9488' : '#6366f1');
 }
 let _token = localStorage.getItem('lever_token') || null;
 let _user  = JSON.parse(localStorage.getItem('lever_user') || 'null');
@@ -2226,6 +2254,7 @@ let _professions = {}; // loaded from API
 let _providerOnline = null; // null = unknown yet, true/false once fetched
 let _providerFilter = ''; // profession filter used by map view and guest browse
 let _heartbeatTimer = null;
+applyRoleTheme();   // theme correct from the first paint (hoisted; re-run by detectAppFlavor)
 
 // ---- HTTP helpers ----
 async function api(method, path, body, noAuth=false) {
@@ -2311,6 +2340,7 @@ function login(token, user) {
   _token = token; _user = user;
   localStorage.setItem('lever_token', token);
   localStorage.setItem('lever_user', JSON.stringify(user));
+  applyRoleTheme();
 }
 function logout() {
   _token = null; _user = null;
@@ -2319,6 +2349,7 @@ function logout() {
   _providerOnline = null;
   localStorage.removeItem('lever_token');
   localStorage.removeItem('lever_user');
+  applyRoleTheme();
   route('#/login');
 }
 
@@ -5490,9 +5521,10 @@ async function doLogin() {
       return;
     }
     if (APP_FLAVOR_ROLE && data.role !== APP_FLAVOR_ROLE) {
-      const appName = APP_FLAVOR === 'provider' ? 'Lever' : 'Lever Provider';
-      document.getElementById('l-err').innerHTML = alert_el('error',
-        `Esta cuenta es de ${data.role === 'mechanic' ? 'proveedor' : 'cliente'}. Usa la app "${appName}" para iniciar sesión.`);
+      // Account-type privacy: never disclose whether an email belongs to a
+      // client or a professional. Wrong-flavor logins get the SAME generic
+      // error as bad credentials (the token is discarded, nothing is stored).
+      document.getElementById('l-err').innerHTML = alert_el('error', _t('auth.badLogin'));
       return;
     }
     login(data.access_token, {id:data.user_id, email, role:data.role, profession:data.profession||null, email_verified:data.email_verified!==false});
@@ -5500,7 +5532,10 @@ async function doLogin() {
     if (data.email_verified === false) { route('#/verify-email'); }
     else { route('#/'); }
   } catch(e) {
-    document.getElementById('l-err').innerHTML = alert_el('error', e.message);
+    // Bad credentials → the SAME localized message as the wrong-app case
+    // above, so the two are indistinguishable (no account-type oracle).
+    var msg = /invalid email or password/i.test(e.message || '') ? _t('auth.badLogin') : e.message;
+    document.getElementById('l-err').innerHTML = alert_el('error', msg);
   }
 }
 
@@ -7041,7 +7076,7 @@ function initTrackingMap(containerId, destLat, destLng) {
   }
 
   // Route line
-  _routeLine = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.7 }).addTo(_trackingMap);
+  _routeLine = L.polyline([], { color: (getComputedStyle(document.documentElement).getPropertyValue('--brand').trim() || '#6366f1'), weight: 4, opacity: 0.7 }).addTo(_trackingMap);
 
   return _trackingMap;
 }
