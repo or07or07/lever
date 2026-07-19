@@ -254,6 +254,9 @@ input,textarea,select{font-family:inherit}
 .worker-panel{margin-top:12px;display:none}
 .worker-panel.visible{display:block}
 .worker-list{display:flex;flex-direction:column;gap:8px;max-height:250px;overflow-y:auto;margin-top:8px}
+.choose-mode{display:flex;gap:8px;margin-top:6px}
+.choose-opt{flex:1;padding:11px 10px;border:1.5px solid var(--gray-200);border-radius:12px;background:#fff;font-size:.85rem;font-weight:600;color:var(--gray-700);cursor:pointer;transition:all .15s var(--ease)}
+.choose-opt.selected{border-color:var(--brand);background:var(--brand-50);color:var(--brand-dark)}
 .worker-card{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;transition:all .15s}
 .worker-card:hover{border-color:var(--brand);background:var(--brand-light)}
 .worker-card.selected{border-color:var(--brand);background:var(--brand-light);box-shadow:0 0 0 2px var(--brand)}
@@ -1201,6 +1204,18 @@ var _translations = {
   'mprof.no': {es:'No', en:'No'},
   'mprof.saved': {es:'Perfil guardado', en:'Profile saved'},
   'offer.youCharge': {es:'Cobras', en:'You charge'},
+  'offer.chosen': {es:'⭐ Te eligió', en:'⭐ Chose you'},
+  'choose.who': {es:'¿Quién lo hará?', en:'Who will do it?'},
+  'choose.auto': {es:'⚡ Automático (recomendado)', en:'⚡ Automatic (recommended)'},
+  'choose.pick': {es:'👷 Elegir profesional', en:'👷 Choose professional'},
+  'choose.loading': {es:'Buscando profesionales disponibles…', en:'Finding available professionals…'},
+  'choose.none': {es:'No hay profesionales disponibles en este momento — usa el modo automático y te avisaremos.', en:'No professionals available right now — use automatic mode and we will notify you.'},
+  'choose.new': {es:'Nuevo', en:'New'},
+  'choose.refPricing': {es:'Precio referencial de Lever', en:'Lever reference price'},
+  'choose.gone': {es:'El profesional elegido ya no está disponible. Elige otro o usa el modo automático.', en:'The chosen professional is no longer available. Pick another or use automatic mode.'},
+  'reqdet.waitingChosen': {es:'Esperando la respuesta del profesional que elegiste.', en:'Waiting for your chosen professional to respond.'},
+  'reqdet.sendAll': {es:'Enviar a todos los profesionales', en:'Send to all professionals'},
+  'reqdet.sentAll': {es:'Solicitud enviada a todos los profesionales disponibles.', en:'Request sent to all available professionals.'},
   'req.proRate': {es:'Tarifa', en:'Rate'},
   'req.proJobs': {es:'trabajos verificados', en:'verified jobs'},
   'req.quote': {es:'Total estimado', en:'Estimated total'},
@@ -3051,10 +3066,10 @@ async function loadWorkersForSelection() {
   const prof = profSel ? profSel.value : '';
   const listEl = document.getElementById('sr-worker-list');
   if (!prof) {
-    listEl.innerHTML = '<div class="worker-search-msg">Please select a profession first</div>';
+    listEl.innerHTML = '<div class="worker-search-msg">' + _t('newreq.selectProfFirst') + '</div>';
     return;
   }
-  listEl.innerHTML = '<div class="worker-search-msg">Loading providers...</div>';
+  listEl.innerHTML = '<div class="worker-search-msg">' + _t('choose.loading') + '</div>';
   try {
     const res = await get('/api/search/providers?profession=' + prof + '&sort_by=rating');
     const providers = res.providers || [];
@@ -3064,13 +3079,13 @@ async function loadWorkersForSelection() {
     }
     listEl.innerHTML = providers.map(p => {
       const initials = (p.user_name || 'P').substring(0,2).toUpperCase();
-      const stars = p.avg_rating ? '\u2B50 ' + p.avg_rating.toFixed(1) : 'New';
+      const stars = p.avg_rating ? '\u2B50 ' + p.avg_rating.toFixed(1) : _t('choose.new');
       const jobs = p.completed_jobs || 0;
       return '<div class="worker-card" onclick="selectWorker(this, ' + p.user_id + ')" data-worker-id="' + p.user_id + '">' +
         '<div class="worker-avatar">' + initials + '</div>' +
         '<div class="worker-info">' +
-          '<div class="worker-name">' + (p.user_name || 'Provider') + '</div>' +
-          '<div class="worker-meta"><span class="worker-rating">' + stars + '</span> &middot; ' + jobs + ' jobs done</div>' +
+          '<div class="worker-name">' + escapeHtml(p.user_name || 'Profesional') + '</div>' +
+          '<div class="worker-meta"><span class="worker-rating">' + stars + '</span> &middot; ' + jobs + ' ' + _t('req.proJobs') + '</div>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -3269,7 +3284,8 @@ async function submitNewRequest() {
     // Exact coordinates when the client picked an address suggestion (server
     // validates these against the Guayaquil service area; coords beat city).
     ...(_srCoords ? {latitude: _srCoords.lat, longitude: _srCoords.lng} : {}),
-      // NOTE: preferred_mechanic_id removed - backend does not support this field yet.
+    // Phase 2: the client picked a specific professional from the panel.
+    ...((document.getElementById('sr-selected-worker')?.value) ? {preferred_provider_id: parseInt(document.getElementById('sr-selected-worker').value)} : {}),
     ...(vehicleId && {vehicle_id: parseInt(vehicleId)}),
   };
   try {
@@ -3279,8 +3295,9 @@ async function submitNewRequest() {
   } catch(e) {
     // Surface the market/coverage rejection as friendly copy, not the raw code.
     const activeExists = /ACTIVE_REQUEST_EXISTS/i.test(e.message || '');
+    const proGone = /PROVIDER_NOT_AVAILABLE/i.test(e.message || '');
     const outOfArea = /GUAYAQUIL|MARKET_NOT_ACTIVE|INVALID_LOCATION|SERVICE_NOT_AVAILABLE/i.test(e.message || '');
-    document.getElementById('sr-err').innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : outOfArea ? _t('guest.outOfArea') : e.message);
+    document.getElementById('sr-err').innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : proGone ? _t('choose.gone') : outOfArea ? _t('guest.outOfArea') : e.message);
   }
 }
 
@@ -3627,7 +3644,9 @@ async function renderRequestDetail(el, id) {
     </div>
     ${renderClientTrackingCard(job.id, job.status, req.latitude, req.longitude)}
     ` : req.status==='pending' ? `
-    <div class="card"><div class="empty"><div class="empty-icon">${leverSpinner(52)}</div><h3>${_t('reqdet.waiting')}</h3><p>${_t('reqdet.waitingSub')}</p></div></div>`:''}`
+    <div class="card"><div class="empty"><div class="empty-icon">${leverSpinner(52)}</div><h3>${_t('reqdet.waiting')}</h3><p>${req.preferred_provider_id ? _t('reqdet.waitingChosen') : _t('reqdet.waitingSub')}</p>
+    ${req.preferred_provider_id ? `<button class="btn btn-outline" style="margin-top:12px" onclick="broadcastRequest(${req.id})">${_t('reqdet.sendAll')}</button>` : ''}
+    </div></div>`:''}`
     + `<div id="status-tracker-${req.id}">${buildStatusTracker(req)}</div>`;
   // Start live polling if request is active
   if (req.status !== 'completed' && req.status !== 'cancelled') {
@@ -3646,6 +3665,15 @@ async function cancelRequest(id) {
   if (!confirm(_t('reqdet.cancelConfirm'))) return;
   try { await del('/api/client/requests/'+id); route('#/requests'); }
   catch(e) { showToast(e.message, 'error'); }
+}
+
+// Fallback when the CHOSEN professional didn't respond: open the request to everyone.
+async function broadcastRequest(id) {
+  try {
+    await post('/api/client/requests/' + id + '/broadcast');
+    showToast(_t('reqdet.sentAll'), 'success');
+    render();
+  } catch (e) { showToast(e.message, 'error'); }
 }
 
 // Client confirms the work is done (unlocks rating — ratings drive who gets
@@ -4506,6 +4534,7 @@ function showOfferPopup(o) {
   el.setAttribute('aria-label', _t('offer.new'));
   el.innerHTML =
     '<div class="offer-head"><span class="offer-bolt" aria-hidden="true">⚡</span><strong>' + _t('offer.new') + '</strong>' +
+      (o.direct ? '<span class="offer-urgency" style="background:var(--accent-light);color:var(--accent-dark)">' + _t('offer.chosen') + '</span>' : '') +
       (o.urgency ? '<span class="offer-urgency">' + _t(o.urgency === 'immediate' ? 'offer.urgent' : 'offer.scheduled') + '</span>' : '') +
       '<button class="offer-close" aria-label="' + _t('offer.later') + '" onclick="closeOfferPopup()">✕</button></div>' +
     '<div class="offer-title">' + (o.service_icon ? o.service_icon + ' ' : '') + escapeHtml(o.service_name || o.title || '') + '</div>' +
@@ -6420,11 +6449,63 @@ function renderFinishRequest() {
       ? '<div class="gsum-row" style="margin-top:14px"><span class="k">' + _t('price.setByLever') + '</span><span class="v"><strong>USD ' + s.estimate_min + ' – ' + s.estimate_max + '</strong></span></div>' +
         '<p style="font-size:.78rem;color:var(--gray-500);margin:6px 0 0">' + _t('price.refNote') + '</p>'
       : '') +
+    '<div class="form-group" style="margin-top:16px"><label>' + _t('choose.who') + '</label>' +
+      '<div class="choose-mode">' +
+        '<button type="button" class="choose-opt selected" id="choose-auto" onclick="gfChooseMode(\'auto\')">' + _t('choose.auto') + '</button>' +
+        '<button type="button" class="choose-opt" id="choose-pick" onclick="gfChooseMode(\'pick\')">' + _t('choose.pick') + '</button>' +
+      '</div>' +
+      '<div id="gf-pro-list" class="worker-list" hidden></div>' +
+    '</div>' +
     '<div id="gf-err"></div>' +
     '<button class="gbtn-primary" id="gf-submit" onclick="submitCatalogRequest()">' + _t('guest.send') + '</button>' +
     '<button class="gbtn-ghost" onclick="discardGuestDraft()">' + _t('guest.discardDraft') + '</button>' +
     '</div>';
+  _gfChosenProvider = null;
   gfInitLocationPicker();
+}
+
+// ---- Choose a professional (worker-set pricing Phase 2) ----
+// The client can hand the job to a specific professional: cards show each
+// one's OWN hourly rate + quoted total for this service, star rating,
+// verified completed jobs, and identity badge. Auto mode keeps rating-first
+// dispatch (also the fallback when the chosen pro doesn't respond).
+let _gfChosenProvider = null;
+async function gfChooseMode(mode) {
+  const list = document.getElementById('gf-pro-list');
+  document.getElementById('choose-auto').classList.toggle('selected', mode === 'auto');
+  document.getElementById('choose-pick').classList.toggle('selected', mode === 'pick');
+  if (mode === 'auto') { _gfChosenProvider = null; list.hidden = true; return; }
+  list.hidden = false;
+  list.innerHTML = '<div class="worker-search-msg">' + _t('choose.loading') + '</div>';
+  const d = getGuestDraft() || {};
+  try {
+    const res = await get('/api/client/providers/for-service?service_key=' + encodeURIComponent(d.serviceKey || ''));
+    const pros = res.providers || [];
+    if (!pros.length) { list.innerHTML = '<div class="worker-search-msg">' + _t('choose.none') + '</div>'; return; }
+    list.innerHTML = pros.map(function(p) {
+      const initials = (p.full_name || 'P').substring(0, 2).toUpperCase();
+      const trust = (p.avg_rating != null ? '⭐ ' + p.avg_rating.toFixed(1) : _t('choose.new')) +
+                    ' · ' + (p.total_jobs || 0) + ' ' + _t('req.proJobs');
+      const price = p.hourly_rate
+        ? '💵 ' + fmtMoney(p.hourly_rate) + '/h' + (p.quote_max != null ? ' · ' + _t('req.quote') + ': <strong>' + fmtMoney(p.quote_min) + ' – ' + fmtMoney(p.quote_max) + '</strong>' : '')
+        : '💵 ' + _t('choose.refPricing');
+      return '<div class="worker-card" onclick="gfPickPro(this,' + p.user_id + ')" data-pro-id="' + p.user_id + '">' +
+        '<div class="worker-avatar">' + initials + '</div>' +
+        '<div class="worker-info">' +
+          '<div class="worker-name">' + escapeHtml(p.full_name) + (p.verified ? ' <span class="act-verif">✓</span>' : '') + '</div>' +
+          '<div class="worker-meta">' + trust + '</div>' +
+          '<div class="worker-meta">' + price + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="worker-search-msg">' + _t('ws.error') + '</div>';
+  }
+}
+function gfPickPro(el, id) {
+  document.querySelectorAll('#gf-pro-list .worker-card').forEach(function(c) { c.classList.remove('selected'); });
+  el.classList.add('selected');
+  _gfChosenProvider = id;
 }
 
 // ---- Location picker (map pin + Photon address autosuggest + reverse geocode) ----
@@ -6583,8 +6664,10 @@ async function submitCatalogRequest() {
     // these against the Guayaquil service area (coords take precedence over city).
     ...(typeof d.lat === 'number' && typeof d.lng === 'number' ? {latitude: d.lat, longitude: d.lng} : {}),
     ...(d.urgency === 'later' && d.date ? {scheduled_date: d.date + 'T09:00:00'} : {}),
-    // No client budget: Lever sets the price server-side from the researched
-    // Guayaquil labor rates (routes/client.py snapshots it onto the request).
+    // Phase 2: the client hand-picked a professional from the browse list.
+    ...(_gfChosenProvider ? {preferred_provider_id: _gfChosenProvider} : {}),
+    // No client budget: pricing comes from the professional's own rate
+    // (quoted at accept) or Lever's reference range as fallback.
   };
   try {
     const req = await post('/api/client/requests', payload);
@@ -6594,8 +6677,10 @@ async function submitCatalogRequest() {
   } catch(e) {
     // Map the backend's market errors to a clear, draft-preserving message.
     const activeExists = /ACTIVE_REQUEST_EXISTS/i.test(e.message || '');
+    const proGone = /PROVIDER_NOT_AVAILABLE/i.test(e.message || '');
     const outOfArea = /GUAYAQUIL|MARKET_NOT_ACTIVE|INVALID_LOCATION|SERVICE_NOT_AVAILABLE/i.test(e.message || '');
-    errEl.innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : outOfArea ? _t('guest.outOfArea') : _t('guest.sendFailed'));
+    errEl.innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : proGone ? _t('choose.gone') : outOfArea ? _t('guest.outOfArea') : _t('guest.sendFailed'));
+    if (proGone) { gfChooseMode('pick'); }   // refresh the list — their card was stale
     btn.disabled = false; btn.textContent = _t('guest.send');
   } finally {
     _submittingRequest = false;

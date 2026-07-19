@@ -341,12 +341,14 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
                 pay = f"tu tarifa: USD {q[0]}–{q[1]}"
         if pay is None:
             pay = payment_line_es(request.budget_min, request.budget_max, request.service_key)
+        chosen = request.preferred_provider_id == dispatch.provider_user_id
         notif = Notification(
             user_id=dispatch.provider_user_id,
             type="job_offer",
-            title="Nueva oportunidad de trabajo",
+            title="⭐ Un cliente te eligió" if chosen else "Nueva oportunidad de trabajo",
             message=(
-                f'"{request.title}"'
+                ("Un cliente te eligió directamente por tu perfil. " if chosen else "")
+                + f'"{request.title}"'
                 + (f" — {pay} (recibes el 100%)" if pay else "")
                 + f". Tienes {DISPATCH_TIMEOUT_SECONDS} segundos para aceptar antes de que se ofrezca al siguiente profesional."
             ),
@@ -427,16 +429,31 @@ def _notify_client_timeout_all(db: Session, request_id: int) -> None:
     if not request:
         return
 
+    if request.preferred_provider_id:
+        # The professional the client chose didn't take it — that needs a
+        # DIFFERENT message with a clear next step (the broadcast fallback).
+        title = "El profesional no respondió"
+        message = (
+            f'El profesional que elegiste no aceptó tu solicitud "{request.title}". '
+            f"Puedes elegir a otro profesional o enviarla a todos los disponibles."
+        )
+    else:
+        title = "Seguimos buscando un profesional"
+        message = (
+            f'Ningún profesional ha aceptado tu solicitud "{request.title}" todavía. '
+            f"Tu solicitud sigue activa y visible en el tablero."
+        )
+
     # The queue can exhaust repeatedly (each go-online/free-up retries) — the
-    # client only needs to hear "still searching" once every little while,
-    # not on every rotation cycle.
+    # client only needs to hear this once every little while, not on every
+    # rotation cycle.
     from datetime import timedelta
     recent_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
     already = (
         db.query(Notification)
         .filter(
             Notification.user_id == request.client_id,
-            Notification.title == "Seguimos buscando un profesional",
+            Notification.title == title,
             Notification.link == f"/client/requests/{request_id}",
         )
         .order_by(Notification.created_at.desc())
@@ -452,11 +469,8 @@ def _notify_client_timeout_all(db: Session, request_id: int) -> None:
     notif = Notification(
         user_id=request.client_id,
         type="system",
-        title="Seguimos buscando un profesional",
-        message=(
-            f'Ningún profesional ha aceptado tu solicitud "{request.title}" todavía. '
-            f"Tu solicitud sigue activa y visible en el tablero."
-        ),
+        title=title,
+        message=message,
         link=f"/client/requests/{request_id}",
     )
     db.add(notif)
@@ -564,6 +578,10 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
     )
     offered = 0
     for req in pending:
+        # A request the client aimed at a SPECIFIC professional never goes
+        # to anyone else (until the client broadcasts it).
+        if req.preferred_provider_id and req.preferred_provider_id != provider_user_id:
+            continue
         if not _provider_eligible_for(db, profile, req):
             continue
         # Someone is already holding an active offer for this request.
@@ -720,8 +738,21 @@ async def start_dispatch(request_id: int) -> None:
 
         logger.info(f"Dispatch: starting dispatch for request {request_id}")
 
-        # Find eligible online providers
-        providers = find_eligible_providers(db, request)
+        # ── Phase 2: the client CHOSE a professional ──
+        # The request goes only to them. If they're gone/busy the client is
+        # notified and can fall back to "send to everyone" (broadcast).
+        if request.preferred_provider_id:
+            expire_stale_providers(db)
+            profile = db.query(MechanicProfile).filter(
+                MechanicProfile.user_id == request.preferred_provider_id
+            ).first()
+            providers = []
+            if (profile and profile.is_online and profile.is_available
+                    and _provider_eligible_for(db, profile, request)):
+                providers = [profile]
+        else:
+            # Find eligible online providers
+            providers = find_eligible_providers(db, request)
 
         if not providers:
             _notify_client_no_providers(db, request_id)

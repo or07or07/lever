@@ -395,6 +395,9 @@ class ServiceRequestCreate(BaseModel):
     # legacy way (profession + free text) — nothing existing breaks.
     service_key: Optional[str] = Field(default=None, max_length=80)
     answers: Optional[dict] = None
+    # Worker-set pricing Phase 2: the client picked a specific professional
+    # from the browse screen — dispatch offers only to them.
+    preferred_provider_id: Optional[int] = None
 
     @field_validator("profession_type")
     @classmethod
@@ -467,6 +470,8 @@ class ServiceRequestOut(BaseModel):
     # Worker-set pricing: the assigned professional's own rate + track record
     professional_hourly_rate: Optional[float] = None
     professional_jobs: Optional[int] = None
+    # Phase 2: set when the client chose a specific professional
+    preferred_provider_id: Optional[int] = None
     has_review: Optional[bool] = None
 
     model_config = {"from_attributes": True}

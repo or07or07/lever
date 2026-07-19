@@ -263,6 +263,22 @@ def create_request(
             data["budget_min"], data["budget_max"] = float(est[0]), float(est[1])
 
     req = ServiceRequest(client_id=current_user.id, market_code=result["market_code"], **data)
+
+    # ── Phase 2: client chose a specific professional ──
+    # Validate they're real, currently reachable, and actually offer this
+    # service — a stale browse card must fail loudly, not dispatch into a void.
+    if req.preferred_provider_id:
+        from dispatch import (_provider_eligible_for, expire_stale_providers,
+                              provider_is_busy)
+        expire_stale_providers(db)
+        pref = db.query(MechanicProfile).filter(
+            MechanicProfile.user_id == req.preferred_provider_id
+        ).first()
+        if (not pref or not pref.is_online or not pref.is_available
+                or provider_is_busy(db, pref.user_id)
+                or not _provider_eligible_for(db, pref, req)):
+            raise HTTPException(status_code=409, detail="PROVIDER_NOT_AVAILABLE")
+
     db.add(req)
     db.commit()
     db.refresh(req)
@@ -398,6 +414,106 @@ def cancel_request(
         redispatch_pending_for_provider(db, provider_id)
 
     return MessageResponse(message="Request cancelled")
+
+
+@router.post("/requests/{request_id}/broadcast", response_model=MessageResponse)
+def broadcast_request(
+    request_id: int,
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """Fallback when the CHOSEN professional didn't respond: clear the
+    preference and dispatch the request to every eligible professional."""
+    req = db.query(ServiceRequest).filter(
+        ServiceRequest.id == request_id,
+        ServiceRequest.client_id == current_user.id,
+    ).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if req.status != "pending":
+        raise HTTPException(status_code=400, detail="Request is no longer pending")
+    if not req.preferred_provider_id:
+        raise HTTPException(status_code=400, detail="Request is already open to everyone")
+
+    req.preferred_provider_id = None
+    db.commit()
+
+    # Resolve the targeted dispatch rows and start a fresh open dispatch.
+    from dispatch import cancel_dispatch_for_request, schedule_start_dispatch
+    cancel_dispatch_for_request(db, request_id)
+    schedule_start_dispatch(request_id)
+    return MessageResponse(message="Request broadcast to all professionals")
+
+
+# ---------------------------------------------------------------------------
+# Choose a professional (worker-set pricing Phase 2)
+# ---------------------------------------------------------------------------
+
+@router.get("/providers/for-service")
+def providers_for_service(
+    service_key: str = Query(min_length=1, max_length=80),
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """Professionals AVAILABLE RIGHT NOW for a specific catalog service, with
+    everything the client needs to choose honestly: each one's own hourly
+    rate and quoted total for this service, star rating, verified completed
+    jobs, and identity-verification badge. Rating-first order (the same
+    priority auto-dispatch uses)."""
+    from services_catalog import SERVICES_BY_KEY
+    from pricing import quote_for_provider, ESTIMATES
+    from dispatch import expire_stale_providers, provider_is_busy, _provider_eligible_for
+
+    svc = SERVICES_BY_KEY.get(service_key)
+    if not svc:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    expire_stale_providers(db)
+    # Build a probe request (never persisted) so eligibility matches dispatch.
+    probe = ServiceRequest(
+        client_id=current_user.id, service_key=service_key,
+        profession_type=svc.get("profession", ""), title="probe", description="probe",
+        location="probe",
+    )
+    candidates = db.query(MechanicProfile).filter(
+        MechanicProfile.is_online == True,
+        MechanicProfile.is_available == True,
+    ).all()
+    verified_ids = {
+        u.id for u in db.query(User).filter(
+            User.id.in_([c.user_id for c in candidates] or [0]),
+            User.verification_level == "enhanced",
+        ).all()
+    }
+    cards = []
+    for p in candidates:
+        if not _provider_eligible_for(db, p, probe):
+            continue
+        if provider_is_busy(db, p.user_id):
+            continue
+        quote = quote_for_provider(p.hourly_rate, svc)
+        cards.append({
+            "user_id": p.user_id,
+            "full_name": p.full_name or "Profesional Lever",
+            "profession": p.profession,
+            "avg_rating": round(p.avg_rating, 1) if p.total_jobs else None,
+            "total_jobs": p.total_jobs or 0,
+            "years_experience": p.years_experience or 0,
+            "verified": p.user_id in verified_ids,
+            "hourly_rate": p.hourly_rate or None,
+            "quote_min": quote[0] if quote else None,
+            "quote_max": quote[1] if quote else None,
+            "avatar_url": p.avatar_url or "",
+        })
+    # Best-qualified first — same policy as auto-dispatch.
+    cards.sort(key=lambda c: (-(c["avg_rating"] or 0), -(c["total_jobs"] or 0)))
+    ref = ESTIMATES.get(service_key)
+    return {
+        "service_key": service_key,
+        "reference_min": ref[0] if ref else None,
+        "reference_max": ref[1] if ref else None,
+        "providers": cards,
+    }
 
 
 # ---------------------------------------------------------------------------

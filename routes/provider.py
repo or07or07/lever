@@ -383,6 +383,12 @@ def job_board(
 
     profession = profile.profession if profile else DEFAULT_PROFESSION
     q = db.query(ServiceRequest).filter(ServiceRequest.status == "pending")
+    # Phase 2: a request the client aimed at a specific professional is only
+    # visible to that professional.
+    q = q.filter(
+        (ServiceRequest.preferred_provider_id.is_(None))
+        | (ServiceRequest.preferred_provider_id == current_user.id)
+    )
     if urgency:
         q = q.filter(ServiceRequest.urgency == urgency)
 
@@ -442,6 +448,9 @@ def accept_request(
         raise HTTPException(status_code=404, detail="Service request not found")
     if req.status != "pending":
         raise HTTPException(status_code=409, detail="Request is no longer available")
+    # Phase 2: the client chose someone — nobody else may take the job.
+    if req.preferred_provider_id and req.preferred_provider_id != current_user.id:
+        raise HTTPException(status_code=403, detail="RESERVED_FOR_CHOSEN_PROVIDER")
     if is_blocked_pair(db, current_user.id, req.client_id):
         raise HTTPException(status_code=403, detail="You cannot accept a request from this client")
     # ── Eligibility (multi-profession + exact service, spec §12/§27) ──
@@ -819,6 +828,8 @@ def current_offer(
         "hourly_rate": profile.hourly_rate if profile and profile.hourly_rate else None,
         "quote_min": quote[0] if quote else None,
         "quote_max": quote[1] if quote else None,
+        # Phase 2: the client picked THIS professional from the browse screen
+        "direct": req.preferred_provider_id == current_user.id,
         "expires_in_seconds": int(remaining),
         "window_seconds": DISPATCH_TIMEOUT_SECONDS,
     }}

@@ -626,6 +626,7 @@ def run_all():
         test_dispatch_lifecycle,
         test_client_cancel_releases_provider,
         test_worker_set_pricing,
+        test_choose_professional,
     ]
 
     for test_fn in tests:
@@ -1310,6 +1311,87 @@ def test_worker_set_pricing():
     prov.post("/api/provider/go-offline")   # keep future runs deterministic
 
 
+def test_choose_professional():
+    section("20. Client chooses a professional (Phase 2)")
+    uid = str(uuid.uuid4())[:8]
+    # Two business_support providers with different rates.
+    p1r = anon.post("/api/auth/register", json={
+        "email": f"ch_p1_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "business_support", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    p1 = Session(p1r.json()["access_token"])
+    p1_id = p1r.json()["user_id"]
+    p2r = anon.post("/api/auth/register", json={
+        "email": f"ch_p2_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "business_support", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    p2 = Session(p2r.json()["access_token"])
+    p2_id = p2r.json()["user_id"]
+    p1.patch("/api/provider/profile", json={"hourly_rate": 8})
+    p2.patch("/api/provider/profile", json={"hourly_rate": 15})
+    p1.post("/api/provider/go-online"); _shed_stale_offers(p1)
+    p2.post("/api/provider/go-online"); _shed_stale_offers(p2)
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"ch_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+
+    # Browse: both cards with their OWN rates/quotes + trust fields.
+    # (Pick a business_support service straight from the live catalog.)
+    cat = anon.get("/api/catalog").json().get("services", [])
+    bs = [s for s in cat if s.get("category") == "business_support" and s.get("estimate_min") is not None]
+    check("Catalog has business_support services", len(bs) > 0, str(len(bs)))
+    if not bs:
+        return
+    svc_key = bs[0]["key"]
+    r = client.get(f"/api/client/providers/for-service?service_key={svc_key}")
+    check("Browse endpoint returns providers (200)", r.status_code == 200, r.text[:200])
+    cards = {c["user_id"]: c for c in r.json().get("providers", [])}
+    check("Both fresh providers are listed", p1_id in cards and p2_id in cards,
+          str(list(cards.keys()))[:120])
+    c2 = cards.get(p2_id) or {}
+    check("Card carries own rate, quote and trust fields",
+          c2.get("hourly_rate") == 15 and c2.get("quote_max") is not None
+          and "total_jobs" in c2 and "verified" in c2, str(c2)[:250])
+    check("Reference range included for honesty anchor",
+          r.json().get("reference_max") is not None, r.text[:150])
+
+    # Hire p2 directly — the offer must reach ONLY p2, flagged as direct.
+    rq = client.post("/api/client/requests", json={
+        "title": "Trámite bancario urgente",
+        "description": "Necesito ayuda con un trámite en el centro de la ciudad.",
+        "location": "Centro, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": svc_key,
+        "preferred_provider_id": p2_id})
+    check("Direct request created (201)", rq.status_code == 201, rq.text)
+    req_id = rq.json()["id"]
+    off2 = _wait_offer(p2, req_id)
+    check("Chosen professional receives the offer, marked direct",
+          bool(off2) and off2.get("direct") is True, str(off2)[:250])
+    check("The OTHER professional gets nothing", _offer_of(p1, req_id) is None, "")
+
+    # Nobody else can snipe it from the board either.
+    snipe = p1.post(f"/api/provider/board/{req_id}/accept")
+    check("Other professional blocked from accepting (403)",
+          snipe.status_code == 403 and "RESERVED_FOR_CHOSEN_PROVIDER" in snipe.text, snipe.text)
+    board1 = p1.get("/api/provider/board")
+    check("Reserved request hidden from other boards",
+          req_id not in [x["id"] for x in board1.json()], str([x["id"] for x in board1.json()])[:120])
+
+    # Chosen pro declines → client can BROADCAST to everyone; p1 gets it.
+    dec = p2.post("/api/provider/offer/decline")
+    check("Chosen professional declines (200)", dec.status_code == 200, dec.text)
+    check("Not offered to others while still reserved", _offer_of(p1, req_id) is None, "")
+    bc = client.post(f"/api/client/requests/{req_id}/broadcast")
+    check("Broadcast fallback (200)", bc.status_code == 200, bc.text)
+    off1 = _wait_offer(p1, req_id)
+    check("After broadcast the other professional is offered", bool(off1), str(off1)[:200])
+    acc = p1.post(f"/api/provider/board/{req_id}/accept")
+    check("Accept after broadcast (201)", acc.status_code == 201, acc.text)
+
+    p1.post("/api/provider/go-offline")
+    p2.post("/api/provider/go-offline")
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1337,3 +1419,4 @@ def test_pytest_one_at_a_time(): test_one_at_a_time()
 def test_pytest_dispatch_lifecycle(): test_dispatch_lifecycle()
 def test_pytest_cancel_releases(): test_client_cancel_releases_provider()
 def test_pytest_worker_set_pricing(): test_worker_set_pricing()
+def test_pytest_choose_professional(): test_choose_professional()

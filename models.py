@@ -257,6 +257,12 @@ class ServiceRequest(Base):
     # trusted from the client. NULL only on pre-launch legacy rows.
     market_code = Column(String(10), nullable=True, index=True)
 
+    # ── Worker-set pricing Phase 2: client chooses a professional ──
+    # When set, dispatch offers this request ONLY to that professional
+    # (hired directly from the browse screen). Cleared by the "send to
+    # everyone" fallback if they don't respond.
+    preferred_provider_id = Column(Integer, nullable=True)
+
     client = relationship("User", back_populates="service_requests", foreign_keys=[client_id])
     vehicle = relationship("Vehicle", back_populates="service_requests")
     job = relationship("Job", back_populates="request", uselist=False, cascade="all, delete-orphan")
