@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     verification_max_resends_per_hour: int = 5
     verification_resend_cooldown_seconds: int = 60
 
+    # Provider presence: being ONLINE is a lease renewed by the app's 60s
+    # heartbeat. Miss heartbeats for this many minutes (app closed, phone
+    # off, connection lost) and the server flips the provider offline —
+    # ghost-online providers would otherwise soak up offer windows.
+    provider_offline_after_minutes: int = 5
+
     # Rate limiting
     login_rate_limit: int = 10        # attempts per window
     login_rate_window_minutes: int = 15

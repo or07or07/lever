@@ -762,7 +762,12 @@ def test_minimum_age():
             body["date_of_birth"] = dob
         return anon.post("/api/auth/register", json=body)
 
-    today = date.today()
+    # The 18+ policy evaluates "today" in America/Guayaquil (age.py). The
+    # machine's local/UTC date can differ by a day around midnight (e.g.
+    # 00:00–05:00 UTC is still the previous day in Guayaquil), so boundary
+    # cases MUST be computed on the Guayaquil clock. Ecuador has no DST.
+    from datetime import datetime as _dt, timezone as _tz, timedelta as _td
+    today = _dt.now(_tz(_td(hours=-5))).date()
 
     def dob_for_age(years, days_offset=0):
         try:

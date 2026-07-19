@@ -158,6 +158,34 @@ def _offer_next(db: Session, request_id: int) -> Optional[RequestDispatch]:
     return None
 
 
+def expire_stale_providers(db: Session) -> int:
+    """Presence is a LEASE, not a latch. The app renews it with a 60s
+    heartbeat; a provider whose last heartbeat is older than
+    provider_offline_after_minutes (app closed, phone off, signal lost) is
+    flipped offline here so dispatch never offers work to ghosts.
+
+    Called lazily from every presence-reading surface (profile, board,
+    dispatch) — one cheap UPDATE, no background job needed. A provider whose
+    app is still open re-onlines automatically on their next heartbeat."""
+    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        minutes=settings.provider_offline_after_minutes
+    )
+    n = (
+        db.query(MechanicProfile)
+        .filter(
+            MechanicProfile.is_online == True,
+            (MechanicProfile.last_heartbeat == None)
+            | (MechanicProfile.last_heartbeat < cutoff),
+        )
+        .update({"is_online": False}, synchronize_session="fetch")
+    )
+    if n:
+        db.commit()
+        logger.info(f"Presence: auto-offlined {n} stale provider(s)")
+    return n
+
+
 def find_eligible_providers(
     db: Session,
     request: ServiceRequest,
@@ -175,6 +203,7 @@ def find_eligible_providers(
     1. Distance (closest first; if no geo data, sorted last)
     2. Average rating (descending)
     """
+    expire_stale_providers(db)   # never offer to a ghost-online provider
     base = db.query(MechanicProfile).filter(
         MechanicProfile.is_online == True,
         MechanicProfile.is_available == True,
@@ -505,8 +534,10 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
     ).first()
     if not profile or not profile.is_online or not profile.is_available:
         return 0
-    # Global recovery sweep first: requests wedged on a stale offer (lost
-    # timer) must rotate before we decide there's "already a live offer".
+    # Global recovery sweeps first: ghost-online providers drop offline, and
+    # requests wedged on a stale offer (lost timer) rotate before we decide
+    # there's "already a live offer".
+    expire_stale_providers(db)
     resolve_stale_offers(db)
     if provider_is_busy(db, provider_user_id):
         return 0

@@ -4448,6 +4448,7 @@ function startOfferPolling() {
 }
 async function pollProviderOffer() {
   if (!_token || !_user || _user.role !== 'mechanic') return;
+  if (_providerOnline === false) return;   // offline = no offers can exist — skip the request entirely
   if (document.getElementById('offer-popup')) return;   // one at a time
   try {
     const r = await get('/api/provider/offer');

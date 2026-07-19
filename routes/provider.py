@@ -105,6 +105,11 @@ def get_profile(
     current_user: User = Depends(require_provider),
     db: Session = Depends(get_db),
 ):
+    # Presence lease: expire ghost-online state BEFORE reporting it, so the
+    # app shows the truth at login (a closed app goes offline in minutes,
+    # not "online forever").
+    from dispatch import expire_stale_providers
+    expire_stale_providers(db)
     profile = db.query(MechanicProfile).filter(
         MechanicProfile.user_id == current_user.id
     ).first()
@@ -315,8 +320,11 @@ def heartbeat(
     current_user: User = Depends(require_provider),
     db: Session = Depends(get_db),
 ):
-    """Update heartbeat timestamp. Call every 60s from client app.
-    If no heartbeat for 5 minutes, provider auto-goes offline."""
+    """Renew the presence lease. The app calls this every 60s WHILE the
+    provider is online; miss heartbeats for provider_offline_after_minutes
+    and expire_stale_providers() flips them offline (enforced lazily at
+    every presence-reading surface). A heartbeat after expiry re-onlines
+    them — an open app is intent to keep working."""
     profile = db.query(MechanicProfile).filter(MechanicProfile.user_id == current_user.id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -344,6 +352,8 @@ def job_board(
 ):
     """List pending service requests matching this provider's profession.
     Only available to providers who are currently ONLINE."""
+    from dispatch import expire_stale_providers
+    expire_stale_providers(db)
     profile = db.query(MechanicProfile).filter(
         MechanicProfile.user_id == current_user.id
     ).first()
