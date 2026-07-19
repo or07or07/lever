@@ -627,6 +627,7 @@ def run_all():
         test_client_cancel_releases_provider,
         test_worker_set_pricing,
         test_choose_professional,
+        test_hourly_metering,
     ]
 
     for test_fn in tests:
@@ -1392,6 +1393,81 @@ def test_choose_professional():
     p2.post("/api/provider/go-offline")
 
 
+def test_hourly_metering():
+    section("21. Metered hourly billing + overtime approvals (Phase 3)")
+    uid = str(uuid.uuid4())[:8]
+    pr = anon.post("/api/auth/register", json={
+        "email": f"hm_p_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "moving", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    prov = Session(pr.json()["access_token"])
+    prov.patch("/api/provider/profile", json={"hourly_rate": 12})
+    prov.post("/api/provider/go-online")
+    _shed_stale_offers(prov)
+    cr = anon.post("/api/auth/register", json={
+        "email": f"hm_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+
+    rq = client.post("/api/client/requests", json={
+        "title": "Mudanza medida por horas",
+        "description": "Cajas y muebles pequeños, cobro medido por tiempo.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": "small_move"})
+    check("Request created (201)", rq.status_code == 201, rq.text)
+    req_id = rq.json()["id"]
+    acc = prov.post(f"/api/provider/board/{req_id}/accept")
+    check("Accept snapshots the RATE for metered billing",
+          acc.status_code == 201 and acc.json().get("hourly_rate_snapshot") == 12, acc.text[:250])
+    job_id = acc.json()["id"]
+
+    # Start-confirmation only makes sense once the clock is running.
+    early = client.post(f"/api/client/jobs/{job_id}/confirm-start")
+    check("Confirm-start before work starts rejected (400)", early.status_code == 400, early.text)
+    s1 = prov.patch(f"/api/provider/jobs/{job_id}/status", json={"status": "working"})
+    check("Start work — the app clock starts (200)",
+          s1.status_code == 200 and s1.json().get("started_at") is not None, s1.text[:200])
+    cs = client.post(f"/api/client/jobs/{job_id}/confirm-start")
+    check("Client countersigns the start (200)", cs.status_code == 200, cs.text)
+    cs2 = client.post(f"/api/client/jobs/{job_id}/confirm-start")
+    check("Duplicate start confirmation rejected (409)", cs2.status_code == 409, cs2.text)
+
+    # Overtime: pro asks, ONLY the client's approval raises the cap.
+    badmin = prov.post(f"/api/provider/jobs/{job_id}/request-extra-time", json={"minutes": 45})
+    check("Non-standard extra-time amount rejected (422)", badmin.status_code == 422, badmin.text)
+    xt = prov.post(f"/api/provider/jobs/{job_id}/request-extra-time", json={"minutes": 60})
+    check("Extra-time request recorded (200)",
+          xt.status_code == 200 and xt.json().get("extra_minutes_requested") == 60, xt.text[:200])
+    dup = prov.post(f"/api/provider/jobs/{job_id}/request-extra-time", json={"minutes": 30})
+    check("Second request while pending rejected (409)", dup.status_code == 409, dup.text)
+    deny = client.post(f"/api/client/jobs/{job_id}/extra-time", json={"approve": False})
+    check("Client can DENY — nothing extra bills",
+          deny.status_code == 200 and deny.json().get("extra_minutes_approved") == 0, deny.text)
+    xt2 = prov.post(f"/api/provider/jobs/{job_id}/request-extra-time", json={"minutes": 60})
+    check("Pro can ask again after a denial (200)", xt2.status_code == 200, xt2.text[:150])
+    ok = client.post(f"/api/client/jobs/{job_id}/extra-time", json={"approve": True})
+    check("Approval raises the authorized time",
+          ok.status_code == 200 and ok.json().get("extra_minutes_approved") == 60, ok.text)
+
+    # Billing: cap = quote_max 72 + 1h × 12 = 84; floor = quote_min 24.
+    over = prov.patch(f"/api/provider/jobs/{job_id}/status",
+                      json={"status": "completed", "final_price": 100.0})
+    check("Price above the raised cap still rejected (400)",
+          over.status_code == 400 and "FINAL_PRICE_OUT_OF_RANGE" in over.text, over.text)
+    done = prov.patch(f"/api/provider/jobs/{job_id}/status", json={"status": "completed"})
+    body = done.json() if done.status_code == 200 else {}
+    check("No price sent → the METER is the price (200)", done.status_code == 200, done.text[:250])
+    check("Seconds of work billed at the call-out floor (quoted_min 24)",
+          body.get("final_price") == 24 and body.get("billed_minutes") is not None,
+          f"final_price={body.get('final_price')} billed_minutes={body.get('billed_minutes')}")
+
+    det = client.get(f"/api/client/requests/{req_id}").json()
+    check("Client sees the metered result",
+          (det.get("job") or {}).get("final_price") == 24
+          and (det.get("job") or {}).get("hourly_rate_snapshot") == 12, str(det.get("job"))[:250])
+
+    prov.post("/api/provider/go-offline")
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1420,3 +1496,4 @@ def test_pytest_dispatch_lifecycle(): test_dispatch_lifecycle()
 def test_pytest_cancel_releases(): test_client_cancel_releases_provider()
 def test_pytest_worker_set_pricing(): test_worker_set_pricing()
 def test_pytest_choose_professional(): test_choose_professional()
+def test_pytest_hourly_metering(): test_hourly_metering()

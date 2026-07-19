@@ -656,6 +656,100 @@ def confirm_completion(
     return {"ok": True, "confirmed_at": job.client_confirmed_at.isoformat()}
 
 
+@router.post("/jobs/{job_id}/confirm-start")
+def confirm_start(
+    job_id: int,
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """Phase 3 trust record: the client confirms the professional actually
+    started working — the billing clock's start is the app's timestamp, and
+    this countersigns it. Owner-only, started jobs only, 409 on repeat."""
+    from datetime import datetime, timezone
+
+    job = db.query(Job).options(joinedload(Job.request)).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.request.client_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your job")
+    if not job.started_at:
+        raise HTTPException(status_code=400, detail="Job has not started yet")
+    if job.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Job is already finalised")
+    if job.client_confirmed_start_at:
+        raise HTTPException(status_code=409, detail="Already confirmed")
+
+    job.client_confirmed_start_at = datetime.now(timezone.utc)
+    from models import Notification
+    db.add(Notification(
+        user_id=job.mechanic_id,
+        type="job_update",
+        title="El cliente confirmó el inicio",
+        message=f'El cliente confirmó que comenzaste a trabajar en "{job.request.title}".',
+        link=f"/provider/jobs/{job.id}",
+    ))
+    db.commit()
+    return {"ok": True, "confirmed_at": job.client_confirmed_start_at.isoformat()}
+
+
+@router.post("/jobs/{job_id}/extra-time")
+def decide_extra_time(
+    job_id: int,
+    payload: dict,
+    current_user: User = Depends(require_client),
+    db: Session = Depends(get_db),
+):
+    """Phase 3 change-order: approve or deny the professional's pending
+    extra-time request. Only APPROVED minutes raise the billing cap."""
+    approve = payload.get("approve")
+    if not isinstance(approve, bool):
+        raise HTTPException(status_code=422, detail="approve must be true or false")
+
+    job = db.query(Job).options(joinedload(Job.request)).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.request.client_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your job")
+    if not job.extra_minutes_requested:
+        raise HTTPException(status_code=400, detail="NO_EXTRA_TIME_PENDING")
+    if job.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Job is already finalised")
+
+    minutes = job.extra_minutes_requested
+    job.extra_minutes_requested = None
+    from models import Notification
+    if approve:
+        job.extra_minutes_approved = (job.extra_minutes_approved or 0) + minutes
+        new_cap = (job.quoted_max or 0.0) + (job.hourly_rate_snapshot or 0.0) * job.extra_minutes_approved / 60.0
+        db.add(Notification(
+            user_id=job.mechanic_id,
+            type="job_update",
+            title="✅ Tiempo adicional aprobado",
+            message=(
+                f"El cliente aprobó {minutes} minutos adicionales en "
+                f'"{job.request.title}". Nuevo máximo: USD {new_cap:g}.'
+            ),
+            link=f"/provider/jobs/{job.id}",
+        ))
+    else:
+        db.add(Notification(
+            user_id=job.mechanic_id,
+            type="job_update",
+            title="Tiempo adicional no aprobado",
+            message=(
+                f'El cliente no aprobó tiempo adicional en "{job.request.title}". '
+                f"El total se mantiene dentro del estimado original."
+            ),
+            link=f"/provider/jobs/{job.id}",
+        ))
+    db.commit()
+    return {
+        "ok": True,
+        "approved": approve,
+        "extra_minutes_approved": job.extra_minutes_approved or 0,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Customer reputation (professional → customer ratings) — own data only
 # ---------------------------------------------------------------------------

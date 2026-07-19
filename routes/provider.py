@@ -513,6 +513,9 @@ def accept_request(
         arrival_deadline=datetime.now(timezone.utc) + timedelta(minutes=ARRIVAL_WINDOW_MINUTES),
         quoted_min=quoted[0] if quoted else None,
         quoted_max=quoted[1] if quoted else None,
+        # Phase 3: metered billing bills at THIS rate — snapshotted so a
+        # later rate change can't touch an already-hired job.
+        hourly_rate_snapshot=(profile.hourly_rate if quoted else None),
     )
     db.add(job)
     req.status = "assigned"
@@ -657,26 +660,39 @@ def update_job_status(
     # Start work on the 3rd status (the "working" phase)
     if len(work_statuses) >= 3 and payload.status == work_statuses[2] and not job.started_at:
         job.started_at = datetime.utcnow()
+
+    # ── Phase 3: metered hourly billing ──
+    # The clock is the APP (started_at → completed_at), never the worker's
+    # word. Billed = clocked time × the snapshotted rate, clamped between
+    # the quoted minimum (the call-out floor the client agreed to) and the
+    # quoted maximum plus client-APPROVED extra time. If the professional
+    # sends a price it must land in the same window (they may discount).
+    metered = None
+    lo = hi = None
     if payload.status == "completed":
         job.completed_at = datetime.utcnow()
         if req:
             req.status = "completed"
+        if job.hourly_rate_snapshot and job.started_at:
+            worked_min = max(0.0, (job.completed_at - job.started_at).total_seconds() / 60.0)
+            job.billed_minutes = int(round(worked_min))
+            lo = job.quoted_min or 0.0
+            hi = (job.quoted_max or 0.0) + job.hourly_rate_snapshot * (job.extra_minutes_approved or 0) / 60.0
+            metered = round(min(max(job.hourly_rate_snapshot * worked_min / 60.0, lo), hi), 2)
 
     job.status = payload.status
     if payload.mechanic_notes is not None:
         job.mechanic_notes = payload.mechanic_notes
     if payload.final_price is not None:
         # The final charge must stay inside the range the client hired
-        # against: the professional's OWN quote when they had a rate set
-        # (worker-set pricing, snapshotted at accept), otherwise the app
-        # reference range. Either way the price was known up-front — no
-        # surprise billing.
-        if job.quoted_min is not None and job.quoted_max is not None:
-            lo, hi = job.quoted_min, job.quoted_max
-        elif req and req.budget_min is not None and req.budget_max is not None:
-            lo, hi = req.budget_min, req.budget_max
-        else:
-            lo = hi = None
+        # against: the metered window when hourly billing applies, else the
+        # professional's quote, else the app reference range. Either way the
+        # bounds were known up-front — no surprise billing.
+        if lo is None:
+            if job.quoted_min is not None and job.quoted_max is not None:
+                lo, hi = job.quoted_min, job.quoted_max
+            elif req and req.budget_min is not None and req.budget_max is not None:
+                lo, hi = req.budget_min, req.budget_max
         if lo is not None and not (lo <= payload.final_price <= hi):
             raise HTTPException(
                 status_code=400,
@@ -684,6 +700,9 @@ def update_job_status(
                        f"USD {lo:g} y USD {hi:g}",
             )
         job.final_price = payload.final_price
+    elif metered is not None:
+        # No price sent → the meter IS the price.
+        job.final_price = metered
 
     # ── Notify the CLIENT of the status change ──
     if req:
@@ -691,12 +710,19 @@ def update_job_status(
             payload.status,
             f"updated job status to {payload.status.replace('_', ' ').title()}"
         )
+        bill_line = ""
+        if payload.status == "completed" and job.final_price is not None and job.billed_minutes is not None:
+            h, m = divmod(job.billed_minutes, 60)
+            bill_line = (
+                f" Tiempo trabajado: {h}h {m:02d}m — total USD {job.final_price:g} "
+                f"(tarifa USD {job.hourly_rate_snapshot:g}/h, sin comisiones)."
+            )
         _create_notification(
             db,
             user_id=req.client_id,
             notif_type="job_update",
             title="Actualización de tu servicio",
-            message=f"Tu profesional {status_msg}.",
+            message=f"Tu profesional {status_msg}.{bill_line}",
             link=f"/client/requests/{req.id}",
         )
 
@@ -722,6 +748,57 @@ def update_job_status(
         from dispatch import redispatch_pending_for_provider
         redispatch_pending_for_provider(db, current_user.id)
 
+    return job
+
+
+# ---------------------------------------------------------------------------
+# Extra time (Phase 3 — metered billing change-order)
+# ---------------------------------------------------------------------------
+
+@router.post("/jobs/{job_id}/request-extra-time", response_model=JobOut)
+def request_extra_time(
+    job_id: int,
+    payload: dict,
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    """The job is outgrowing its estimate: ask the CLIENT to authorize more
+    billable time. Nothing bills beyond the quote until they tap approve."""
+    minutes = payload.get("minutes")
+    if minutes not in (30, 60, 90, 120):
+        raise HTTPException(status_code=422, detail="minutes must be 30, 60, 90 or 120")
+    job = db.query(Job).filter(
+        Job.id == job_id, Job.mechanic_id == current_user.id
+    ).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="Job is already finalised")
+    if not job.hourly_rate_snapshot:
+        raise HTTPException(status_code=400, detail="NOT_HOURLY_BILLED")
+    if job.extra_minutes_requested:
+        raise HTTPException(status_code=409, detail="EXTRA_TIME_ALREADY_PENDING")
+
+    job.extra_minutes_requested = minutes
+    req = db.query(ServiceRequest).filter(ServiceRequest.id == job.request_id).first()
+    if req:
+        new_cap = (job.quoted_max or 0.0) + job.hourly_rate_snapshot * ((job.extra_minutes_approved or 0) + minutes) / 60.0
+        h, m = divmod(minutes, 60)
+        label = (f"{h}h" if not m else f"{h}h {m}m") if h else f"{m} min"
+        _create_notification(
+            db,
+            user_id=req.client_id,
+            notif_type="job_update",
+            title="⏱️ Solicitud de tiempo adicional",
+            message=(
+                f'Tu profesional solicita {label} adicionales en "{req.title}". '
+                f"Si apruebas, el total podría llegar hasta USD {new_cap:g}. "
+                f"Apruébalo o recházalo desde el detalle de tu solicitud."
+            ),
+            link=f"/client/requests/{req.id}",
+        )
+    db.commit()
+    db.refresh(job)
     return job
 
 

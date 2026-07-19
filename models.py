@@ -300,6 +300,16 @@ class Job(Base):
     # range applies instead.
     quoted_min = Column(Float, nullable=True)
     quoted_max = Column(Float, nullable=True)
+    # ── Phase 3: metered hourly billing ──
+    # The clock is the app: billed = minutes between started_at and
+    # completed_at × the rate snapshotted here, clamped to
+    # [quoted_min, quoted_max + approved extra time]. The client confirms
+    # the start (trust record) and approves overtime IN-APP before it bills.
+    hourly_rate_snapshot = Column(Float, nullable=True)
+    billed_minutes = Column(Integer, nullable=True)
+    client_confirmed_start_at = Column(DateTime, nullable=True)
+    extra_minutes_requested = Column(Integer, nullable=True)
+    extra_minutes_approved = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 

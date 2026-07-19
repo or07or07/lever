@@ -542,6 +542,12 @@ class JobOut(BaseModel):
     # Worker-set pricing: quote snapshotted at accept (rate × duration)
     quoted_min: Optional[float] = None
     quoted_max: Optional[float] = None
+    # Phase 3: metered hourly billing state
+    hourly_rate_snapshot: Optional[float] = None
+    billed_minutes: Optional[int] = None
+    client_confirmed_start_at: Optional[datetime] = None
+    extra_minutes_requested: Optional[int] = None
+    extra_minutes_approved: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

@@ -1214,6 +1214,23 @@ var _translations = {
   'choose.refPricing': {es:'Precio referencial de Lever', en:'Lever reference price'},
   'choose.gone': {es:'El profesional elegido ya no está disponible. Elige otro o usa el modo automático.', en:'The chosen professional is no longer available. Pick another or use automatic mode.'},
   'reqdet.waitingChosen': {es:'Esperando la respuesta del profesional que elegiste.', en:'Waiting for your chosen professional to respond.'},
+  'meter.worked': {es:'Tiempo trabajado', en:'Time worked'},
+  'meter.soFar': {es:'Total según tiempo', en:'Metered total'},
+  'meter.cap': {es:'Máximo autorizado', en:'Authorized maximum'},
+  'meter.autoNote': {es:'Déjalo vacío para cobrar según el tiempo trabajado.', en:'Leave empty to bill by time worked.'},
+  'meter.extraBtn': {es:'➕ Solicitar tiempo adicional', en:'➕ Request extra time'},
+  'meter.extraTitle': {es:'¿Cuánto tiempo adicional necesitas?', en:'How much extra time do you need?'},
+  'meter.extraSent': {es:'Solicitud enviada al cliente.', en:'Request sent to the client.'},
+  'meter.extraPending': {es:'⏳ Tiempo adicional solicitado — esperando aprobación del cliente', en:'⏳ Extra time requested — waiting for client approval'},
+  'meter.extraApproved': {es:'min adicionales aprobados', en:'extra min approved'},
+  'meter.confirmStart': {es:'✅ Confirmar que el trabajo comenzó', en:'✅ Confirm the work started'},
+  'meter.startConfirmed': {es:'Inicio confirmado ✓', en:'Start confirmed ✓'},
+  'meter.clientExtraAsk': {es:'Tu profesional solicita tiempo adicional. Si apruebas, el total podría llegar hasta', en:'Your professional requests extra time. If you approve, the total could reach'},
+  'meter.approve': {es:'✅ Aprobar', en:'✅ Approve'},
+  'meter.deny': {es:'Rechazar', en:'Deny'},
+  'meter.approvedToast': {es:'Tiempo adicional aprobado.', en:'Extra time approved.'},
+  'meter.deniedToast': {es:'Tiempo adicional rechazado.', en:'Extra time denied.'},
+  'meter.billedLine': {es:'Cobro por tiempo', en:'Billed by time'},
   'reqdet.sendAll': {es:'Enviar a todos los profesionales', en:'Send to all professionals'},
   'reqdet.sentAll': {es:'Solicitud enviada a todos los profesionales disponibles.', en:'Request sent to all available professionals.'},
   'req.proRate': {es:'Tarifa', en:'Rate'},
@@ -3629,6 +3646,11 @@ async function renderRequestDetail(el, id) {
         ${req.professional_verified ? `<span class="act-verif">✓ ${escapeHtml(_t('activity.verified'))}</span>` : ''}
       </div>` : ''}
       ${req.professional_hourly_rate ? `<div class="text-sm" style="margin-bottom:12px">💵 ${_t('req.proRate')}: <strong>${fmtMoney(req.professional_hourly_rate)}/h</strong>${job.quoted_max != null ? ` · ${_t('req.quote')}: <strong>${fmtMoney(job.quoted_min)} – ${fmtMoney(job.quoted_max)}</strong>` : ''}</div>` : ''}
+      ${job.hourly_rate_snapshot&&job.started_at&&job.status!=='completed'&&job.status!=='cancelled'?`<div class="gnotice" id="cl-meter" style="margin-bottom:10px"></div>`:''}
+      ${job.extra_minutes_requested&&job.status!=='completed'&&job.status!=='cancelled'?`<div class="gnotice" style="margin-bottom:10px;border-color:var(--accent);background:var(--accent-light)">⏱️ ${_t('meter.clientExtraAsk')} <strong>${fmtMoney((job.quoted_max||0)+(job.hourly_rate_snapshot||0)*(((job.extra_minutes_approved||0)+job.extra_minutes_requested)/60))}</strong> (+${job.extra_minutes_requested} min)
+        <div style="display:flex;gap:8px;margin-top:8px"><button class="btn btn-success" onclick="decideExtraTime(${job.id},true)">${_t('meter.approve')}</button><button class="btn btn-ghost" onclick="decideExtraTime(${job.id},false)">${_t('meter.deny')}</button></div></div>`:''}
+      ${job.started_at&&!job.client_confirmed_start_at&&job.status!=='completed'&&job.status!=='cancelled'?`<button class="btn btn-outline" style="margin-bottom:10px" onclick="confirmJobStart(${job.id})">${_t('meter.confirmStart')}</button>`:''}
+      ${_billedReceipt(job)}
       ${job.mechanic_notes?`<p class="text-sm" style="margin-bottom:12px"><strong>${_t('reqdet.providerNotes')}</strong> ${escapeHtml(job.mechanic_notes)}</p>`:''}
       ${job.final_price!=null?`<div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> ${_t('reqdet.finalPrice')} <strong>${fmtMoney(job.final_price)}</strong></div>`:''}
       ${job.completed_at?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${_t('jdet.completed')}: ${fmtTime(job.completed_at)}</div>`:''}
@@ -3651,6 +3673,10 @@ async function renderRequestDetail(el, id) {
   // Start live polling if request is active
   if (req.status !== 'completed' && req.status !== 'cancelled') {
     startTrackerPolling(req.id);
+  }
+  // Live billing timer while the professional is working (hourly jobs)
+  if (job && job.hourly_rate_snapshot && job.started_at && job.status !== 'completed' && job.status !== 'cancelled') {
+    _startMeterTick(job, 'cl-meter');
   }
   // Initialize live tracking map if job is active
   if (job && ['accepted','en_route','diagnosing','repairing','inspecting','servicing','working','assessing','prepping','washing'].includes(job.status)) {
@@ -4635,6 +4661,78 @@ function statusLabel(s) {
   return labels[s] || s.charAt(0).toUpperCase() + s.slice(1).replace('_',' ');
 }
 
+// ---- Metered hourly billing (Phase 3) ----
+// The clock is the app: from "Iniciar trabajo" to "Completar trabajo" at the
+// snapshotted rate, clamped [quoted_min, quoted_max + approved extra]. These
+// helpers power the live timer both sides see during the job.
+let _meterTick = null;
+function _parseServerTime(s) {
+  if (!s) return null;
+  return new Date(/Z$|[+\-]\d\d:?\d\d$/.test(s) ? s : s + 'Z');   // naive = UTC
+}
+function _meterInfo(job) {
+  const rate = job.hourly_rate_snapshot;
+  const start = _parseServerTime(job.started_at);
+  if (!rate || !start) return null;
+  const end = job.completed_at ? _parseServerTime(job.completed_at) : new Date();
+  const mins = Math.max(0, (end.getTime() - start.getTime()) / 60000);
+  const cap = (job.quoted_max || 0) + rate * ((job.extra_minutes_approved || 0) / 60);
+  const metered = Math.min(Math.max(rate * mins / 60, job.quoted_min || 0), cap);
+  return { h: Math.floor(mins / 60), m: Math.floor(mins % 60), metered: metered, cap: cap, rate: rate };
+}
+function _meterHtml(job) {
+  const mi = _meterInfo(job);
+  if (!mi) return '';
+  return '⏱️ ' + _t('meter.worked') + ': <strong>' + mi.h + 'h ' + String(mi.m).padStart(2, '0') + 'm</strong>' +
+    ' · ' + _t('meter.soFar') + ': <strong>' + fmtMoney(mi.metered) + '</strong>' +
+    ' <span style="color:var(--gray-500)">(' + fmtMoney(mi.rate) + '/h · ' + _t('meter.cap') + ' ' + fmtMoney(mi.cap) + ')</span>';
+}
+function _startMeterTick(job, boxId) {
+  if (_meterTick) { clearInterval(_meterTick); _meterTick = null; }
+  const upd = function() {
+    const box = document.getElementById(boxId);
+    if (!box) { clearInterval(_meterTick); _meterTick = null; return; }
+    box.innerHTML = _meterHtml(job);
+  };
+  upd();
+  _meterTick = setInterval(upd, 30000);
+}
+function showExtraTimeModal(jobId) {
+  showModal(_t('meter.extraTitle'),
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+      [30, 60, 90, 120].map(function(m) {
+        const label = m < 60 ? m + ' min' : (m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + 'm' : '');
+        return '<button class="btn btn-outline" onclick="requestExtraTime(' + jobId + ',' + m + ')">' + label + '</button>';
+      }).join('') +
+    '</div><div id="xt-err" style="margin-top:8px"></div>', '');
+}
+async function requestExtraTime(jobId, minutes) {
+  try {
+    await post('/api/provider/jobs/' + jobId + '/request-extra-time', { minutes: minutes });
+    closeModal(); showToast(_t('meter.extraSent'), 'success'); render();
+  } catch (e) {
+    const el = document.getElementById('xt-err');
+    if (el) el.innerHTML = alert_el('error', e.message); else showToast(e.message, 'error');
+  }
+}
+async function confirmJobStart(jobId) {
+  try {
+    await post('/api/client/jobs/' + jobId + '/confirm-start');
+    showToast(_t('meter.startConfirmed'), 'success'); render();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function decideExtraTime(jobId, approve) {
+  try {
+    await post('/api/client/jobs/' + jobId + '/extra-time', { approve: approve });
+    showToast(_t(approve ? 'meter.approvedToast' : 'meter.deniedToast'), 'success'); render();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+function _billedReceipt(job) {
+  if (job.billed_minutes == null || !job.hourly_rate_snapshot) return '';
+  const h = Math.floor(job.billed_minutes / 60), m = job.billed_minutes % 60;
+  return '<div class="text-sm mt-4">⏱️ ' + _t('meter.billedLine') + ': <strong>' + h + 'h ' + String(m).padStart(2, '0') + 'm</strong> × ' + fmtMoney(job.hourly_rate_snapshot) + '/h</div>';
+}
+
 async function renderJobDetail(el, id) {
   const job = await get('/api/provider/jobs/'+id);
   const profKey = job.request?.profession_type || _user?.profession || 'mechanic';
@@ -4673,8 +4771,14 @@ async function renderJobDetail(el, id) {
     ${nextStates.length>0?`
     <div class="card">
       ${arrivalChip}
+      ${showPrice&&job.hourly_rate_snapshot&&job.started_at?`<div class="gnotice" id="jb-meter" style="margin-bottom:10px"></div>`:''}
+      ${showPrice&&job.hourly_rate_snapshot?(
+        job.extra_minutes_requested
+          ? `<div class="gnotice" style="margin-bottom:10px">${_t('meter.extraPending')} (+${job.extra_minutes_requested} min)</div>`
+          : `<button class="btn btn-outline" style="margin-bottom:10px" onclick="showExtraTimeModal(${job.id})">${_t('meter.extraBtn')}</button>`
+      )+(job.extra_minutes_approved?`<div class="text-sm" style="margin-bottom:10px;color:var(--success)">✅ +${job.extra_minutes_approved} ${_t('meter.extraApproved')}</div>`:''):''}
       <div class="form-group"><label>${_t('jdet.notes')}</label><textarea id="jb-notes">${job.mechanic_notes||''}</textarea></div>
-      ${showPrice?`<div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00">${job.quoted_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('req.quote')}: ${fmtMoney(job.quoted_min)} – ${fmtMoney(job.quoted_max)}</p>`:(job.request&&job.request.budget_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('price.reference')}: ${fmtMoney(job.request.budget_min)} – ${fmtMoney(job.request.budget_max)}</p>`:'')}</div>`:''}
+      ${showPrice?`<div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00">${job.hourly_rate_snapshot?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('meter.autoNote')}</p>`:''}${job.quoted_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('req.quote')}: ${fmtMoney(job.quoted_min)} – ${fmtMoney(job.quoted_max)}</p>`:(job.request&&job.request.budget_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('price.reference')}: ${fmtMoney(job.request.budget_min)} – ${fmtMoney(job.request.budget_max)}</p>`:'')}</div>`:''}
       <div id="jb-err"></div>
       ${primaryBtn}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -4687,12 +4791,18 @@ async function renderJobDetail(el, id) {
     ${renderProviderTrackingControls(job.id, job.status)}
     ${job.status==='completed'?`<div class="card" style="text-align:center">
       <div class="gnotice" style="margin-bottom:12px">${job.client_confirmed_at?_t('jdet.clientConfirmed'):_t('jdet.waitingConfirm')}</div>
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      ${job.final_price!=null?`<div class="text-sm" style="margin-bottom:8px">💵 ${_t('jdet.finalPrice')} <strong>${fmtMoney(job.final_price)}</strong></div>`:''}
+      ${_billedReceipt(job)}
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px">
         <button class="btn btn-success" onclick="showRateCustomerModal(${job.id})">${_t('jdet.rateCustomer')}</button>
         <button class="btn btn-primary" onclick="route('#/chat/${job.id}')">${_t('jdet.viewChat')}</button>
         <button class="btn btn-ghost" onclick="showDisputeModal(${job.id})">${_t('dispute.raise')}</button>
       </div>
     </div>`:''}`;
+  // Live billing timer while working (hourly jobs only)
+  if (showPrice && job.hourly_rate_snapshot && job.started_at && job.status !== 'completed') {
+    _startMeterTick(job, 'jb-meter');
+  } else if (_meterTick) { clearInterval(_meterTick); _meterTick = null; }
 }
 
 // ---- Provider → customer rating (after a completed job) ----
