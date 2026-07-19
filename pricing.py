@@ -84,6 +84,24 @@ def estimate_for_service(svc: dict) -> Optional[tuple[int, int]]:
     return (int(round(est_min)), int(round(est_max)))
 
 
+def quote_for_provider(hourly_rate: Optional[float], svc: Optional[dict]) -> Optional[tuple[int, int]]:
+    """Worker-set pricing (Phase 1): a specific professional's quote for a
+    catalog service — THEIR hourly rate × the service's real duration range,
+    with the same minimum call-out as the reference estimates. Returns None
+    when the provider has no rate set or the service has no duration data
+    (callers fall back to the app reference range)."""
+    if not hourly_rate or hourly_rate <= 0 or not svc:
+        return None
+    dmin, dmax = svc.get("duration_min"), svc.get("duration_max")
+    if not dmin or not dmax:
+        return None
+    prof = svc.get("profession", "")
+    visit = MIN_VISIT.get(prof, _DEFAULT_VISIT)
+    q_min = max(hourly_rate * (dmin / 60.0), visit)
+    q_max = max(hourly_rate * (dmax / 60.0), q_min + 2)
+    return (int(round(q_min)), int(round(q_max)))
+
+
 def _build_estimates() -> dict[str, tuple[int, int]]:
     from services_catalog import ALL_SERVICES
     out: dict[str, tuple[int, int]] = {}

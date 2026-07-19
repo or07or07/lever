@@ -130,6 +130,20 @@ def update_profile(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
+    # ── Worker-set pricing (Phase 1) ──
+    # The professional chooses their own hourly rate, bounded by an
+    # honesty-first floor (above Ecuador's SBU-derived hourly, pricing.py)
+    # and a sanity ceiling. 0 clears the rate → app reference pricing.
+    if payload.hourly_rate is not None and payload.hourly_rate != 0:
+        from config import settings
+        lo, hi = settings.provider_min_hourly_rate, settings.provider_max_hourly_rate
+        if not (lo <= payload.hourly_rate <= hi):
+            raise HTTPException(
+                status_code=400,
+                detail=f"HOURLY_RATE_OUT_OF_RANGE: la tarifa debe estar entre "
+                       f"USD {lo:g} y USD {hi:g} por hora",
+            )
+
     for field, value in payload.model_dump(exclude_none=True).items():
         setattr(profile, field, value)
 
@@ -471,6 +485,16 @@ def accept_request(
             detail="You must be online to accept job requests."
         )
 
+    # ── Worker-set pricing (Phase 1): snapshot THIS professional's quote ──
+    # Their hourly rate × the service's catalog duration. Snapshotted here so
+    # a later rate change never touches an already-hired job; the final
+    # price is enforced inside this range at completion.
+    quoted = None
+    if req.service_key and profile and profile.hourly_rate:
+        from services_catalog import SERVICES_BY_KEY
+        from pricing import quote_for_provider
+        quoted = quote_for_provider(profile.hourly_rate, SERVICES_BY_KEY.get(req.service_key))
+
     # Simplified flow: accepting means the professional is heading to the site
     # NOW — the job starts en route with a fixed arrival window.
     job = Job(
@@ -478,6 +502,8 @@ def accept_request(
         mechanic_id=current_user.id,
         status="en_route",
         arrival_deadline=datetime.now(timezone.utc) + timedelta(minutes=ARRIVAL_WINDOW_MINUTES),
+        quoted_min=quoted[0] if quoted else None,
+        quoted_max=quoted[1] if quoted else None,
     )
     db.add(job)
     req.status = "assigned"
@@ -487,6 +513,12 @@ def accept_request(
     provider_name = profile.full_name if profile and profile.full_name else "Un profesional"
     profession_label = profile.profession.replace("_", " ").title() if profile else "Profesional"
 
+    quote_line = ""
+    if quoted:
+        quote_line = (
+            f" Su tarifa es USD {profile.hourly_rate:g}/h — "
+            f"total estimado USD {quoted[0]:g}–{quoted[1]:g} (sin comisiones)."
+        )
     _create_notification(
         db,
         user_id=req.client_id,
@@ -494,7 +526,7 @@ def accept_request(
         title="¡Tu solicitud fue aceptada!",
         message=(
             f"{provider_name} ({profession_label}) aceptó tu solicitud "
-            f"\"{req.title}\" y ya va en camino. "
+            f"\"{req.title}\" y ya va en camino.{quote_line} "
             f"Puedes escribirle directamente desde el detalle de tu solicitud."
         ),
         link=f"/client/requests/{req.id}",
@@ -625,16 +657,23 @@ def update_job_status(
     if payload.mechanic_notes is not None:
         job.mechanic_notes = payload.mechanic_notes
     if payload.final_price is not None:
-        # Lever sets the price (see routes/client.py create_request): the final
-        # charge must stay within the request's price snapshot. The professional
-        # cannot bill outside the app-set range — pricing is not negotiated.
-        if req and req.budget_min is not None and req.budget_max is not None:
-            if not (req.budget_min <= payload.final_price <= req.budget_max):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"FINAL_PRICE_OUT_OF_RANGE: el precio final debe estar entre "
-                           f"USD {req.budget_min:g} y USD {req.budget_max:g}",
-                )
+        # The final charge must stay inside the range the client hired
+        # against: the professional's OWN quote when they had a rate set
+        # (worker-set pricing, snapshotted at accept), otherwise the app
+        # reference range. Either way the price was known up-front — no
+        # surprise billing.
+        if job.quoted_min is not None and job.quoted_max is not None:
+            lo, hi = job.quoted_min, job.quoted_max
+        elif req and req.budget_min is not None and req.budget_max is not None:
+            lo, hi = req.budget_min, req.budget_max
+        else:
+            lo = hi = None
+        if lo is not None and not (lo <= payload.final_price <= hi):
+            raise HTTPException(
+                status_code=400,
+                detail=f"FINAL_PRICE_OUT_OF_RANGE: el precio final debe estar entre "
+                       f"USD {lo:g} y USD {hi:g}",
+            )
         job.final_price = payload.final_price
 
     # ── Notify the CLIENT of the status change ──
@@ -756,6 +795,14 @@ def current_offer(
         duration_label = (f"{dmin}–{dmax} min" if dmax < 60
                           else f"{round(dmin/60, 1):g}–{round(dmax/60, 1):g} h")
 
+    # Worker-set pricing: when THIS professional has an hourly rate, the pay
+    # they see is their own quote (rate × duration) — not the app reference.
+    profile = db.query(MechanicProfile).filter(
+        MechanicProfile.user_id == current_user.id
+    ).first()
+    from pricing import quote_for_provider
+    quote = quote_for_provider(profile.hourly_rate if profile else None, svc)
+
     return {"offer": {
         "dispatch_id": d.id,
         "request_id": req.id,
@@ -769,6 +816,9 @@ def current_offer(
         "duration_label": duration_label,
         "budget_min": req.budget_min,
         "budget_max": req.budget_max,
+        "hourly_rate": profile.hourly_rate if profile and profile.hourly_rate else None,
+        "quote_min": quote[0] if quote else None,
+        "quote_max": quote[1] if quote else None,
         "expires_in_seconds": int(remaining),
         "window_seconds": DISPATCH_TIMEOUT_SECONDS,
     }}

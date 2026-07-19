@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     verification_max_resends_per_hour: int = 5
     verification_resend_cooldown_seconds: int = 60
 
+    # Worker-set pricing (Phase 1): professionals choose their own hourly
+    # rate inside these bounds. The floor sits above Ecuador's SBU-derived
+    # $3.01/h (see pricing.py) — honesty-first means nobody undercuts a
+    # dignified wage; the ceiling is a sanity cap against typos.
+    provider_min_hourly_rate: float = 4.0
+    provider_max_hourly_rate: float = 60.0
+
     # Provider presence: being ONLINE is a lease renewed by the app's 60s
     # heartbeat. Miss heartbeats for this many minutes (app closed, phone
     # off, connection lost) and the server flips the provider offline —

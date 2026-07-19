@@ -464,6 +464,9 @@ class ServiceRequestOut(BaseModel):
     professional_name: Optional[str] = None
     professional_rating: Optional[float] = None
     professional_verified: Optional[bool] = None
+    # Worker-set pricing: the assigned professional's own rate + track record
+    professional_hourly_rate: Optional[float] = None
+    professional_jobs: Optional[int] = None
     has_review: Optional[bool] = None
 
     model_config = {"from_attributes": True}
@@ -531,6 +534,9 @@ class JobOut(BaseModel):
     # Simplified flow: arrival window after accept + client's completion confirm
     arrival_deadline: Optional[datetime] = None
     client_confirmed_at: Optional[datetime] = None
+    # Worker-set pricing: quote snapshotted at accept (rate × duration)
+    quoted_min: Optional[float] = None
+    quoted_max: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

@@ -186,6 +186,8 @@ def list_requests(
         r.professional_name = None
         r.professional_rating = None
         r.professional_verified = None
+        r.professional_hourly_rate = None
+        r.professional_jobs = None
         r.has_review = None
         job = r.job
         if job and job.mechanic_id:
@@ -193,6 +195,9 @@ def list_requests(
             if mp:
                 r.professional_name = mp.full_name or None
                 r.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
+                # Worker-set pricing + trust: their rate and verified track record
+                r.professional_hourly_rate = mp.hourly_rate or None
+                r.professional_jobs = mp.total_jobs or 0
             r.professional_verified = verified.get(job.mechanic_id, False)
             r.has_review = job.review is not None
     return reqs
@@ -286,6 +291,19 @@ def get_request(
     )
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
+    # Assigned professional's summary for the detail screen: name, rating,
+    # their hourly rate + verified track record (worker-set pricing Phase 1).
+    if req.job and req.job.mechanic_id:
+        mp = db.query(MechanicProfile).filter(
+            MechanicProfile.user_id == req.job.mechanic_id
+        ).first()
+        if mp:
+            req.professional_name = mp.full_name or None
+            req.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
+            req.professional_hourly_rate = mp.hourly_rate or None
+            req.professional_jobs = mp.total_jobs or 0
+        u = db.query(User).filter(User.id == req.job.mechanic_id).first()
+        req.professional_verified = bool(u and u.verification_level == "enhanced")
     return req
 
 

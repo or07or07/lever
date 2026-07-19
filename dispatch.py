@@ -320,13 +320,27 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
     ).first()
 
     if request:
-        # Payment shown up-front: the client's real budget when set, otherwise
-        # the backend reference estimate (labelled as such) — never fabricated.
-        # Lever charges no commission, so this is what the professional
-        # receives. Deliberately NO exact address here (privacy): the zone is
-        # enough for a preview; full details come from the board after opening.
-        from pricing import payment_line_es
-        pay = payment_line_es(request.budget_min, request.budget_max, request.service_key)
+        # Payment shown up-front. Worker-set pricing: when THIS provider has
+        # an hourly rate, the number is their OWN quote (rate × duration);
+        # otherwise the app reference estimate (labelled as such) — never
+        # fabricated. Lever charges no commission, so this is what the
+        # professional receives. Deliberately NO exact address here (privacy):
+        # the zone is enough for a preview; full details come after opening.
+        from pricing import payment_line_es, quote_for_provider
+        pay = None
+        if request.service_key:
+            from services_catalog import SERVICES_BY_KEY
+            profile = db.query(MechanicProfile).filter(
+                MechanicProfile.user_id == dispatch.provider_user_id
+            ).first()
+            q = quote_for_provider(
+                profile.hourly_rate if profile else None,
+                SERVICES_BY_KEY.get(request.service_key),
+            )
+            if q:
+                pay = f"tu tarifa: USD {q[0]}–{q[1]}"
+        if pay is None:
+            pay = payment_line_es(request.budget_min, request.budget_max, request.service_key)
         notif = Notification(
             user_id=dispatch.provider_user_id,
             type="job_offer",
@@ -569,6 +583,16 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
         )
         if mine and mine.status == "accepted":
             continue
+        # Decline cooldown: a request this provider passed on (or let expire)
+        # minutes ago must not chase them on every go-online — offer it to
+        # others and only retry this provider after the cooldown.
+        if mine and mine.status == "timeout" and mine.responded_at is not None:
+            ts = mine.responded_at
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            from datetime import timedelta
+            if ts > datetime.now(timezone.utc) - timedelta(minutes=15):
+                continue
         if mine and mine.status in ("queued", "timeout"):
             dispatch = mine
         else:

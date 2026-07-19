@@ -625,6 +625,7 @@ def run_all():
         test_one_at_a_time,
         test_dispatch_lifecycle,
         test_client_cancel_releases_provider,
+        test_worker_set_pricing,
     ]
 
     for test_fn in tests:
@@ -1102,6 +1103,26 @@ def _wait_offer(sess, want_request_id=None, tries=12, delay=0.5):
     return None
 
 
+def _offer_of(sess, req_id):
+    """This provider's live offer, only if it's for req_id."""
+    o = sess.get("/api/provider/offer").json().get("offer")
+    return o if (o and o.get("request_id") == req_id) else None
+
+
+def _shed_stale_offers(sess, tries=6):
+    """Dirty shared DB: pending requests left behind by older runs can hand a
+    provider an offer the moment they go online. Decline them (the decline
+    cooldown stops immediate re-offers) until the slate is clean — call this
+    BEFORE creating the request the test actually cares about."""
+    import time
+    for _ in range(tries):
+        o = sess.get("/api/provider/offer").json().get("offer")
+        if not o:
+            return
+        sess.post("/api/provider/offer/decline")
+        time.sleep(0.3)
+
+
 def test_dispatch_lifecycle():
     section("17. Dispatch lifecycle: offer on creation, decline rotation")
     # Uses the "events" profession — no seed data and no other test touches it,
@@ -1118,6 +1139,8 @@ def test_dispatch_lifecycle():
     p2 = Session(p2r.json()["access_token"])
     p1.post("/api/provider/go-online")
     p2.post("/api/provider/go-online")
+    _shed_stale_offers(p1)
+    _shed_stale_offers(p2)
 
     cr = anon.post("/api/auth/register", json={
         "email": f"dl_c_{uid}@test.com", "password": "Client123!", "role": "client",
@@ -1132,23 +1155,33 @@ def test_dispatch_lifecycle():
     req_id = rq.json()["id"]
 
     # Dispatch must fire on CREATION (not only on go-online) — this was the
-    # threadpool/event-loop bug: the offer never existed at all.
-    off1 = _wait_offer(p1, req_id)
-    check("Offer reaches first provider on request creation", bool(off1), str(off1))
-    off2_now = p2.get("/api/provider/offer").json().get("offer")
-    check("Second provider has NO offer yet (one live offer per request)",
-          not (off2_now and off2_now.get("request_id") == req_id), str(off2_now))
+    # threadpool/event-loop bug: the offer never existed at all. WHICH of the
+    # two gets it first can vary on a dirty DB, so assert the MECHANICS:
+    # exactly one holds the live offer, and declining hands it to the other.
+    import time
+    first = second = None
+    for _ in range(12):
+        o1, o2 = _offer_of(p1, req_id), _offer_of(p2, req_id)
+        if o1 or o2:
+            first, second = (p1, p2) if o1 else (p2, p1)
+            check("Only ONE provider holds the live offer", not (o1 and o2),
+                  f"p1={bool(o1)} p2={bool(o2)}")
+            break
+        time.sleep(0.5)
+    check("Offer created on request creation reaches a provider", first is not None,
+          "no offer within 6s")
+    if first is None:
+        return
 
     # Decline advances the queue immediately — and must return 200, not 500.
-    dec = p1.post("/api/provider/offer/decline")
+    _shed_stale_offers(second)   # second must be FREE to receive the rotation
+    dec = first.post("/api/provider/offer/decline")
     check("Decline returns 200", dec.status_code == 200, dec.text)
-    off1_after = p1.get("/api/provider/offer").json().get("offer")
-    check("Decliner's offer is gone",
-          not (off1_after and off1_after.get("request_id") == req_id), str(off1_after))
-    off2 = _wait_offer(p2, req_id)
-    check("Offer rotates to second provider after decline", bool(off2), str(off2))
+    check("Decliner's offer is gone", _offer_of(first, req_id) is None, "")
+    off2 = _wait_offer(second, req_id)
+    check("Offer rotates to the other provider after decline", bool(off2), str(off2))
 
-    acc = p2.post(f"/api/provider/board/{req_id}/accept")
+    acc = second.post(f"/api/provider/board/{req_id}/accept")
     check("Second provider accepts (201)", acc.status_code == 201, acc.text)
 
     # Leave nothing behind that could steal the first offer on a future run.
@@ -1164,6 +1197,7 @@ def test_client_cancel_releases_provider():
         "profession": "beauty", "accepted_terms": True, "date_of_birth": ADULT_DOB})
     prov = Session(pr.json()["access_token"])
     prov.post("/api/provider/go-online")
+    _shed_stale_offers(prov)
     cr = anon.post("/api/auth/register", json={
         "email": f"cc_c_{uid}@test.com", "password": "Client123!", "role": "client",
         "accepted_terms": True, "date_of_birth": ADULT_DOB})
@@ -1209,6 +1243,71 @@ def test_client_cancel_releases_provider():
     check("Client can request again (201)", r3.status_code == 201, r3.text)
     acc3 = prov.post(f"/api/provider/board/{r3.json()['id']}/accept")
     check("Freed provider can accept again — not wedged (201)", acc3.status_code == 201, acc3.text)
+    prov.post("/api/provider/go-offline")   # keep future runs deterministic
+
+
+def test_worker_set_pricing():
+    section("19. Worker-set pricing: own rate, quoted total, enforcement")
+    uid = str(uuid.uuid4())[:8]
+    pr = anon.post("/api/auth/register", json={
+        "email": f"wsp_p_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "moving", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    prov = Session(pr.json()["access_token"])
+
+    bad = prov.patch("/api/provider/profile", json={"hourly_rate": 2})
+    check("Rate below the honesty floor rejected (400)",
+          bad.status_code == 400 and "HOURLY_RATE_OUT_OF_RANGE" in bad.text, bad.text)
+    bad2 = prov.patch("/api/provider/profile", json={"hourly_rate": 500})
+    check("Absurd rate rejected (400)", bad2.status_code == 400, bad2.text)
+    ok = prov.patch("/api/provider/profile", json={"hourly_rate": 12})
+    check("Valid rate saved (200)", ok.status_code == 200 and ok.json().get("hourly_rate") == 12, ok.text)
+    prov.post("/api/provider/go-online")
+    _shed_stale_offers(prov)
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"wsp_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    rq = client.post("/api/client/requests", json={
+        "title": "Mudanza pequeña de estudio",
+        "description": "Pocas cajas y un escritorio para mudar dentro de la ciudad.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "service_key": "small_move"})
+    check("Request created (201)", rq.status_code == 201, rq.text)
+    req_id = rq.json()["id"]
+
+    # small_move = 120–360 min; rate 12/h → quote 24–72 (the popup's pay)
+    off = _wait_offer(prov, req_id)
+    check("Offer carries the provider's OWN quote + rate",
+          bool(off) and off.get("hourly_rate") == 12 and off.get("quote_max") is not None,
+          str(off)[:250])
+    check("Quote = rate × duration (24–72)",
+          bool(off) and off.get("quote_min") == 24 and off.get("quote_max") == 72,
+          f"{(off or {}).get('quote_min')}–{(off or {}).get('quote_max')}")
+
+    acc = prov.post(f"/api/provider/board/{req_id}/accept")
+    check("Accept snapshots the quote onto the job",
+          acc.status_code == 201 and acc.json().get("quoted_min") == 24
+          and acc.json().get("quoted_max") == 72, acc.text[:300])
+    job_id = acc.json()["id"]
+
+    det = client.get(f"/api/client/requests/{req_id}").json()
+    check("Client sees the professional's rate + track record",
+          det.get("professional_hourly_rate") == 12 and det.get("professional_jobs") is not None,
+          str({k: det.get(k) for k in ("professional_hourly_rate", "professional_jobs")}))
+
+    s1 = prov.patch(f"/api/provider/jobs/{job_id}/status", json={"status": "working"})
+    check("Start work (200)", s1.status_code == 200, s1.text)
+    over = prov.patch(f"/api/provider/jobs/{job_id}/status",
+                      json={"status": "completed", "final_price": 100.0})
+    check("Final price above the quote rejected (400)",
+          over.status_code == 400 and "FINAL_PRICE_OUT_OF_RANGE" in over.text, over.text)
+    done = prov.patch(f"/api/provider/jobs/{job_id}/status",
+                      json={"status": "completed", "final_price": 50.0})
+    check("Final price inside the quote accepted (200)",
+          done.status_code == 200 and done.json().get("final_price") == 50.0, done.text[:200])
+
+    prov.post("/api/provider/go-offline")   # keep future runs deterministic
 
 
 if __name__ == "__main__":
@@ -1237,3 +1336,4 @@ def test_pytest_redispatch(): test_redispatch_on_go_online()
 def test_pytest_one_at_a_time(): test_one_at_a_time()
 def test_pytest_dispatch_lifecycle(): test_dispatch_lifecycle()
 def test_pytest_cancel_releases(): test_client_cancel_releases_provider()
+def test_pytest_worker_set_pricing(): test_worker_set_pricing()

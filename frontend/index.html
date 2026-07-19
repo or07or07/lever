@@ -1186,6 +1186,24 @@ var _translations = {
   'tab.activity': {es:'Actividad', en:'Activity'},
   'tab.account': {es:'Cuenta', en:'Account'},
   'auth.badLogin': {es:'Correo o contraseña incorrectos.', en:'Incorrect email or password.'},
+  'mprof.title': {es:'Mi Perfil', en:'My Profile'},
+  'mprof.fullName': {es:'Nombre completo', en:'Full name'},
+  'mprof.phone': {es:'Teléfono', en:'Phone'},
+  'mprof.bio': {es:'Presentación', en:'Bio'},
+  'mprof.years': {es:'Años de experiencia', en:'Years of experience'},
+  'mprof.rate': {es:'Tarifa por hora (USD)', en:'Hourly rate (USD)'},
+  'mprof.rateHint': {es:'Tú decides cuánto cobras. Los clientes verán tu tarifa junto a tu calificación y trabajos verificados — y recibes el 100%.', en:'You decide what you charge. Clients see your rate next to your rating and verified jobs — and you keep 100%.'},
+  'mprof.rateErr': {es:'La tarifa debe estar entre USD 4 y 60 por hora.', en:'The rate must be between USD 4 and 60 per hour.'},
+  'mprof.location': {es:'Ubicación', en:'Location'},
+  'mprof.radius': {es:'Radio de servicio (millas)', en:'Service radius (miles)'},
+  'mprof.available': {es:'Disponible', en:'Available'},
+  'mprof.yes': {es:'Sí', en:'Yes'},
+  'mprof.no': {es:'No', en:'No'},
+  'mprof.saved': {es:'Perfil guardado', en:'Profile saved'},
+  'offer.youCharge': {es:'Cobras', en:'You charge'},
+  'req.proRate': {es:'Tarifa', en:'Rate'},
+  'req.proJobs': {es:'trabajos verificados', en:'verified jobs'},
+  'req.quote': {es:'Total estimado', en:'Estimated total'},
   'tab.board': {es:'Trabajos', en:'Jobs'},
   'tab.myJobs': {es:'Mis Trabajos', en:'My Jobs'},
   'tab.messages': {es:'Mensajes', en:'Messages'},
@@ -3586,6 +3604,14 @@ async function renderRequestDetail(el, id) {
         <div class="card-title">${_t('reqdet.job')} #${job.id}</div>
         ${badge(job.status)}
       </div>
+      ${req.professional_name ? `
+      <div class="text-sm" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px">
+        <strong>👷 ${escapeHtml(req.professional_name)}</strong>
+        ${req.professional_rating != null ? `<span>★ ${req.professional_rating.toFixed(1)}</span>` : ''}
+        ${req.professional_jobs ? `<span>· ${req.professional_jobs} ${_t('req.proJobs')}</span>` : ''}
+        ${req.professional_verified ? `<span class="act-verif">✓ ${escapeHtml(_t('activity.verified'))}</span>` : ''}
+      </div>` : ''}
+      ${req.professional_hourly_rate ? `<div class="text-sm" style="margin-bottom:12px">💵 ${_t('req.proRate')}: <strong>${fmtMoney(req.professional_hourly_rate)}/h</strong>${job.quoted_max != null ? ` · ${_t('req.quote')}: <strong>${fmtMoney(job.quoted_min)} – ${fmtMoney(job.quoted_max)}</strong>` : ''}</div>` : ''}
       ${job.mechanic_notes?`<p class="text-sm" style="margin-bottom:12px"><strong>${_t('reqdet.providerNotes')}</strong> ${escapeHtml(job.mechanic_notes)}</p>`:''}
       ${job.final_price!=null?`<div class="text-sm"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg> ${_t('reqdet.finalPrice')} <strong>${fmtMoney(job.final_price)}</strong></div>`:''}
       ${job.completed_at?`<div class="text-sm mt-4"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ${_t('jdet.completed')}: ${fmtTime(job.completed_at)}</div>`:''}
@@ -4459,8 +4485,13 @@ async function pollProviderOffer() {
 function showOfferPopup(o) {
   _offerShownId = o.dispatch_id;
   closeOfferPopup();
-  const pay = o.budget_max != null
-    ? (o.budget_min != null && o.budget_min !== o.budget_max ? fmtMoney(o.budget_min) + ' – ' : '') + fmtMoney(o.budget_max)
+  // Worker-set pricing: when this professional has an hourly rate, the pay
+  // shown is THEIR quote (rate × duration); otherwise the app reference.
+  const hasQuote = o.quote_max != null;
+  const payMin = hasQuote ? o.quote_min : o.budget_min;
+  const payMax = hasQuote ? o.quote_max : o.budget_max;
+  const pay = payMax != null
+    ? (payMin != null && payMin !== payMax ? fmtMoney(payMin) + ' – ' : '') + fmtMoney(payMax)
     : null;
   // Takeover: dim everything behind the offer so it commands attention.
   const bd = document.createElement('div');
@@ -4483,7 +4514,8 @@ function showOfferPopup(o) {
       (o.zone ? '<span>📍 ' + escapeHtml(o.zone) + '</span>' : '') +
       (o.duration_label ? '<span>⏱️ ' + escapeHtml(o.duration_label) + '</span>' : '') +
     '</div>' +
-    (pay ? '<div class="offer-pay">💵 ' + _t('price.clientPays') + ': <strong>' + pay + '</strong></div>' +
+    (pay ? '<div class="offer-pay">💵 ' + _t(hasQuote ? 'offer.youCharge' : 'price.clientPays') + ': <strong>' + pay + '</strong>' +
+           (hasQuote && o.hourly_rate ? ' <span style="font-weight:400;color:var(--gray-500)">(USD ' + o.hourly_rate + '/h)</span>' : '') + '</div>' +
            '<div class="offer-keep">' + _t('price.youKeep100') + '</div>' : '') +
     '<div class="offer-timer-track"><div class="offer-timer-fill" id="offer-timer-fill"></div></div>' +
     '<div class="offer-timer-text"><span id="offer-seconds">' + o.expires_in_seconds + '</span> ' + _t('offer.secondsLeft') + '</div>' +
@@ -4613,7 +4645,7 @@ async function renderJobDetail(el, id) {
     <div class="card">
       ${arrivalChip}
       <div class="form-group"><label>${_t('jdet.notes')}</label><textarea id="jb-notes">${job.mechanic_notes||''}</textarea></div>
-      ${showPrice?`<div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00"></div>`:''}
+      ${showPrice?`<div class="form-group"><label>${_t('jdet.finalPrice')}</label><input id="jb-price" type="number" value="${job.final_price||''}" placeholder="0.00">${job.quoted_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('req.quote')}: ${fmtMoney(job.quoted_min)} – ${fmtMoney(job.quoted_max)}</p>`:(job.request&&job.request.budget_max!=null?`<p class="text-sm" style="color:var(--gray-500);margin-top:4px">${_t('price.reference')}: ${fmtMoney(job.request.budget_min)} – ${fmtMoney(job.request.budget_max)}</p>`:'')}</div>`:''}
       <div id="jb-err"></div>
       ${primaryBtn}
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
@@ -4712,21 +4744,22 @@ async function renderMyReviews(el) {
 async function renderMechanicProfile(el) {
   const profile = await get('/api/provider/profile');
   el.innerHTML = `
-    ${pageHeader('My Profile')}
+    ${pageHeader(_t('mprof.title'))}
     <div class="card" style="max-width:560px">
       ${profile.profession ? `<div style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:10px">${profBadge(profile.profession)}<button class="btn btn-outline btn-sm" onclick="route('#/my-services')">${_t('psvc.manageBtn')}</button></div>` : ''}
-      <div class="form-group"><label>Full Name</label><input id="mp-name" value="${escapeHtml(profile.full_name||'')}"></div>
-      <div class="form-group"><label>Phone</label><input id="mp-phone" value="${escapeHtml(profile.phone||'')}"></div>
-      <div class="form-group"><label>Bio</label><textarea id="mp-bio">${escapeHtml(profile.bio||'')}</textarea></div>
+      <div class="form-group"><label>${_t('mprof.fullName')}</label><input id="mp-name" value="${escapeHtml(profile.full_name||'')}"></div>
+      <div class="form-group"><label>${_t('mprof.phone')}</label><input id="mp-phone" value="${escapeHtml(profile.phone||'')}"></div>
+      <div class="form-group"><label>${_t('mprof.bio')}</label><textarea id="mp-bio">${escapeHtml(profile.bio||'')}</textarea></div>
       <div class="form-row">
-        <div class="form-group"><label>Years Experience</label><input id="mp-exp" type="number" value="${profile.years_experience}"></div>
-        <div class="form-group"><label>Hourly Rate ($)</label><input id="mp-rate" type="number" value="${profile.hourly_rate}"></div>
+        <div class="form-group"><label>${_t('mprof.years')}</label><input id="mp-exp" type="number" value="${profile.years_experience}"></div>
+        <div class="form-group"><label>${_t('mprof.rate')}</label><input id="mp-rate" type="number" min="0" max="60" step="0.5" value="${profile.hourly_rate||''}" placeholder="8"></div>
       </div>
-      <div class="form-group"><label>Location</label><input id="mp-loc" value="${escapeHtml(profile.location||'')}"></div>
+      <p class="text-sm" style="color:var(--gray-500);margin:-6px 0 12px">${_t('mprof.rateHint')}</p>
+      <div class="form-group"><label>${_t('mprof.location')}</label><input id="mp-loc" value="${escapeHtml(profile.location||'')}"></div>
       <div class="form-row">
-        <div class="form-group"><label>Service Radius (miles)</label><input id="mp-radius" type="number" value="${profile.service_radius_miles}"></div>
-        <div class="form-group"><label>Available</label>
-          <select id="mp-avail"><option value="true" ${profile.is_available?'selected':''}>Yes</option><option value="false" ${!profile.is_available?'selected':''}>No</option></select>
+        <div class="form-group"><label>${_t('mprof.radius')}</label><input id="mp-radius" type="number" value="${profile.service_radius_miles}"></div>
+        <div class="form-group"><label>${_t('mprof.available')}</label>
+          <select id="mp-avail"><option value="true" ${profile.is_available?'selected':''}>${_t('mprof.yes')}</option><option value="false" ${!profile.is_available?'selected':''}>${_t('mprof.no')}</option></select>
         </div>
       </div>
       <div id="mp-msg"></div>
@@ -4741,14 +4774,15 @@ async function saveMechanicProfile() {
       phone: document.getElementById('mp-phone').value.trim(),
       bio: document.getElementById('mp-bio').value.trim(),
       years_experience: parseInt(document.getElementById('mp-exp').value),
-      hourly_rate: parseFloat(document.getElementById('mp-rate').value),
+      hourly_rate: parseFloat(document.getElementById('mp-rate').value) || 0,
       location: document.getElementById('mp-loc').value.trim(),
       service_radius_miles: parseInt(document.getElementById('mp-radius').value),
       is_available: document.getElementById('mp-avail').value==='true',
     });
-    document.getElementById('mp-msg').innerHTML = alert_el('success','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Profile saved');
+    document.getElementById('mp-msg').innerHTML = alert_el('success','<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> ' + _t('mprof.saved'));
   } catch(e) {
-    document.getElementById('mp-msg').innerHTML = alert_el('error', e.message);
+    const rateErr = /HOURLY_RATE_OUT_OF_RANGE/i.test(e.message || '');
+    document.getElementById('mp-msg').innerHTML = alert_el('error', rateErr ? _t('mprof.rateErr') : e.message);
   }
 }
 

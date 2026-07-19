@@ -287,6 +287,13 @@ class Job(Base):
     # the job can be rated (ratings drive dispatch priority).
     arrival_deadline = Column(DateTime, nullable=True)
     client_confirmed_at = Column(DateTime, nullable=True)
+    # Worker-set pricing (Phase 1): the professional's hourly rate × the
+    # service's catalog duration, snapshotted at ACCEPT time — the client
+    # hires against this quote even if the rate changes later, and the final
+    # price must land inside it. Null = no rate/duration → app reference
+    # range applies instead.
+    quoted_min = Column(Float, nullable=True)
+    quoted_max = Column(Float, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
