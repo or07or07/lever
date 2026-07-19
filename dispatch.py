@@ -30,6 +30,50 @@ logger = logging.getLogger("lever.dispatch")
 from config import settings
 DISPATCH_TIMEOUT_SECONDS = settings.dispatch_offer_seconds
 
+# Job statuses that mean the professional is DONE with that job.
+FINISHED_JOB_STATUSES = ("completed", "cancelled")
+
+
+def provider_is_busy(db: Session, provider_user_id: int) -> bool:
+    """ONE JOB AT A TIME: a professional who has an unfinished job — or is
+    currently holding a live offer for another request — must not receive a
+    new offer. Busy providers stay 'queued' and are re-considered when the
+    queue advances or when they free up (job completion / go-online)."""
+    active_job = db.query(Job).filter(
+        Job.mechanic_id == provider_user_id,
+        ~Job.status.in_(FINISHED_JOB_STATUSES),
+    ).first()
+    if active_job:
+        return True
+    live_offer = db.query(RequestDispatch).filter(
+        RequestDispatch.provider_user_id == provider_user_id,
+        RequestDispatch.status == "offered",
+    ).first()
+    return live_offer is not None
+
+
+def _offer_next(db: Session, request_id: int) -> Optional[RequestDispatch]:
+    """Offer the request to the first QUEUED candidate who is not busy.
+
+    Busy candidates are skipped but left queued, so a later advance (or their
+    freeing up) re-considers them. Returns the dispatch that was offered, or
+    None if every remaining candidate is busy / the queue is exhausted."""
+    queued = (
+        db.query(RequestDispatch)
+        .filter(
+            RequestDispatch.request_id == request_id,
+            RequestDispatch.status == "queued",
+        )
+        .order_by(RequestDispatch.position.asc())
+        .all()
+    )
+    for dispatch in queued:
+        if provider_is_busy(db, dispatch.provider_user_id):
+            continue
+        offer_to_provider(db, dispatch)
+        return dispatch
+    return None
+
 
 def find_eligible_providers(
     db: Session,
@@ -231,8 +275,8 @@ def _notify_client_no_providers(db: Session, request_id: int) -> None:
         type="system",
         title="Buscando profesionales disponibles",
         message=(
-            f'Tu solicitud "{request.title}" fue publicada, pero por ahora no hay profesionales conectados. '
-            f"Los profesionales la verán en su tablero en cuanto se conecten."
+            f'Tu solicitud "{request.title}" fue publicada, pero por ahora no hay profesionales disponibles. '
+            f"Se ofrecerá automáticamente en cuanto un profesional se libere o se conecte."
         ),
         link=f"/client/requests/{request_id}",
     )
@@ -314,15 +358,10 @@ def decline_and_advance(db: Session, dispatch: RequestDispatch) -> None:
         f"Dispatch: provider {dispatch.provider_user_id} DECLINED request "
         f"{dispatch.request_id} (position {dispatch.position}) — advancing queue"
     )
-    next_dispatch = db.query(RequestDispatch).filter(
-        RequestDispatch.request_id == dispatch.request_id,
-        RequestDispatch.position == dispatch.position + 1,
-        RequestDispatch.status == "queued",
-    ).first()
+    next_dispatch = _offer_next(db, dispatch.request_id)
     if next_dispatch:
-        offer_to_provider(db, next_dispatch)
         asyncio.create_task(
-            _dispatch_timer(dispatch.request_id, next_dispatch.id, next_dispatch.position + 1)
+            _dispatch_timer(dispatch.request_id, next_dispatch.id)
         )
     else:
         _notify_client_timeout_all(db, dispatch.request_id)
@@ -344,14 +383,17 @@ def _provider_eligible_for(db: Session, profile: MechanicProfile, request: Servi
 
 
 def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
-    """A provider just came ONLINE: offer them every pending request they're
-    eligible for that nobody is currently being offered.
+    """A provider just came ONLINE (or freed up): offer them the OLDEST
+    pending request they're eligible for that nobody is currently holding.
 
     Without this, dispatch only ever considered providers online at request-
     creation time — a request created while everyone was offline sat silently
     on the board forever. Re-offers requests this provider previously timed
     out on (they were probably offline), never ones they accepted.
-    Returns the number of offers created.
+
+    ONE AT A TIME: offers at most one request, and never to a provider who
+    already has a live offer or an unfinished job.
+    Returns the number of offers created (0 or 1).
     """
     from sqlalchemy import func as safunc
 
@@ -359,6 +401,8 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
         MechanicProfile.user_id == provider_user_id
     ).first()
     if not profile or not profile.is_online or not profile.is_available:
+        return 0
+    if provider_is_busy(db, provider_user_id):
         return 0
 
     pending = (
@@ -405,11 +449,12 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
         offer_to_provider(db, dispatch)
         try:
             asyncio.create_task(
-                _dispatch_timer(req.id, dispatch.id, dispatch.position + 1)
+                _dispatch_timer(req.id, dispatch.id)
             )
         except RuntimeError:
             pass  # no running loop (sync test context)
         offered += 1
+        break  # one offer at a time — the next request waits its turn
     if offered:
         logger.info(
             f"Dispatch: re-offered {offered} pending request(s) to provider "
@@ -418,12 +463,13 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
     return offered
 
 
-async def _dispatch_timer(request_id: int, dispatch_id: int, next_position: int) -> None:
-    """Wait 30 seconds, then check if the current offer was accepted.
+async def _dispatch_timer(request_id: int, dispatch_id: int) -> None:
+    """Wait out the acceptance window, then check if the offer was accepted.
 
     If the offer was accepted (status = "accepted"), do nothing.
     If the offer was not accepted, mark it as "timeout" and offer to
-    the next provider in the queue.
+    the next free provider in the queue (busy providers are skipped
+    but stay queued).
 
     This runs as a background asyncio task. Each timer creates the next timer
     in the chain, until all providers have timed out or one accepts.
@@ -431,7 +477,6 @@ async def _dispatch_timer(request_id: int, dispatch_id: int, next_position: int)
     Args:
         request_id: The ServiceRequest.id
         dispatch_id: The current RequestDispatch.id
-        next_position: The position of the next provider to offer to
     """
     await asyncio.sleep(DISPATCH_TIMEOUT_SECONDS)
 
@@ -470,18 +515,12 @@ async def _dispatch_timer(request_id: int, dispatch_id: int, next_position: int)
         # Notify the provider that they missed it
         _notify_provider_timeout(db, current)
 
-        # Find next in queue
-        next_dispatch = db.query(RequestDispatch).filter(
-            RequestDispatch.request_id == request_id,
-            RequestDispatch.position == next_position,
-            RequestDispatch.status == "queued",
-        ).first()
+        # Offer to the next FREE provider in the queue (skips busy ones)
+        next_dispatch = _offer_next(db, request_id)
 
         if next_dispatch:
-            # Offer to next provider and schedule their timer
-            offer_to_provider(db, next_dispatch)
             asyncio.create_task(
-                _dispatch_timer(request_id, next_dispatch.id, next_position + 1)
+                _dispatch_timer(request_id, next_dispatch.id)
             )
         else:
             # All providers exhausted
@@ -530,15 +569,18 @@ async def start_dispatch(request_id: int) -> None:
         )
 
         # Create dispatch queue
-        dispatches = create_dispatch_queue(db, request_id, providers)
+        create_dispatch_queue(db, request_id, providers)
 
-        # Offer to first provider
-        first = dispatches[0]
-        offer_to_provider(db, first)
+        # Offer to the first FREE provider (busy ones stay queued and are
+        # re-considered as the queue advances or when they free up)
+        first = _offer_next(db, request_id)
+        if not first:
+            _notify_client_no_providers(db, request_id)
+            return
 
-        # Start 30-second timer for first provider
+        # Start the acceptance-window timer for the first offer
         asyncio.create_task(
-            _dispatch_timer(request_id, first.id, 1)
+            _dispatch_timer(request_id, first.id)
         )
 
     except Exception as e:

@@ -1217,6 +1217,8 @@ var _translations = {
   'offer.taken': {es:'Este trabajo ya no está disponible.', en:'This job is no longer available.'},
   'offer.decline': {es:'Rechazar', en:'Decline'},
   'offer.declinedToast': {es:'Trabajo rechazado — se ofrecerá a otro profesional.', en:'Job declined — it will be offered to another professional.'},
+  'request.activeExists': {es:'Ya tienes una solicitud activa. Complétala o cancélala antes de enviar otra.', en:'You already have an active request. Complete or cancel it before sending another.'},
+  'job.activeExists': {es:'Ya tienes un trabajo en curso. Complétalo antes de aceptar otro.', en:'You already have a job in progress. Complete it before accepting another.'},
   'offer.urgent': {es:'🔴 Urgente', en:'🔴 Urgent'},
   'offer.scheduled': {es:'📅 Programado', en:'📅 Scheduled'},
   // -- First-launch welcome (native onboarding) --
@@ -3225,8 +3227,9 @@ async function submitNewRequest() {
     showWaitingForAssignment(req, profType);
   } catch(e) {
     // Surface the market/coverage rejection as friendly copy, not the raw code.
+    const activeExists = /ACTIVE_REQUEST_EXISTS/i.test(e.message || '');
     const outOfArea = /GUAYAQUIL|MARKET_NOT_ACTIVE|INVALID_LOCATION|SERVICE_NOT_AVAILABLE/i.test(e.message || '');
-    document.getElementById('sr-err').innerHTML = alert_el('error', outOfArea ? _t('guest.outOfArea') : e.message);
+    document.getElementById('sr-err').innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : outOfArea ? _t('guest.outOfArea') : e.message);
   }
 }
 
@@ -4393,7 +4396,10 @@ async function acceptRequest(id) {
   try {
     const job = await post('/api/provider/board/'+id+'/accept');
     route('#/job/'+job.id);
-  } catch(e) { alert((_lang==='es' ? 'No se pudo aceptar el trabajo: ' : 'Could not accept job: ') + e.message); }
+  } catch(e) {
+    if (/ACTIVE_JOB_EXISTS/i.test(e.message || '')) { showToast(_t('job.activeExists'), 'error'); return; }
+    alert((_lang==='es' ? 'No se pudo aceptar el trabajo: ' : 'Could not accept job: ') + e.message);
+  }
 }
 
 // ---- Incoming job-offer popup with acceptance countdown (provider) ----
@@ -4469,7 +4475,7 @@ async function acceptOfferFromPopup(requestId) {
     route('#/job/' + job.id);
   } catch (e) {
     closeOfferPopup();
-    showToast(_t('offer.taken'), 'error');
+    showToast(/ACTIVE_JOB_EXISTS/i.test(e.message || '') ? _t('job.activeExists') : _t('offer.taken'), 'error');
   }
 }
 async function declineOfferFromPopup() {
@@ -6515,8 +6521,9 @@ async function submitCatalogRequest() {
     route('#/request/' + req.id);   // existing tracker = matching/status experience
   } catch(e) {
     // Map the backend's market errors to a clear, draft-preserving message.
+    const activeExists = /ACTIVE_REQUEST_EXISTS/i.test(e.message || '');
     const outOfArea = /GUAYAQUIL|MARKET_NOT_ACTIVE|INVALID_LOCATION|SERVICE_NOT_AVAILABLE/i.test(e.message || '');
-    errEl.innerHTML = alert_el('error', outOfArea ? _t('guest.outOfArea') : _t('guest.sendFailed'));
+    errEl.innerHTML = alert_el('error', activeExists ? _t('request.activeExists') : outOfArea ? _t('guest.outOfArea') : _t('guest.sendFailed'));
     btn.disabled = false; btn.textContent = _t('guest.send');
   } finally {
     _submittingRequest = false;

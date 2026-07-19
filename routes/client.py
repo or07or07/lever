@@ -205,6 +205,17 @@ def create_request(
     current_user: User = Depends(require_client),
     db: Session = Depends(get_db),
 ):
+    # ── ONE REQUEST AT A TIME ──
+    # A client may only have a single active request (searching or with a
+    # professional on the way / working). They must complete or cancel it
+    # before sending another — keeps dispatch simple and expectations clear.
+    active = db.query(ServiceRequest).filter(
+        ServiceRequest.client_id == current_user.id,
+        ServiceRequest.status.in_(("pending", "assigned", "in_progress")),
+    ).first()
+    if active:
+        raise HTTPException(status_code=409, detail="ACTIVE_REQUEST_EXISTS")
+
     # Validate vehicle belongs to client (if provided)
     if payload.vehicle_id:
         v = db.query(Vehicle).filter(

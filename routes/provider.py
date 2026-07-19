@@ -321,9 +321,14 @@ def heartbeat(
     if not profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     profile.last_heartbeat = datetime.now(timezone.utc)
-    if not profile.is_online:
+    came_online = not profile.is_online
+    if came_online:
         profile.is_online = True
     db.commit()
+    if came_online:
+        # Auto-reconnect counts as coming online: offer pending work right away
+        from dispatch import redispatch_pending_for_provider
+        redispatch_pending_for_provider(db, current_user.id)
     return {"status": "ok", "is_online": True}
 
 
@@ -437,6 +442,17 @@ def accept_request(
     existing = db.query(Job).filter(Job.request_id == request_id).first()
     if existing:
         raise HTTPException(status_code=409, detail="Request already accepted")
+
+    # ── ONE JOB AT A TIME ──
+    # A professional with an unfinished job cannot take another. They free up
+    # the moment their current job is completed (or cancelled) — and are then
+    # immediately offered the next pending request they qualify for.
+    active_job = db.query(Job).filter(
+        Job.mechanic_id == current_user.id,
+        ~Job.status.in_(("completed", "cancelled")),
+    ).first()
+    if active_job:
+        raise HTTPException(status_code=409, detail="ACTIVE_JOB_EXISTS")
 
     # Must be online to accept requests
     if not (profile and profile.is_online):
@@ -639,6 +655,14 @@ def update_job_status(
 
     db.commit()
     db.refresh(job)
+
+    # ── Freed up? Offer the next pending request right away ──
+    # One-job-at-a-time means completing a job is the moment this professional
+    # becomes eligible again — don't make them wait for the next go-online.
+    if payload.status == "completed":
+        from dispatch import redispatch_pending_for_provider
+        redispatch_pending_for_provider(db, current_user.id)
+
     return job
 
 
