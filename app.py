@@ -67,6 +67,13 @@ async def lifespan(app: FastAPI):
     from database import engine
     Base.metadata.create_all(bind=engine)
 
+    # Capture the server's event loop so dispatch can schedule offer timers
+    # from sync endpoints (which run in a worker threadpool, where
+    # asyncio.create_task() is unavailable).
+    import asyncio as _asyncio
+    from dispatch import init_dispatch_loop
+    init_dispatch_loop(_asyncio.get_running_loop())
+
     db = SessionLocal()
     try:
         admin = db.query(User).filter(User.email == settings.admin_email).first()

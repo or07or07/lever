@@ -256,11 +256,10 @@ def test_full_orchestration():
     check("Request now shows assigned status", r.json()["status"] == "assigned", r.json()["status"])
     check("Request has linked job", r.json().get("job") is not None)
 
-    # ---- Step 6: Client cancels — should fail (already assigned) ----
-    r = client.delete(f"/api/client/requests/{request_id}")
-    # Assigned requests CAN be cancelled per current rules
-    # but after mechanic accepts it's "assigned" which is allowed
-    # Let's skip cancel here and let job progress
+    # ---- Step 6: (no cancel here) ----
+    # Cancelling an assigned request is allowed and now cancels the Job and
+    # frees the professional — covered by test 18. Here the job must keep
+    # running so the rest of the flow can progress.
 
     # ---- Step 7: Messaging ----
     r = client.post(f"/api/messages/job/{job_id}", json={"content": "Hi! How long will it take?"})
@@ -624,6 +623,8 @@ def run_all():
         test_app_set_pricing,
         test_redispatch_on_go_online,
         test_one_at_a_time,
+        test_dispatch_lifecycle,
+        test_client_cancel_releases_provider,
     ]
 
     for test_fn in tests:
@@ -1083,6 +1084,128 @@ def test_one_at_a_time():
     check("Freed-up provider is offered pending work again", bool(off), str(off)[:200])
 
 
+def _wait_offer(sess, want_request_id=None, tries=12, delay=0.5):
+    """Poll GET /offer briefly — dispatch on creation is scheduled onto the
+    server's event loop, so the offer appears a beat after the 201."""
+    import time
+    for _ in range(tries):
+        r = sess.get("/api/provider/offer")
+        off = r.json().get("offer") if r.status_code == 200 else None
+        if off and (want_request_id is None or off.get("request_id") == want_request_id):
+            return off
+        time.sleep(delay)
+    return None
+
+
+def test_dispatch_lifecycle():
+    section("17. Dispatch lifecycle: offer on creation, decline rotation")
+    # Uses the "events" profession — no seed data and no other test touches it,
+    # so the fresh pair below are the only candidates (dispatch is rating-first,
+    # and a leftover same-profession provider would win the first offer).
+    uid = str(uuid.uuid4())[:8]
+    p1r = anon.post("/api/auth/register", json={
+        "email": f"dl_p1_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "events", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    p1 = Session(p1r.json()["access_token"])
+    p2r = anon.post("/api/auth/register", json={
+        "email": f"dl_p2_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "events", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    p2 = Session(p2r.json()["access_token"])
+    p1.post("/api/provider/go-online")
+    p2.post("/api/provider/go-online")
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"dl_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    rq = client.post("/api/client/requests", json={
+        "title": "Meseros para evento familiar",
+        "description": "Necesito dos meseros para un evento familiar el fin de semana.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "profession_type": "events"})
+    check("Request created (201)", rq.status_code == 201, rq.text)
+    req_id = rq.json()["id"]
+
+    # Dispatch must fire on CREATION (not only on go-online) — this was the
+    # threadpool/event-loop bug: the offer never existed at all.
+    off1 = _wait_offer(p1, req_id)
+    check("Offer reaches first provider on request creation", bool(off1), str(off1))
+    off2_now = p2.get("/api/provider/offer").json().get("offer")
+    check("Second provider has NO offer yet (one live offer per request)",
+          not (off2_now and off2_now.get("request_id") == req_id), str(off2_now))
+
+    # Decline advances the queue immediately — and must return 200, not 500.
+    dec = p1.post("/api/provider/offer/decline")
+    check("Decline returns 200", dec.status_code == 200, dec.text)
+    off1_after = p1.get("/api/provider/offer").json().get("offer")
+    check("Decliner's offer is gone",
+          not (off1_after and off1_after.get("request_id") == req_id), str(off1_after))
+    off2 = _wait_offer(p2, req_id)
+    check("Offer rotates to second provider after decline", bool(off2), str(off2))
+
+    acc = p2.post(f"/api/provider/board/{req_id}/accept")
+    check("Second provider accepts (201)", acc.status_code == 201, acc.text)
+
+    # Leave nothing behind that could steal the first offer on a future run.
+    p1.post("/api/provider/go-offline")
+    p2.post("/api/provider/go-offline")
+
+
+def test_client_cancel_releases_provider():
+    section("18. Client cancellation frees the professional + notifies them")
+    uid = str(uuid.uuid4())[:8]
+    pr = anon.post("/api/auth/register", json={
+        "email": f"cc_p_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "beauty", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    prov = Session(pr.json()["access_token"])
+    prov.post("/api/provider/go-online")
+    cr = anon.post("/api/auth/register", json={
+        "email": f"cc_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+
+    def make(title):
+        return client.post("/api/client/requests", json={
+            "title": title, "description": "Corte de cabello a domicilio, por favor.",
+            "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+            "country_code": "EC", "urgency": "immediate", "profession_type": "beauty"})
+
+    # Cancel while the offer is LIVE → offer disappears + provider notified.
+    r1 = make("Corte a domicilio — se cancelará")
+    check("Request 1 created (201)", r1.status_code == 201, r1.text)
+    off = _wait_offer(prov, r1.json()["id"])
+    check("Provider holds the live offer", bool(off), str(off))
+    cx = client.delete(f"/api/client/requests/{r1.json()['id']}")
+    check("Client cancels pending request (200)", cx.status_code == 200, cx.text)
+    off_after = prov.get("/api/provider/offer").json().get("offer")
+    check("Cancelled request's offer is withdrawn",
+          not (off_after and off_after.get("request_id") == r1.json()["id"]), str(off_after))
+    notifs = prov.get("/api/notifications").json()
+    check("Provider notified of the cancellation",
+          any(n.get("title") == "Solicitud cancelada" for n in notifs), str(notifs)[:300])
+
+    # Cancel an ASSIGNED request → the job cancels and the professional is
+    # free to take new work (one-job-at-a-time must not wedge them).
+    r2 = make("Corte a domicilio — asignado y cancelado")
+    check("Request 2 created after cancelling 1 (201)", r2.status_code == 201, r2.text)
+    acc = prov.post(f"/api/provider/board/{r2.json()['id']}/accept")
+    check("Provider accepts (201)", acc.status_code == 201, acc.text)
+    job_id = acc.json()["id"]
+    cx2 = client.delete(f"/api/client/requests/{r2.json()['id']}")
+    check("Client cancels assigned request (200)", cx2.status_code == 200, cx2.text)
+    jb = prov.get(f"/api/provider/jobs/{job_id}")
+    check("Job is cancelled with the request",
+          jb.status_code == 200 and jb.json().get("status") == "cancelled", jb.text[:200])
+    notifs2 = prov.get("/api/notifications").json()
+    check("Provider told the client cancelled the job",
+          any(n.get("title") == "Trabajo cancelado por el cliente" for n in notifs2), str(notifs2)[:300])
+
+    r3 = make("Corte a domicilio — tras liberarse")
+    check("Client can request again (201)", r3.status_code == 201, r3.text)
+    acc3 = prov.post(f"/api/provider/board/{r3.json()['id']}/accept")
+    check("Freed provider can accept again — not wedged (201)", acc3.status_code == 201, acc3.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1107,3 +1230,5 @@ def test_pytest_pricing(): test_pricing_estimates()
 def test_pytest_app_set_pricing(): test_app_set_pricing()
 def test_pytest_redispatch(): test_redispatch_on_go_online()
 def test_pytest_one_at_a_time(): test_one_at_a_time()
+def test_pytest_dispatch_lifecycle(): test_dispatch_lifecycle()
+def test_pytest_cancel_releases(): test_client_cancel_releases_provider()

@@ -6,7 +6,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-import asyncio
 from auth import get_current_user, require_client
 from database import get_db
 from models import (
@@ -265,14 +264,10 @@ def create_request(
 
     # Matching only begins AFTER the request is validated and persisted —
     # unsupported addresses never reach this line, so professionals are
-    # never notified about them.
-    from dispatch import start_dispatch
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(start_dispatch(req.id))
-    except RuntimeError:
-        # No running loop (e.g. in sync test context) — skip async dispatch
-        pass
+    # never notified about them. schedule_start_dispatch works from this
+    # threadpool context (asyncio.create_task here never did).
+    from dispatch import schedule_start_dispatch
+    schedule_start_dispatch(req.id)
 
     return req
 
@@ -338,8 +333,52 @@ def cancel_request(
             status_code=400,
             detail="Cannot cancel a request that is already in progress or completed",
         )
+
+    from models import Job, Notification, RequestDispatch
+
+    # Tell anyone currently holding a live offer for this request — their
+    # popup is about a job that no longer exists.
+    offered = db.query(RequestDispatch).filter(
+        RequestDispatch.request_id == request_id,
+        RequestDispatch.status == "offered",
+    ).all()
+    for d in offered:
+        db.add(Notification(
+            user_id=d.provider_user_id,
+            type="job_update",
+            title="Solicitud cancelada",
+            message=f'El cliente canceló la solicitud "{req.title}".',
+            link="/provider/board",
+        ))
+
+    # An assigned request has a live Job — cancel it and FREE the
+    # professional (one-job-at-a-time would otherwise lock them forever).
+    freed_provider_id = None
+    job = db.query(Job).filter(Job.request_id == request_id).first()
+    if job and job.status not in ("completed", "cancelled"):
+        job.status = "cancelled"
+        freed_provider_id = job.mechanic_id
+        db.add(Notification(
+            user_id=job.mechanic_id,
+            type="job_update",
+            title="Trabajo cancelado por el cliente",
+            message=(
+                f'El cliente canceló "{req.title}". '
+                f"No necesitas ir al lugar. Ya puedes recibir nuevas ofertas."
+            ),
+            link="/provider/jobs",
+        ))
+
     req.status = "cancelled"
     db.commit()
+
+    # Resolve the dispatch queue and hand the freed professional (or the one
+    # whose offer just vanished) the next pending request right away.
+    from dispatch import cancel_dispatch_for_request, redispatch_pending_for_provider
+    cancel_dispatch_for_request(db, request_id)
+    for provider_id in {d.provider_user_id for d in offered} | ({freed_provider_id} - {None}):
+        redispatch_pending_for_provider(db, provider_id)
+
     return MessageResponse(message="Request cancelled")
 
 

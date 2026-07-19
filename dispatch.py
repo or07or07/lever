@@ -33,6 +33,44 @@ DISPATCH_TIMEOUT_SECONDS = settings.dispatch_offer_seconds
 # Job statuses that mean the professional is DONE with that job.
 FINISHED_JOB_STATUSES = ("completed", "cancelled")
 
+# ── Event-loop bridge ──
+# FastAPI runs sync (def) endpoints in a worker THREADPOOL, where
+# asyncio.create_task() raises RuntimeError — so every dispatch task scheduled
+# straight from a request handler silently never ran. The app's real event
+# loop is captured once at startup (app.py lifespan) and _schedule() hands
+# coroutines to it from any thread.
+_MAIN_LOOP: Optional[asyncio.AbstractEventLoop] = None
+
+
+def init_dispatch_loop(loop: asyncio.AbstractEventLoop) -> None:
+    """Called once from the app lifespan, on the server's event loop."""
+    global _MAIN_LOOP
+    _MAIN_LOOP = loop
+    logger.info("Dispatch: event loop captured for cross-thread scheduling")
+
+
+def _schedule(coro) -> bool:
+    """Run an async dispatch task from ANY context — event loop or threadpool.
+
+    Returns False only when no loop exists at all (bare sync scripts/tests);
+    resolve_stale_offers() covers dispatch progression in that case."""
+    try:
+        asyncio.get_running_loop()
+        asyncio.create_task(coro)
+        return True
+    except RuntimeError:
+        pass
+    if _MAIN_LOOP is not None and not _MAIN_LOOP.is_closed():
+        asyncio.run_coroutine_threadsafe(coro, _MAIN_LOOP)
+        return True
+    coro.close()   # suppress the "coroutine was never awaited" warning
+    return False
+
+
+def schedule_start_dispatch(request_id: int) -> bool:
+    """Entry point for request creation (sync endpoint): begin dispatching."""
+    return _schedule(start_dispatch(request_id))
+
 
 def provider_is_busy(db: Session, provider_user_id: int) -> bool:
     """ONE JOB AT A TIME: a professional who has an unfinished job — or is
@@ -45,11 +83,56 @@ def provider_is_busy(db: Session, provider_user_id: int) -> bool:
     ).first()
     if active_job:
         return True
-    live_offer = db.query(RequestDispatch).filter(
+    offers = db.query(RequestDispatch).filter(
         RequestDispatch.provider_user_id == provider_user_id,
         RequestDispatch.status == "offered",
-    ).first()
-    return live_offer is not None
+    ).all()
+    # Only offers still inside their window count — a stale row (its timer was
+    # lost to a restart) must never lock a provider out of new work.
+    return any(not _offer_window_lapsed(d) for d in offers)
+
+
+def _offer_window_lapsed(dispatch: RequestDispatch, grace_seconds: int = 5) -> bool:
+    """True if this offer's acceptance window is over (plus a small grace)."""
+    ts = dispatch.offered_at
+    if ts is None:
+        return True
+    if ts.tzinfo is None:   # stored naive-UTC by the DB driver
+        ts = ts.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - ts).total_seconds()
+    return elapsed > DISPATCH_TIMEOUT_SECONDS + grace_seconds
+
+
+def resolve_stale_offers(db: Session, provider_user_id: Optional[int] = None) -> int:
+    """Resolve 'offered' rows whose window already lapsed, exactly as the
+    rotation timer would have: mark timeout, notify the provider, advance the
+    request's queue (or tell the client everyone passed).
+
+    Timers are asyncio tasks — they die on every deploy/restart. This lazy
+    sweep is the recovery path, run from the polling/dispatch entry points, so
+    a lost timer can only ever delay rotation, never wedge it. Returns the
+    number of rows resolved."""
+    q = db.query(RequestDispatch).filter(RequestDispatch.status == "offered")
+    if provider_user_id is not None:
+        q = q.filter(RequestDispatch.provider_user_id == provider_user_id)
+    stale = [d for d in q.all() if _offer_window_lapsed(d)]
+    for d in stale:
+        d.status = "timeout"
+        d.responded_at = datetime.now(timezone.utc)
+        db.commit()
+        logger.info(
+            f"Dispatch: resolved STALE offer {d.id} (request {d.request_id}, "
+            f"provider {d.provider_user_id}) — lost timer"
+        )
+        _notify_provider_timeout(db, d)
+        req = db.query(ServiceRequest).filter(ServiceRequest.id == d.request_id).first()
+        if req and req.status == "pending":
+            nxt = _offer_next(db, d.request_id)
+            if nxt:
+                _schedule(_dispatch_timer(d.request_id, nxt.id))
+            else:
+                _notify_client_timeout_all(db, d.request_id)
+    return len(stale)
 
 
 def _offer_next(db: Session, request_id: int) -> Optional[RequestDispatch]:
@@ -301,6 +384,28 @@ def _notify_client_timeout_all(db: Session, request_id: int) -> None:
     if not request:
         return
 
+    # The queue can exhaust repeatedly (each go-online/free-up retries) — the
+    # client only needs to hear "still searching" once every little while,
+    # not on every rotation cycle.
+    from datetime import timedelta
+    recent_cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+    already = (
+        db.query(Notification)
+        .filter(
+            Notification.user_id == request.client_id,
+            Notification.title == "Seguimos buscando un profesional",
+            Notification.link == f"/client/requests/{request_id}",
+        )
+        .order_by(Notification.created_at.desc())
+        .first()
+    )
+    if already:
+        ts = already.created_at
+        if ts is not None and ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts is not None and ts > recent_cutoff:
+            return
+
     notif = Notification(
         user_id=request.client_id,
         type="system",
@@ -335,8 +440,8 @@ def _notify_provider_timeout(db: Session, dispatch: RequestDispatch) -> None:
     notif = Notification(
         user_id=dispatch.provider_user_id,
         type="job_update",
-        title="Job offer expired",
-        message=f'The job request "{request.title}" has been forwarded to another provider.',
+        title="La oferta expiró",
+        message=f'La solicitud "{request.title}" se ofreció al siguiente profesional disponible.',
         link="/provider/board",
     )
     db.add(notif)
@@ -360,9 +465,7 @@ def decline_and_advance(db: Session, dispatch: RequestDispatch) -> None:
     )
     next_dispatch = _offer_next(db, dispatch.request_id)
     if next_dispatch:
-        asyncio.create_task(
-            _dispatch_timer(dispatch.request_id, next_dispatch.id)
-        )
+        _schedule(_dispatch_timer(dispatch.request_id, next_dispatch.id))
     else:
         _notify_client_timeout_all(db, dispatch.request_id)
 
@@ -402,6 +505,9 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
     ).first()
     if not profile or not profile.is_online or not profile.is_available:
         return 0
+    # Global recovery sweep first: requests wedged on a stale offer (lost
+    # timer) must rotate before we decide there's "already a live offer".
+    resolve_stale_offers(db)
     if provider_is_busy(db, provider_user_id):
         return 0
 
@@ -447,12 +553,7 @@ def redispatch_pending_for_provider(db: Session, provider_user_id: int) -> int:
             db.add(dispatch)
             db.flush()
         offer_to_provider(db, dispatch)
-        try:
-            asyncio.create_task(
-                _dispatch_timer(req.id, dispatch.id)
-            )
-        except RuntimeError:
-            pass  # no running loop (sync test context)
+        _schedule(_dispatch_timer(req.id, dispatch.id))
         offered += 1
         break  # one offer at a time — the next request waits its turn
     if offered:
@@ -491,6 +592,15 @@ async def _dispatch_timer(request_id: int, dispatch_id: int) -> None:
                 f"Dispatch timer: request {request_id} already handled "
                 f"(status={request.status if request else 'gone'})"
             )
+            # Never leave the row 'offered' — a stuck live offer would make
+            # this provider permanently "busy" and invisible to dispatch.
+            current = db.query(RequestDispatch).filter(
+                RequestDispatch.id == dispatch_id
+            ).first()
+            if current and current.status == "offered":
+                current.status = "cancelled"
+                current.responded_at = datetime.now(timezone.utc)
+                db.commit()
             return
 
         # Check current dispatch status
@@ -519,9 +629,7 @@ async def _dispatch_timer(request_id: int, dispatch_id: int) -> None:
         next_dispatch = _offer_next(db, request_id)
 
         if next_dispatch:
-            asyncio.create_task(
-                _dispatch_timer(request_id, next_dispatch.id)
-            )
+            _schedule(_dispatch_timer(request_id, next_dispatch.id))
         else:
             # All providers exhausted
             _notify_client_timeout_all(db, request_id)
@@ -579,9 +687,7 @@ async def start_dispatch(request_id: int) -> None:
             return
 
         # Start the acceptance-window timer for the first offer
-        asyncio.create_task(
-            _dispatch_timer(request_id, first.id)
-        )
+        _schedule(_dispatch_timer(request_id, first.id))
 
     except Exception as e:
         logger.error(f"Dispatch error for request {request_id}: {e}", exc_info=True)

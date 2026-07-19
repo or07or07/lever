@@ -507,9 +507,10 @@ def accept_request(
     db.commit()
     db.refresh(job)
 
-    # Cancel any pending dispatch for this request since it's now accepted
-    from dispatch import cancel_dispatch_for_request
-    cancel_dispatch_for_request(db, request_id)
+    # Record THIS provider's offer as accepted (if one was live) and cancel
+    # the rest of the queue — the dispatch history must show who took the job.
+    from dispatch import mark_dispatch_accepted
+    mark_dispatch_accepted(db, request_id, current_user.id)
 
     return job
 
@@ -699,7 +700,12 @@ def current_offer(
     provider to open the board manually. Sends expires_in_seconds (server-
     computed) so a wrong device clock can't distort the timer, and only a
     minimal job preview (title/payment/urgency — no exact address)."""
-    from dispatch import DISPATCH_TIMEOUT_SECONDS
+    from dispatch import DISPATCH_TIMEOUT_SECONDS, resolve_stale_offers
+
+    # Recovery sweep: an offer whose timer was lost (deploy/restart) is
+    # resolved here — the queue rotates and this provider frees up, so the
+    # very next poll can hand them the follow-on offer.
+    resolve_stale_offers(db, current_user.id)
 
     d = (
         db.query(RequestDispatch)
