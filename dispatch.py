@@ -186,6 +186,59 @@ def expire_stale_providers(db: Session) -> int:
     return n
 
 
+def auto_confirm_stale_jobs(db: Session) -> int:
+    """Close the loop on completed jobs the client never confirmed.
+
+    After settings.auto_confirm_completion_hours the job is auto-confirmed so
+    it stops sitting "esperando confirmación" forever; both sides are notified
+    and the client can still open a dispute. Lazy maintenance sweep, run from
+    the job-list surfaces (no background scheduler needed).
+
+    completed_at is stored NAIVE-UTC (set via datetime.utcnow-equivalent), so
+    the threshold is computed naive-UTC too — apples to apples."""
+    from datetime import timedelta
+    hours = settings.auto_confirm_completion_hours
+    threshold = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=hours)
+    candidates = (
+        db.query(Job)
+        .filter(
+            Job.status == "completed",
+            Job.client_confirmed_at.is_(None),
+            Job.completed_at.isnot(None),
+            Job.completed_at < threshold,
+        )
+        .all()
+    )
+    n = 0
+    for job in candidates:
+        job.client_confirmed_at = datetime.now(timezone.utc)
+        req = db.query(ServiceRequest).filter(ServiceRequest.id == job.request_id).first()
+        title = req.title if req else "tu servicio"
+        db.add(Notification(
+            user_id=job.mechanic_id,
+            type="job_update",
+            title="Trabajo confirmado automáticamente",
+            message=f'"{title}" se confirmó automáticamente tras {hours} horas sin respuesta del cliente.',
+            link=f"/provider/jobs/{job.id}",
+        ))
+        if req:
+            db.add(Notification(
+                user_id=req.client_id,
+                type="job_update",
+                title="Confirmamos tu servicio automáticamente",
+                message=(
+                    f'Confirmamos "{title}" tras {hours} horas sin tu respuesta. '
+                    f"Si algo no está bien, abre una disputa desde el detalle de tu solicitud."
+                ),
+                link=f"/client/requests/{req.id}",
+            ))
+        n += 1
+    if n:
+        db.commit()
+        logger.info(f"Auto-confirmed {n} stale completed job(s)")
+    return n
+
+
 def find_eligible_providers(
     db: Session,
     request: ServiceRequest,
@@ -342,16 +395,18 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
         if pay is None:
             pay = payment_line_es(request.budget_min, request.budget_max, request.service_key)
         chosen = request.preferred_provider_id == dispatch.provider_user_id
+        offer_title = "⭐ Un cliente te eligió" if chosen else "Nueva oportunidad de trabajo"
+        offer_message = (
+            ("Un cliente te eligió directamente por tu perfil. " if chosen else "")
+            + f'"{request.title}"'
+            + (f" — {pay} (recibes el 100%)" if pay else "")
+            + f". Tienes {DISPATCH_TIMEOUT_SECONDS} segundos para aceptar antes de que se ofrezca al siguiente profesional."
+        )
         notif = Notification(
             user_id=dispatch.provider_user_id,
             type="job_offer",
-            title="⭐ Un cliente te eligió" if chosen else "Nueva oportunidad de trabajo",
-            message=(
-                ("Un cliente te eligió directamente por tu perfil. " if chosen else "")
-                + f'"{request.title}"'
-                + (f" — {pay} (recibes el 100%)" if pay else "")
-                + f". Tienes {DISPATCH_TIMEOUT_SECONDS} segundos para aceptar antes de que se ofrezca al siguiente profesional."
-            ),
+            title=offer_title,
+            message=offer_message,
             link=f"/provider/board",
         )
         db.add(notif)
@@ -361,6 +416,23 @@ def offer_to_provider(db: Session, dispatch: RequestDispatch) -> None:
         f"Dispatch: offered request {dispatch.request_id} to provider {dispatch.provider_user_id} "
         f"(position {dispatch.position})"
     )
+
+    # Push it to the provider's device(s) too — THE reason for FCM: an offer
+    # must reach a professional whose app is closed/backgrounded. No-op until
+    # Firebase credentials are configured; never allowed to break dispatch.
+    if request:
+        try:
+            from push import send_push
+            body = f'"{request.title}"' + (f" — {pay}" if pay else "")
+            send_push(
+                db, dispatch.provider_user_id,
+                title=offer_title,
+                body=body,
+                link="/provider/board",
+                data={"type": "job_offer", "request_id": request.id},
+            )
+        except Exception as e:
+            logger.warning(f"Push (offer) failed for provider {dispatch.provider_user_id}: {e}")
 
 
 def cancel_dispatch_for_request(db: Session, request_id: int) -> None:

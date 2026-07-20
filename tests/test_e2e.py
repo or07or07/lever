@@ -628,6 +628,8 @@ def run_all():
         test_worker_set_pricing,
         test_choose_professional,
         test_hourly_metering,
+        test_admin_operations,
+        test_device_registration,
     ]
 
     for test_fn in tests:
@@ -1468,6 +1470,51 @@ def test_hourly_metering():
     prov.post("/api/provider/go-offline")
 
 
+def test_admin_operations():
+    section("22. Admin operations health view")
+    admin = login("admin@lever.app", "Admin123!")
+    r = admin.get("/api/admin/operations")
+    check("Operations endpoint (200)", r.status_code == 200, r.text[:200])
+    body = r.json() if r.status_code == 200 else {}
+    check("Has counts + all four lists",
+          "counts" in body and all(k in body for k in
+          ("stuck_requests", "overdue_arrivals", "awaiting_confirmation", "stale_offers")),
+          str(body.get("counts")))
+    check("Exposes the auto-confirm window",
+          isinstance(body.get("auto_confirm_hours"), int), str(body.get("auto_confirm_hours")))
+
+    uid = str(uuid.uuid4())[:8]
+    cr = anon.post("/api/auth/register", json={
+        "email": f"ao_c_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    rd = client.get("/api/admin/operations")
+    check("Non-admin denied (403)", rd.status_code == 403, rd.text[:120])
+
+
+def test_device_registration():
+    section("23. Push device registration")
+    uid = str(uuid.uuid4())[:8]
+    cr = anon.post("/api/auth/register", json={
+        "email": f"dev_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    tok = f"fake-fcm-token-{uid}-abcdefghijkl"
+
+    r = client.post("/api/devices/register", json={"token": tok, "platform": "android"})
+    check("Register device (200)", r.status_code == 200, r.text)
+    r2 = client.post("/api/devices/register", json={"token": tok, "platform": "android"})
+    check("Re-register same token is idempotent (200)", r2.status_code == 200, r2.text)
+    short = client.post("/api/devices/register", json={"token": "x", "platform": "android"})
+    check("Too-short token rejected (422)", short.status_code == 422, short.text)
+    badp = client.post("/api/devices/register", json={"token": tok, "platform": "nintendo"})
+    check("Bad platform rejected (422)", badp.status_code == 422, badp.text)
+    un = client.post("/api/devices/unregister", json={"token": tok})
+    check("Unregister device (200)", un.status_code == 200, un.text)
+    anon_r = anon.post("/api/devices/register", json={"token": tok, "platform": "android"})
+    check("Unauthenticated registration denied (401)", anon_r.status_code == 401, anon_r.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1497,3 +1544,5 @@ def test_pytest_cancel_releases(): test_client_cancel_releases_provider()
 def test_pytest_worker_set_pricing(): test_worker_set_pricing()
 def test_pytest_choose_professional(): test_choose_professional()
 def test_pytest_hourly_metering(): test_hourly_metering()
+def test_pytest_admin_operations(): test_admin_operations()
+def test_pytest_device_registration(): test_device_registration()

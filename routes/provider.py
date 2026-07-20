@@ -579,6 +579,8 @@ def list_my_jobs(
     current_user: User = Depends(require_provider),
     db: Session = Depends(get_db),
 ):
+    from dispatch import auto_confirm_stale_jobs
+    auto_confirm_stale_jobs(db)   # lazy sweep: close out long-unconfirmed completions
     q = (
         db.query(Job)
         .options(joinedload(Job.request))

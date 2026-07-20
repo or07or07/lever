@@ -1282,9 +1282,9 @@ var _translations = {
   'price.clientPays': {es:'El cliente pagará', en:'The client will pay'},
   'price.reference': {es:'Pago referencial', en:'Reference payment'},
   'price.youKeep100': {es:'Recibes el 100% — Lever no cobra comisión.', en:'You keep 100% — Lever charges no commission.'},
-  'price.refLabel': {es:'Precio del servicio', en:'Service price'},
-  'price.refNote': {es:'Precio fijado por Lever según tarifas de mano de obra en Guayaquil. El cobro final estará dentro de este rango según el trabajo realizado.', en:'Price set by Lever from Guayaquil labor rates. The final charge stays within this range based on the work performed.'},
-  'price.setByLever': {es:'Precio del servicio (fijado por Lever)', en:'Service price (set by Lever)'},
+  'price.refLabel': {es:'Precio estimado', en:'Estimated price'},
+  'price.refNote': {es:'Estimado referencial según tarifas de mano de obra en Guayaquil. Cada profesional fija su propia tarifa por hora; el cobro final se calcula por el tiempo trabajado y se mantiene dentro del rango acordado. Lever no cobra comisión.', en:'Reference estimate based on Guayaquil labor rates. Each professional sets their own hourly rate; the final charge is calculated by time worked and stays within the agreed range. Lever charges no commission.'},
+  'price.setByLever': {es:'Precio estimado (referencial)', en:'Estimated price (reference)'},
   // -- Incoming job-offer popup (provider) --
   'offer.new': {es:'Nueva oportunidad', en:'New opportunity'},
   'offer.accept': {es:'Aceptar trabajo', en:'Accept job'},
@@ -1376,6 +1376,7 @@ var _translations = {
   'nav.users': {es:'Usuarios', en:'Users'},
   'nav.disputes': {es:'Disputas', en:'Disputes'},
   'nav.reports': {es:'Reportes', en:'Reports'},
+  'nav.operations': {es:'Operaciones', en:'Operations'},
   'nav.map': {es:'Mapa', en:'Map'},
   'nav.vehicles': {es:'Mis Vehículos', en:'My Vehicles'},
   'nav.packages': {es:'Paquetes', en:'Packages'},
@@ -2181,7 +2182,7 @@ function buildSidebarImproved(role, hash) {
 }
 
 function getPageTitle(hash) {
-  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
+  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/operations':'Operations','#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
   return titles[hash] || '';
 }
 
@@ -2393,8 +2394,10 @@ function login(token, user) {
   localStorage.setItem('lever_token', token);
   localStorage.setItem('lever_user', JSON.stringify(user));
   applyRoleTheme();
+  registerPushForUser();   // reach a closed app with job offers (native only)
 }
 function logout() {
+  unregisterPushForUser();
   _token = null; _user = null;
   stopNotifPolling();
   stopHeartbeat();
@@ -2403,6 +2406,45 @@ function logout() {
   localStorage.removeItem('lever_user');
   applyRoleTheme();
   route('#/login');
+}
+
+// ---- Push notifications (FCM) ----
+// Fully guarded: only runs in the native app WITH the PushNotifications
+// plugin present (added alongside the Firebase/google-services.json setup —
+// see docs/PUSH_SETUP.md). On web, or before that setup, this is a no-op and
+// the app keeps using in-app notifications + polling. The token is sent to
+// /api/devices/register so the backend can push offers to a closed app.
+let _pushListenersBound = false, _lastPushToken = null;
+async function registerPushForUser() {
+  try {
+    if (!IS_NATIVE || !window.Capacitor || !window.Capacitor.Plugins) return;
+    const Push = window.Capacitor.Plugins.PushNotifications;
+    if (!Push) return;   // plugin not in this build yet
+    if (!_pushListenersBound) {
+      _pushListenersBound = true;
+      Push.addListener('registration', async function (t) {
+        const tok = t && t.value;
+        if (!tok || !_token) return;
+        _lastPushToken = tok;
+        try { await post('/api/devices/register', { token: tok, platform: 'android' }); } catch (e) {}
+      });
+      Push.addListener('pushNotificationActionPerformed', function (a) {
+        const link = a && a.notification && a.notification.data && a.notification.data.link;
+        if (link) { try { route('#' + (link[0] === '/' ? link : '/' + link)); } catch (e) {} }
+      });
+    }
+    let perm = await Push.checkPermissions();
+    if (perm.receive !== 'granted') perm = await Push.requestPermissions();
+    if (perm.receive === 'granted') await Push.register();
+  } catch (e) { /* never let push break sign-in */ }
+}
+async function unregisterPushForUser() {
+  try {
+    if (_lastPushToken && _token) {
+      await post('/api/devices/unregister', { token: _lastPushToken });
+    }
+  } catch (e) {}
+  _lastPushToken = null;
 }
 
 // ---- Provider online/offline ----
@@ -2532,6 +2574,7 @@ window.addEventListener('load', async () => {
   await detectAppFlavor();   // must resolve before the first render (Pro identity, role lock)
   await loadProfessions();
   render();
+  if (_token && _user) registerPushForUser();   // already signed in on boot (native only)
   markDecorativeSvgs();
   var appEl = document.getElementById('app');
   if (appEl && 'MutationObserver' in window) {
@@ -2665,6 +2708,7 @@ var _navLabelMap = {
   '#/jobs': 'nav.jobs',
   '#/reviews': 'nav.reviews',
   '#/users': 'nav.users',
+  '#/operations': 'nav.operations',
   '#/disputes': 'nav.disputes',
   '#/reports': 'nav.reports',
   '#/map': 'nav.map',
@@ -2700,6 +2744,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', label:_t('nav.dashboard'),   hash:'#/'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Users',       hash:'#/users'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Requests',    hash:'#/requests'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>', label:'Operations', hash:'#/operations'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputes', hash:'#/disputes'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reports', hash:'#/reports'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings', hash:'#/settings'},
@@ -5117,6 +5162,7 @@ async function adminView(hash, el) {
   if (hash==='#/'||hash==='#')    return renderAdminDash(el);
   if (hash==='#/users')           return renderAdminUsers(el);
   if (hash==='#/requests')        return renderAdminRequests(el);
+  if (hash==='#/operations')      return renderAdminOperations(el);
   if (hash==='#/disputes')        return renderAdminDisputes(el);
   if (hash==='#/reports')         return renderAdminReports(el);
   if (hash==='#/settings')        return renderSettings(el);
@@ -5139,6 +5185,31 @@ async function renderAdminDash(el) {
       <div class="stat-card"><div class="stat-num" style="color:${stats.open_reports>0?'var(--danger)':'var(--success)'}">${stats.open_reports}</div><div class="stat-label">Open Reports</div></div>
       <div class="stat-card"><div class="stat-num">${stats.avg_platform_rating.toFixed(1)}</div><div class="stat-label">Avg Rating</div></div>
     </div>`;
+}
+
+async function renderAdminOperations(el) {
+  const ops = await get('/api/admin/operations');
+  const c = ops.counts;
+  const card = (title, n, tone) => `<div class="stat-card"><div class="stat-num" style="color:${n>0?(tone||'var(--warn)'):'var(--success)'}">${n}</div><div class="stat-label">${title}</div></div>`;
+  const tbl = (rows, cols) => rows.length
+    ? `<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${r[c[1]]!=null?escapeHtml(String(r[c[1]])):'—'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+    : `<p class="text-sm" style="color:var(--gray-500)">Nothing here ✓</p>`;
+  el.innerHTML = `
+    ${pageHeader('Operations', '<button class="btn btn-outline btn-sm" onclick="renderAdminOperations(document.getElementById(\'content\'))">↻ Refresh</button>')}
+    <div class="stats-grid">
+      ${card('Stuck requests', c.stuck_requests)}
+      ${card('Overdue arrivals', c.overdue_arrivals, 'var(--danger)')}
+      ${card('Awaiting confirmation', c.awaiting_confirmation, 'var(--gray-500)')}
+      ${card('Stale offers', c.stale_offers, 'var(--danger)')}
+    </div>
+    <div class="card"><h3 style="margin-bottom:10px">Stuck requests <span class="text-sm" style="color:var(--gray-500)">(pending 15+ min, nobody offered)</span></h3>
+      ${tbl(ops.stuck_requests, [['ID','id'],['Title','title'],['Type','profession_type'],['Age (min)','age_minutes']])}</div>
+    <div class="card"><h3 style="margin-bottom:10px">Overdue arrivals <span class="text-sm" style="color:var(--gray-500)">(en route past arrival window)</span></h3>
+      ${tbl(ops.overdue_arrivals, [['Job','job_id'],['Title','title'],['Provider','mechanic_id'],['Overdue (min)','overdue_minutes']])}</div>
+    <div class="card"><h3 style="margin-bottom:10px">Awaiting client confirmation <span class="text-sm" style="color:var(--gray-500)">(auto-confirms after ${ops.auto_confirm_hours}h)</span></h3>
+      ${tbl(ops.awaiting_confirmation, [['Job','job_id'],['Title','title'],['Provider','mechanic_id'],['Waiting (h)','waiting_hours']])}</div>
+    <div class="card"><h3 style="margin-bottom:10px">Stale offers <span class="text-sm" style="color:var(--gray-500)">(should self-heal on next poll)</span></h3>
+      ${tbl(ops.stale_offers, [['Dispatch','dispatch_id'],['Request','request_id'],['Provider','provider_user_id'],['Age (min)','age_minutes']])}</div>`;
 }
 
 async function renderAdminUsers(el) {
@@ -6952,9 +7023,9 @@ function renderLanding() {
       '<h2>Lo que Dicen Nuestros Usuarios</h2>' +
       '<p class="subtitle">Historias reales de clientes y profesionales</p>' +
       '<div class="testimonial-grid">' +
-        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Encontr\u00e9 un electricista en menos de 10 minutos. Trabajo excelente y precio justo.</p><div class="tc-author">Mar\u00eda L.</div><div class="tc-role">Cliente en Quito</div></div>' +
+        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Encontr\u00e9 un electricista en menos de 10 minutos. Trabajo excelente y precio justo.</p><div class="tc-author">Mar\u00eda L.</div><div class="tc-role">Cliente en Guayaquil</div></div>' +
         '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">Como plomero, Lever me ayud\u00f3 a duplicar mis clientes en el primer mes.</p><div class="tc-author">Carlos R.</div><div class="tc-role">Plomero en Guayaquil</div></div>' +
-        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">La app es f\u00e1cil de usar y el seguimiento en tiempo real me da tranquilidad.</p><div class="tc-author">Andrea M.</div><div class="tc-role">Cliente en Cuenca</div></div>' +
+        '<div class="testimonial-card"><div class="tc-stars" style="color:var(--accent)"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><p class="tc-text">La app es f\u00e1cil de usar y el seguimiento en tiempo real me da tranquilidad.</p><div class="tc-author">Andrea M.</div><div class="tc-role">Cliente en Guayaquil</div></div>' +
       '</div>' +
     '</section>' +
 
@@ -6978,7 +7049,7 @@ function renderLanding() {
             '<div class="contact-grid">' +
               '<div class="contact-card"><div class="c-icon">\ud83d\udce7</div><h4>Email</h4><p>soporte@leverapp.com</p></div>' +
               '<div class="contact-card"><div class="c-icon">\ud83d\udcf1</div><h4>WhatsApp</h4><p>+593 99 000 0000</p></div>' +
-              '<div class="contact-card"><div class="c-icon">\ud83d\udccd</div><h4>Oficina</h4><p>Quito, Ecuador</p></div>' +
+              '<div class="contact-card"><div class="c-icon">\ud83d\udccd</div><h4>Oficina</h4><p>Guayaquil, Ecuador</p></div>' +
               '<div class="contact-card"><div class="c-icon">\ud83d\udd52</div><h4>Horario</h4><p>Lun-Vie: 8:00-18:00</p></div>' +
             '</div>' +
           '</div>' +

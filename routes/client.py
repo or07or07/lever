@@ -162,6 +162,10 @@ def list_requests(
     current_user: User = Depends(require_client),
     db: Session = Depends(get_db),
 ):
+    # Close out any long-unconfirmed completed jobs before listing (lazy sweep).
+    from dispatch import auto_confirm_stale_jobs
+    auto_confirm_stale_jobs(db)
+
     q = db.query(ServiceRequest).filter(ServiceRequest.client_id == current_user.id)
     if status_filter:
         q = q.filter(ServiceRequest.status == status_filter)

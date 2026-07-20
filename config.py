@@ -12,6 +12,7 @@ ISO 27001 Controls Referenced:
 """
 import os
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import model_validator
 
@@ -85,6 +86,18 @@ class Settings(BaseSettings):
     # dignified wage; the ceiling is a sanity cap against typos.
     provider_min_hourly_rate: float = 4.0
     provider_max_hourly_rate: float = 60.0
+
+    # ── Push notifications (FCM HTTP v1) ──
+    # Path to the Firebase service-account JSON. UNSET → push is a safe no-op
+    # (the app polls as before); set it to activate delivery to closed apps.
+    # See docs/PUSH_SETUP.md for the Firebase steps.
+    fcm_credentials_path: Optional[str] = None
+
+    # A job the professional marked completed but the client never confirmed
+    # is auto-confirmed after this many hours, so it doesn't sit "esperando
+    # confirmación" forever and the rating/dispute window can close. The
+    # client is told and can still open a dispute.
+    auto_confirm_completion_hours: int = 72
 
     # Provider presence: being ONLINE is a lease renewed by the app's 60s
     # heartbeat. Miss heartbeats for this many minutes (app closed, phone

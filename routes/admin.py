@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from auth import require_admin
 from database import get_db
@@ -165,6 +165,104 @@ def all_requests(
         "page": page,
         "page_size": page_size,
         "items": [ServiceRequestOut.model_validate(r) for r in items],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Operations health — stuck requests/jobs surfaced without SQL
+# ---------------------------------------------------------------------------
+
+@router.get("/operations")
+def operations(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Things that may need a human: requests nobody took, professionals who
+    never arrived, completions the client hasn't confirmed, and offers stuck
+    open. Columns across the schema mix naive/aware datetimes, so ages are
+    computed in Python with a normalizer rather than compared in SQL."""
+    from datetime import datetime, timezone, timedelta
+    from models import RequestDispatch
+    from config import settings
+
+    now = datetime.now(timezone.utc)
+
+    def age_min(dt):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (now - dt).total_seconds() / 60.0
+
+    # Requests still pending and NOT currently being offered to anyone (the
+    # dispatch queue is idle) — the ones that actually need attention.
+    live_offer_req_ids = {
+        r[0] for r in db.query(RequestDispatch.request_id)
+        .filter(RequestDispatch.status == "offered").distinct().all()
+    }
+    stuck_requests = []
+    for r in (db.query(ServiceRequest)
+              .filter(ServiceRequest.status == "pending")
+              .order_by(ServiceRequest.created_at.asc()).limit(200).all()):
+        am = age_min(r.created_at)
+        if am is not None and am >= 15 and r.id not in live_offer_req_ids:
+            stuck_requests.append({
+                "id": r.id, "title": r.title, "profession_type": r.profession_type,
+                "service_key": r.service_key, "age_minutes": round(am),
+                "preferred_provider_id": r.preferred_provider_id,
+            })
+
+    # Professionals who accepted but blew past the arrival window (still en route).
+    overdue_arrivals = []
+    for j in (db.query(Job).options(joinedload(Job.request))
+              .filter(Job.status == "en_route").limit(200).all()):
+        am = age_min(j.arrival_deadline)
+        if am is not None and am > 0:
+            overdue_arrivals.append({
+                "job_id": j.id, "request_id": j.request_id,
+                "mechanic_id": j.mechanic_id,
+                "title": j.request.title if j.request else None,
+                "overdue_minutes": round(am),
+            })
+
+    # Completed but the client hasn't confirmed yet (auto-confirms eventually).
+    awaiting_confirmation = []
+    for j in (db.query(Job).options(joinedload(Job.request))
+              .filter(Job.status == "completed", Job.client_confirmed_at.is_(None),
+                      Job.completed_at.isnot(None))
+              .order_by(Job.completed_at.asc()).limit(200).all()):
+        am = age_min(j.completed_at)
+        awaiting_confirmation.append({
+            "job_id": j.id, "request_id": j.request_id, "mechanic_id": j.mechanic_id,
+            "title": j.request.title if j.request else None,
+            "waiting_hours": round(am / 60.0, 1) if am is not None else None,
+        })
+
+    # Offers stuck open past their window (dispatch health — should self-heal).
+    window = settings.dispatch_offer_seconds
+    stale_offers = []
+    for d in (db.query(RequestDispatch)
+              .filter(RequestDispatch.status == "offered").limit(200).all()):
+        am = age_min(d.offered_at)
+        if am is not None and am * 60 > window + 30:
+            stale_offers.append({
+                "dispatch_id": d.id, "request_id": d.request_id,
+                "provider_user_id": d.provider_user_id, "age_minutes": round(am),
+            })
+
+    return {
+        "generated_at": now.isoformat(),
+        "auto_confirm_hours": settings.auto_confirm_completion_hours,
+        "counts": {
+            "stuck_requests": len(stuck_requests),
+            "overdue_arrivals": len(overdue_arrivals),
+            "awaiting_confirmation": len(awaiting_confirmation),
+            "stale_offers": len(stale_offers),
+        },
+        "stuck_requests": stuck_requests[:50],
+        "overdue_arrivals": overdue_arrivals[:50],
+        "awaiting_confirmation": awaiting_confirmation[:50],
+        "stale_offers": stale_offers[:50],
     }
 
 

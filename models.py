@@ -568,3 +568,23 @@ class ProviderLocation(Base):
         Index("ix_provider_locations_job_time", "job_id", "created_at"),
         Index("ix_provider_locations_provider", "provider_user_id", "created_at"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Push notifications (FCM) — one row per device a user has registered
+# ---------------------------------------------------------------------------
+
+class DeviceToken(Base):
+    """A device's FCM registration token, so push can reach the user even
+    with the app closed. Tokens rotate, so `token` is unique and re-registers
+    upsert onto the same row; invalid tokens are pruned on send failure."""
+    __tablename__ = "device_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token = Column(String(512), nullable=False, unique=True, index=True)
+    platform = Column(String(20), default="android", nullable=False)  # android | ios | web
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", foreign_keys=[user_id])
