@@ -929,13 +929,50 @@ tr:hover td{background:var(--gray-50)}
 /* CTA + coverage buttons — gradient primaries */
 .cta-section .btn-cta-primary,.coverage-actions .btn-cta-primary{background:linear-gradient(135deg,var(--brand),var(--brand-dark));box-shadow:0 6px 18px rgba(var(--brand-rgb),.26)}
 
-/* Subtle staggered entrance for the landing sections */
-@keyframes landUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-.landing-body>section{animation:landUp .5s var(--ease) both}
-.landing-body>section:nth-child(2){animation-delay:.06s}
-.landing-body>section:nth-child(3){animation-delay:.12s}
-.landing-body>section:nth-child(4){animation-delay:.16s}
+/* Staggered entrance — pure CSS (fill:both always ends visible, so a section
+   can never get stuck hidden). Cascades the first few sections on load. */
+@keyframes landUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.landing-body>section{animation:landUp .55s var(--ease) both}
+.landing-body>section:nth-child(2){animation-delay:.08s}
+.landing-body>section:nth-child(3){animation-delay:.16s}
+.landing-body>section:nth-child(4){animation-delay:.22s}
+.landing-body>section:nth-child(5){animation-delay:.26s}
 @media(prefers-reduced-motion:reduce){.landing-body>section{animation:none}}
+/* A quiet "alive" touch: the availability pill breathes, the hero glow drifts */
+@keyframes availPulse{0%,100%{box-shadow:0 3px 14px rgba(var(--brand-rgb),.12)}50%{box-shadow:0 5px 22px rgba(var(--brand-rgb),.26)}}
+.hero-avail{animation:availPulse 3.2s var(--ease) infinite}
+.hero-section::before{content:"";position:absolute;top:-40%;left:50%;width:70%;height:80%;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(var(--brand-rgb),.10),transparent 70%);pointer-events:none;animation:heroGlow 9s var(--ease) infinite}
+@keyframes heroGlow{0%,100%{opacity:.7;transform:translateX(-50%) translateY(0)}50%{opacity:1;transform:translateX(-50%) translateY(14px)}}
+@media(prefers-reduced-motion:reduce){.hero-avail,.hero-section::before{animation:none}}
+
+/* Clear separators between sections (they used to blend together) */
+.how-it-works,.trust-section,.testimonials-section,.support-section,.coverage-section,.cta-section{border-top:1px solid var(--gray-100)}
+
+/* Accent bar under every section heading — adds brand color + structure */
+.how-it-works>h2,.trust-section>h2,.testimonials-section>h2,.cta-section>h2,.coverage-section>h2,.professions-section>h2{position:relative;padding-bottom:14px}
+.how-it-works>h2::after,.trust-section>h2::after,.testimonials-section>h2::after,.cta-section>h2::after,.coverage-section>h2::after,.professions-section>h2::after{content:"";position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:52px;height:4px;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand-dark));transition:background-color .45s var(--ease)}
+
+/* ============ COHESIVE POLISH (theme-aware, end to end) ============ */
+/* Brand-colored focus ring on every form control — consistent everywhere. */
+.form-group input:focus,.form-group textarea:focus,.form-group select:focus,
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(var(--brand-rgb),.16)}
+.form-group input,.form-group textarea,.form-group select{transition:border-color .18s var(--ease),box-shadow .18s var(--ease)}
+
+/* Auth card — staggered field entrance + themed submit button */
+.auth-card .form-group,.auth-card .btn-primary,.auth-card>h2{animation:authFieldUp .45s var(--ease) both}
+.auth-card>h2{animation-delay:.02s}
+.auth-card .form-group:nth-of-type(1){animation-delay:.06s}
+.auth-card .form-group:nth-of-type(2){animation-delay:.11s}
+.auth-card .form-group:nth-of-type(3){animation-delay:.16s}
+.auth-card .form-group:nth-of-type(4){animation-delay:.20s}
+.auth-card .btn-primary{animation-delay:.24s}
+@keyframes authFieldUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.auth-card .form-group,.auth-card .btn-primary,.auth-card>h2{animation:none}}
+
+/* Consistent button micro-interactions (subtle lift + press) */
+.btn-primary,.btn-success,.gbtn-primary,.btn-hero-primary,.btn-hero-secondary,.welcome-btn,.btn-cta-primary,.btn-cta-outline{transition:transform .15s var(--ease),box-shadow .2s var(--ease),background-color .2s var(--ease),border-color .2s var(--ease),filter .2s var(--ease)}
+.btn-primary:hover,.btn-success:hover,.gbtn-primary:hover{transform:translateY(-1px);filter:brightness(1.04)}
+.btn-primary:active,.btn-success:active,.gbtn-primary:active,.btn-hero-primary:active,.btn-cta-primary:active{transform:translateY(0) scale(.985)}
 </style>
 
 <!-- Leaflet Map (Day 60 — Search + Geolocation) -->
