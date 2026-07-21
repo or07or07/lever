@@ -50,6 +50,7 @@ from routes.search import router as search_router  # Day 60
 from routes.tracking import router as tracking_router  # GPS Live Tracking
 from routes.moderation import router as moderation_router  # Reports + blocking (GP-08)
 from routes.devices import router as devices_router  # Push notifications (FCM)
+from routes.suggestions import router as suggestions_router  # Community suggestions
 
 # Configure logging
 logging.basicConfig(
@@ -380,6 +381,7 @@ app.include_router(search_router)         # Day 60 – Search + Geolocation
 app.include_router(tracking_router)       # GPS Live Tracking
 app.include_router(moderation_router)     # Reports + blocking (GP-08)
 app.include_router(devices_router)        # Push notifications (FCM)
+app.include_router(suggestions_router)    # Community suggestions
 
 
 # ---------------------------------------------------------------------------

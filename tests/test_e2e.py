@@ -630,6 +630,7 @@ def run_all():
         test_hourly_metering,
         test_admin_operations,
         test_device_registration,
+        test_suggestions,
     ]
 
     for test_fn in tests:
@@ -1515,6 +1516,55 @@ def test_device_registration():
     check("Unauthenticated registration denied (401)", anon_r.status_code == 401, anon_r.text)
 
 
+def test_suggestions():
+    section("24. Community suggestions")
+    uid = str(uuid.uuid4())[:8]
+    r = anon.post("/api/suggestions", json={
+        "category": "pricing", "message": "Me encantaría ver descuentos por temporada.",
+        "email": "anon@example.com"})
+    check("Anonymous suggestion accepted (201)", r.status_code == 201, r.text)
+    short = anon.post("/api/suggestions", json={"category": "other", "message": "hi"})
+    check("Too-short message rejected (422)", short.status_code == 422, short.text)
+
+    cr = anon.post("/api/auth/register", json={
+        "email": f"sug_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    client = Session(cr.json()["access_token"])
+    r2 = client.post("/api/suggestions", json={
+        "category": "new_service", "message": "Agreguen servicio de cerrajería urgente."})
+    check("Authenticated suggestion accepted (201)", r2.status_code == 201, r2.text)
+    r3 = client.post("/api/suggestions", json={
+        "category": "hacker", "message": "prueba de categoría inválida coercionada"})
+    check("Unknown category accepted + coerced (201)", r3.status_code == 201, r3.text)
+
+    mine = client.get("/api/suggestions/mine")
+    check("Own suggestions list (200)", mine.status_code == 200, mine.text)
+    body = mine.json() if mine.status_code == 200 else []
+    check("My suggestions appear with status",
+          isinstance(body, list) and len(body) >= 2 and body[0].get("status") == "new", str(body)[:200])
+    check("admin_notes NOT exposed to the submitter",
+          all("admin_notes" not in s for s in body), str(body)[:200])
+    check("Invalid category was coerced to 'other'",
+          any(s["category"] == "other" for s in body), str([s["category"] for s in body]))
+    unauth = anon.get("/api/suggestions/mine")
+    check("mine requires auth (401)", unauth.status_code == 401, unauth.text)
+
+    admin = login("admin@lever.app", "Admin123!")
+    al = admin.get("/api/admin/suggestions")
+    check("Admin list (200)", al.status_code == 200, al.text)
+    ab = al.json() if al.status_code == 200 else {}
+    check("Admin sees counts + items",
+          "counts" in ab and len(ab.get("items", [])) >= 1, str(ab.get("counts")))
+    sid = ab["items"][0]["id"]
+    up = admin.patch(f"/api/admin/suggestions/{sid}", json={"status": "planned", "admin_notes": "buena idea"})
+    check("Admin updates status + note (200)",
+          up.status_code == 200 and up.json().get("status") == "planned", up.text)
+    bad = admin.patch(f"/api/admin/suggestions/{sid}", json={"status": "bogus"})
+    check("Invalid status rejected (422)", bad.status_code == 422, bad.text)
+    forbidden = client.get("/api/admin/suggestions")
+    check("Non-admin denied admin list (403)", forbidden.status_code == 403, forbidden.text)
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1546,3 +1596,4 @@ def test_pytest_choose_professional(): test_choose_professional()
 def test_pytest_hourly_metering(): test_hourly_metering()
 def test_pytest_admin_operations(): test_admin_operations()
 def test_pytest_device_registration(): test_device_registration()
+def test_pytest_suggestions(): test_suggestions()

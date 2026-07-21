@@ -439,6 +439,31 @@ class CityInterest(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
+class Suggestion(Base):
+    """A product suggestion from the community — the inbound half of the
+    trust loop (Novedades is the outbound half). Anyone can submit; the admin
+    triages it through a lifecycle so contributors can see their idea move.
+    user_id is nullable (guests may submit) and SET NULL on account deletion
+    so the feedback survives while the person is forgotten."""
+    __tablename__ = "suggestions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    email = Column(String(255), default="")   # optional contact when not signed in
+    category = Column(String(40), default="other", nullable=False)
+    message = Column(Text, nullable=False)
+    status = Column(
+        SAEnum("new", "reviewing", "planned", "completed", "declined",
+               name="suggestion_status_enum"),
+        default="new", nullable=False, index=True,
+    )
+    admin_notes = Column(Text, default="")   # internal — never returned to the submitter
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 # ---------------------------------------------------------------------------
 # Request Dispatch Queue (tracks 30-second offer rotation)
 # ---------------------------------------------------------------------------

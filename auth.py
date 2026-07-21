@@ -128,3 +128,34 @@ require_provider = require_role("mechanic")        # Preferred — maps to DB ro
 require_admin = require_role("admin")
 require_client_or_mechanic = require_role("client", "mechanic")
 require_client_or_provider = require_role("client", "mechanic")  # Preferred alias
+
+
+# ---------------------------------------------------------------------------
+# Optional auth — for public endpoints that ENRICH with the user when present
+# (e.g. suggestions: guests may submit, signed-in submitters get attribution).
+# ---------------------------------------------------------------------------
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+
+def get_optional_user(
+    token: Optional[str] = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
+):
+    """Return the authenticated user if a valid token is present, else None.
+    Never raises — a missing/invalid token simply means 'anonymous'."""
+    if not token:
+        return None
+    try:
+        payload = decode_token(token)
+        if not payload.get("role"):
+            return None
+        user_id = int(payload.get("sub"))
+    except (JWTError, TypeError, ValueError):
+        return None
+    from models import User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user or not user.is_active:
+        return None
+    if payload.get("ver", 0) != user.token_version:
+        return None
+    return user

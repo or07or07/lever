@@ -267,6 +267,75 @@ def operations(
 
 
 # ---------------------------------------------------------------------------
+# Community suggestions triage
+# ---------------------------------------------------------------------------
+
+@router.get("/suggestions")
+def list_suggestions(
+    status_filter: Optional[str] = Query(default=None, alias="status"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from models import Suggestion
+    q = db.query(Suggestion)
+    if status_filter:
+        q = q.filter(Suggestion.status == status_filter)
+    total = q.count()
+    rows = (q.order_by(Suggestion.created_at.desc())
+            .offset((page - 1) * page_size).limit(page_size).all())
+    counts = {
+        s: db.query(func.count(Suggestion.id)).filter(Suggestion.status == s).scalar()
+        for s in ("new", "reviewing", "planned", "completed", "declined")
+    }
+    return {
+        "total": total, "page": page, "page_size": page_size, "counts": counts,
+        "items": [{
+            "id": r.id, "category": r.category, "message": r.message,
+            "status": r.status, "admin_notes": r.admin_notes or "",
+            "user_id": r.user_id, "email": r.email or "",
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        } for r in rows],
+    }
+
+
+@router.patch("/suggestions/{suggestion_id}")
+def update_suggestion(
+    suggestion_id: int,
+    payload: dict,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from models import Suggestion, Notification
+    from routes.suggestions import ALLOWED_STATUSES
+    row = db.query(Suggestion).filter(Suggestion.id == suggestion_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Suggestion not found")
+    new_status = payload.get("status")
+    if new_status is not None:
+        if new_status not in ALLOWED_STATUSES:
+            raise HTTPException(status_code=422, detail="Invalid status")
+        status_changed = new_status != row.status
+        row.status = new_status
+        # Close the loop: tell a signed-in contributor when their idea moves
+        # to a meaningful state (planned / shipped).
+        if status_changed and row.user_id and new_status in ("planned", "completed"):
+            label = "planificada" if new_status == "planned" else "implementada"
+            db.add(Notification(
+                user_id=row.user_id,
+                type="system",
+                title="Novedad sobre tu sugerencia",
+                message=f'Tu sugerencia fue marcada como "{label}". ¡Gracias por ayudarnos a mejorar Lever!',
+                link="/sugerencias",
+            ))
+    if "admin_notes" in payload:
+        row.admin_notes = (payload.get("admin_notes") or "")[:2000]
+    db.commit()
+    return {"ok": True, "id": row.id, "status": row.status}
+
+
+# ---------------------------------------------------------------------------
 # Disputes
 # ---------------------------------------------------------------------------
 

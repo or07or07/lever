@@ -351,6 +351,21 @@ tr:hover td{background:var(--gray-50)}
 .gbtn-primary{width:100%;padding:15px;border:none;border-radius:12px;background:var(--brand);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;min-height:50px}
 .gbtn-primary:disabled{opacity:.55}
 .gbtn-ghost{width:100%;padding:13px;border:none;border-radius:12px;background:none;color:var(--gray-600);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:6px}
+/* Novedades (release notes) + shared standalone-page subtitle */
+.gpage-sub{color:var(--gray-600);font-size:.92rem;line-height:1.55;margin:2px 0 18px;max-width:560px}
+.rel-wrap{display:flex;flex-direction:column;gap:14px;max-width:620px}
+.rel-card{background:#fff;border:1px solid var(--gray-200);border-radius:16px;padding:18px 18px 14px;box-shadow:var(--shadow)}
+.rel-head{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+.rel-ver{font-weight:800;font-size:.82rem;color:#fff;background:var(--brand);padding:2px 9px;border-radius:999px;letter-spacing:.3px}
+.rel-date{font-size:.8rem;color:var(--gray-500)}
+.rel-theme{font-size:1.12rem;font-weight:800;letter-spacing:-.3px;margin:6px 0 10px}
+.rel-list{list-style:none;display:flex;flex-direction:column;gap:9px}
+.rel-hl{display:flex;gap:9px;align-items:flex-start;font-size:.9rem;line-height:1.5;color:var(--gray-800)}
+.rel-aud{flex:0 0 auto;font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:2px 7px;border-radius:6px;margin-top:1px;white-space:nowrap}
+.rel-aud-client{background:var(--brand-50);color:var(--brand-dark)}
+.rel-aud-pro{background:var(--teal-light);color:var(--teal-dark)}
+.rel-aud-all{background:var(--gray-100);color:var(--gray-600)}
+.rel-cta{text-align:center;margin:22px auto 0;max-width:560px;color:var(--gray-700);font-weight:600}
 /* Location picker (map pin + address autosuggest) */
 .gf-addr-wrap{position:relative}
 .gf-suggest{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1200;background:#fff;border:1px solid var(--gray-200);border-radius:12px;box-shadow:var(--shadow-lg);max-height:240px;overflow-y:auto}
@@ -1216,6 +1231,41 @@ var _translations = {
   'reqdet.waitingChosen': {es:'Esperando la respuesta del profesional que elegiste.', en:'Waiting for your chosen professional to respond.'},
   'guest.optionalDetails': {es:'Detalles (opcional)', en:'Details (optional)'},
   'guest.autoDesc': {es:'solicitud creada desde el catálogo de servicios', en:'request created from the service catalog'},
+  // Novedades (release notes)
+  'news.title': {es:'Novedades', en:"What's New"},
+  'news.subtitle': {es:'Cada mejora de Lever, contada con transparencia — para clientes y profesionales.', en:'Every Lever improvement, told transparently — for clients and professionals.'},
+  'news.forClients': {es:'Para clientes', en:'For clients'},
+  'news.forPros': {es:'Para profesionales', en:'For professionals'},
+  'news.forAll': {es:'Para todos', en:'For everyone'},
+  'news.suggestCta': {es:'¿Tienes una idea para mejorar Lever?', en:'Have an idea to improve Lever?'},
+  'news.suggestBtn': {es:'Enviar una sugerencia', en:'Send a suggestion'},
+  // Sugerencias (suggestions)
+  'sug.title': {es:'Sugerencias', en:'Suggestions'},
+  'sug.subtitle': {es:'Lever se construye con su comunidad. Tu idea puede mejorar la experiencia de clientes y profesionales en Guayaquil.', en:'Lever is built with its community. Your idea can improve the experience for clients and professionals in Guayaquil.'},
+  'sug.category': {es:'¿Sobre qué es tu sugerencia?', en:'What is your suggestion about?'},
+  'sug.cat.pricing': {es:'Precios y pagos', en:'Pricing & payments'},
+  'sug.cat.professionals': {es:'Profesionales y calidad', en:'Professionals & quality'},
+  'sug.cat.app_experience': {es:'Experiencia de la app', en:'App experience'},
+  'sug.cat.new_service': {es:'Nuevo servicio', en:'New service'},
+  'sug.cat.safety': {es:'Seguridad y confianza', en:'Safety & trust'},
+  'sug.cat.other': {es:'Otro', en:'Other'},
+  'sug.message': {es:'Tu sugerencia', en:'Your suggestion'},
+  'sug.placeholder': {es:'Cuéntanos tu idea con el mayor detalle posible…', en:'Tell us your idea in as much detail as possible…'},
+  'sug.email': {es:'Correo (opcional, para darte seguimiento)', en:'Email (optional, so we can follow up)'},
+  'sug.send': {es:'Enviar sugerencia', en:'Send suggestion'},
+  'sug.sending': {es:'Enviando…', en:'Sending…'},
+  'sug.thanks': {es:'¡Gracias! Recibimos tu sugerencia y la revisaremos.', en:'Thank you! We received your suggestion and will review it.'},
+  'sug.tooShort': {es:'Cuéntanos un poco más (mínimo 5 caracteres).', en:'Tell us a bit more (at least 5 characters).'},
+  'sug.mineTitle': {es:'Mis sugerencias', en:'My suggestions'},
+  'sug.mineEmpty': {es:'Aún no has enviado sugerencias.', en:"You haven't sent any suggestions yet."},
+  'sug.st.new': {es:'Recibida', en:'Received'},
+  'sug.st.reviewing': {es:'En revisión', en:'Under review'},
+  'sug.st.planned': {es:'Planificada', en:'Planned'},
+  'sug.st.completed': {es:'Implementada', en:'Shipped'},
+  'sug.st.declined': {es:'No planificada', en:'Not planned'},
+  'sug.privacy': {es:'No compartas datos sensibles. Revisa nuestra Política de Privacidad.', en:'Please don\'t share sensitive data. See our Privacy Policy.'},
+  'foot.news': {es:'Novedades', en:"What's New"},
+  'foot.suggest': {es:'Sugerencias', en:'Suggestions'},
   'meter.worked': {es:'Tiempo trabajado', en:'Time worked'},
   'meter.soFar': {es:'Total según tiempo', en:'Metered total'},
   'meter.cap': {es:'Máximo autorizado', en:'Authorized maximum'},
@@ -1377,6 +1427,7 @@ var _translations = {
   'nav.disputes': {es:'Disputas', en:'Disputes'},
   'nav.reports': {es:'Reportes', en:'Reports'},
   'nav.operations': {es:'Operaciones', en:'Operations'},
+  'nav.suggestions': {es:'Sugerencias', en:'Suggestions'},
   'nav.map': {es:'Mapa', en:'Map'},
   'nav.vehicles': {es:'Mis Vehículos', en:'My Vehicles'},
   'nav.packages': {es:'Paquetes', en:'Packages'},
@@ -2176,13 +2227,15 @@ function buildSidebarImproved(role, hash) {
     });
   }
   h += '<div class="sidebar-footer"><div class="sidebar-divider"></div>';
+  h += '<div class="sidebar-item" onclick="closeSidebarMobile();route(\'#/novedades\')"><span class="sidebar-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 14h-8M15 18h-5M10 6h8v4h-8zM4 22a2 2 0 01-2-2V4a2 2 0 012-2h14a2 2 0 012 2v16a2 2 0 01-2 2z"/></svg></span>' + _t('foot.news') + '</div>';
+  h += '<div class="sidebar-item" onclick="closeSidebarMobile();route(\'#/sugerencias\')"><span class="sidebar-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.5 1 1.3 1 2.1h6c0-.8.4-1.6 1-2.1A7 7 0 0012 2z"/></svg></span>' + _t('foot.suggest') + '</div>';
   h += '<div class="sidebar-item logout-item" onclick="closeSidebarMobile();logout()"><span class="sidebar-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>' + _t('nav.logout') + '</div></div>';
   sb.innerHTML = h;
   sb.style.flexDirection = 'column';
 }
 
 function getPageTitle(hash) {
-  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/operations':'Operations','#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
+  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/operations':'Operations','#/suggestions':'Suggestions','#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
   return titles[hash] || '';
 }
 
@@ -2604,6 +2657,9 @@ async function render() {
   if (_hash === '#/legal/terms' || _hash === '#/legal/privacy') {
     renderLegalDoc(_hash.split('/')[2]); return;
   }
+  // Novedades + Sugerencias — public pages, reachable signed in or out.
+  if (_hash === '#/novedades') { renderReleaseNotes(); return; }
+  if (_hash === '#/sugerencias') { renderSuggestions(); return; }
   if (!_token) {
     if (_hash === '#/welcome') { renderWelcome(); return; }
     if (_hash === '#/welcome/choice') { renderWelcomeChoice(); return; }
@@ -2709,6 +2765,7 @@ var _navLabelMap = {
   '#/reviews': 'nav.reviews',
   '#/users': 'nav.users',
   '#/operations': 'nav.operations',
+  '#/suggestions': 'nav.suggestions',
   '#/disputes': 'nav.disputes',
   '#/reports': 'nav.reports',
   '#/map': 'nav.map',
@@ -2745,6 +2802,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>', label:'Users',       hash:'#/users'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Requests',    hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>', label:'Operations', hash:'#/operations'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label:'Suggestions', hash:'#/suggestions'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputes', hash:'#/disputes'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reports', hash:'#/reports'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings', hash:'#/settings'},
@@ -4136,6 +4194,123 @@ async function renderLegalDoc(kind) {   // 'terms' | 'privacy'
   }
 }
 
+// ---- Novedades (release notes) ----
+// Curated, honest highlights — the outbound half of the trust loop. Edit this
+// array on each release (audience: 'client' | 'pro' | 'all'). Kept in the
+// frontend deliberately: a release IS a deploy, so notes ship with it.
+const RELEASES = [
+  { version: '2.3.0', date: '2026-07-20',
+    theme: { es: 'Precios justos, elegidos por ti', en: 'Fair prices, chosen by you' },
+    highlights: [
+      { a: 'client', es: 'Elige a tu profesional: compara tarifa por hora, calificación y trabajos verificados antes de contratar.', en: 'Choose your professional: compare hourly rate, rating and verified jobs before hiring.' },
+      { a: 'pro', es: 'Fijas tu propia tarifa por hora. Recibes el 100% — Lever no cobra comisión.', en: 'Set your own hourly rate. You keep 100% — Lever charges no commission.' },
+      { a: 'all', es: 'Cobro por tiempo real trabajado, con cronómetro en vivo y tope acordado. Sin sorpresas.', en: 'Billing by real time worked, with a live timer and an agreed cap. No surprises.' },
+    ] },
+  { version: '2.2.0', date: '2026-07-18',
+    theme: { es: 'Solicita en segundos', en: 'Request in seconds' },
+    highlights: [
+      { a: 'client', es: 'Nueva solicitud en una sola pantalla: elige el servicio, pon la dirección y listo.', en: 'New request in a single screen: pick the service, drop the address, done.' },
+      { a: 'pro', es: 'Las oportunidades llegan al instante cuando te conectas, con los detalles y el pago a la vista.', en: 'Opportunities arrive the moment you go online, with details and pay up front.' },
+    ] },
+  { version: '2.1.0', date: '2026-07-15',
+    theme: { es: 'Seguridad y confianza', en: 'Safety and trust' },
+    highlights: [
+      { a: 'all', es: 'Calificaciones en ambos sentidos y verificación de edad (18+) para una comunidad más segura.', en: 'Two-way ratings and age verification (18+) for a safer community.' },
+      { a: 'all', es: 'Reportar y bloquear en cualquier momento, con revisión del equipo de Lever.', en: 'Report and block at any time, reviewed by the Lever team.' },
+    ] },
+  { version: '2.0.0', date: '2026-07-10',
+    theme: { es: 'Lever para Guayaquil', en: 'Lever for Guayaquil' },
+    highlights: [
+      { a: 'client', es: '16 categorías de servicios para el hogar y el negocio, con seguimiento GPS en vivo del profesional.', en: '16 home and business service categories, with live GPS tracking of your professional.' },
+      { a: 'pro', es: 'Encuentra trabajo cerca de ti y construye tu reputación con cada servicio completado.', en: 'Find work near you and build your reputation with every completed job.' },
+    ] },
+];
+function renderReleaseNotes() {
+  const audLabel = { client: _t('news.forClients'), pro: _t('news.forPros'), all: _t('news.forAll') };
+  const audClass = { client: 'rel-aud-client', pro: 'rel-aud-pro', all: 'rel-aud-all' };
+  const items = RELEASES.map(function (r) {
+    const rows = r.highlights.map(function (h) {
+      return '<li class="rel-hl"><span class="rel-aud ' + audClass[h.a] + '">' + escapeHtml(audLabel[h.a] || '') + '</span><span>' + escapeHtml(_lang === 'en' ? h.en : h.es) + '</span></li>';
+    }).join('');
+    return '<article class="rel-card">' +
+      '<div class="rel-head"><span class="rel-ver">v' + escapeHtml(r.version) + '</span><span class="rel-date">' + escapeHtml(fmtDate(r.date)) + '</span></div>' +
+      '<h3 class="rel-theme">' + escapeHtml(_lang === 'en' ? r.theme.en : r.theme.es) + '</h3>' +
+      '<ul class="rel-list">' + rows + '</ul>' +
+    '</article>';
+  }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader(_token ? '#/' : '#/', escapeHtml(_t('news.title'))) +
+    '<p class="gpage-sub">' + escapeHtml(_t('news.subtitle')) + '</p>' +
+    '<div class="rel-wrap">' + items + '</div>' +
+    '<div class="rel-cta"><p>' + escapeHtml(_t('news.suggestCta')) + '</p>' +
+      '<button class="gbtn-primary" style="max-width:320px;margin:8px auto 0" onclick="route(\'#/sugerencias\')">' + _t('news.suggestBtn') + '</button></div>' +
+    '</div>';
+}
+
+// ---- Sugerencias (suggestions) ----
+// The inbound half of the trust loop. Anyone can submit; signed-in users see
+// their own suggestions with a live status so their idea is visibly heard.
+const _SUG_CATS = ['pricing', 'professionals', 'app_experience', 'new_service', 'safety', 'other'];
+function renderSuggestions() {
+  const opts = _SUG_CATS.map(function (c) { return '<option value="' + c + '">' + _t('sug.cat.' + c) + '</option>'; }).join('');
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/', escapeHtml(_t('sug.title'))) +
+    '<p class="gpage-sub">' + escapeHtml(_t('sug.subtitle')) + '</p>' +
+    '<div class="card" style="max-width:560px;margin:0 auto">' +
+      '<div class="form-group"><label for="sug-cat">' + _t('sug.category') + '</label><select id="sug-cat">' + opts + '</select></div>' +
+      '<div class="form-group"><label for="sug-msg">' + _t('sug.message') + '</label><textarea id="sug-msg" placeholder="' + _t('sug.placeholder') + '" style="min-height:120px"></textarea></div>' +
+      (_token ? '' : '<div class="form-group"><label for="sug-email">' + _t('sug.email') + '</label><input id="sug-email" type="email" placeholder="tu@correo.com"></div>') +
+      '<div id="sug-err"></div>' +
+      '<button class="gbtn-primary" id="sug-submit" onclick="submitSuggestion()">' + _t('sug.send') + '</button>' +
+      '<p class="text-sm" style="color:var(--gray-500);margin-top:10px">' + escapeHtml(_t('sug.privacy')) + '</p>' +
+    '</div>' +
+    '<div id="sug-mine" style="max-width:560px;margin:18px auto 0"></div>' +
+    '</div>';
+  if (_token) loadMySuggestions();
+}
+async function submitSuggestion() {
+  const msg = (document.getElementById('sug-msg').value || '').trim();
+  const errEl = document.getElementById('sug-err');
+  if (msg.length < 5) { errEl.innerHTML = alert_el('error', _t('sug.tooShort')); return; }
+  const cat = document.getElementById('sug-cat').value;
+  const emailEl = document.getElementById('sug-email');
+  const btn = document.getElementById('sug-submit');
+  btn.disabled = true; btn.textContent = _t('sug.sending');
+  const body = { category: cat, message: msg };
+  if (emailEl && emailEl.value.trim()) body.email = emailEl.value.trim();
+  try {
+    await post('/api/suggestions', body);
+    document.getElementById('sug-msg').value = '';
+    errEl.innerHTML = alert_el('success', _t('sug.thanks'));
+    if (_token) loadMySuggestions();
+  } catch (e) {
+    errEl.innerHTML = alert_el('error', e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = _t('sug.send');
+  }
+}
+async function loadMySuggestions() {
+  const box = document.getElementById('sug-mine');
+  if (!box) return;
+  let mine = [];
+  try { mine = await get('/api/suggestions/mine'); } catch (e) { return; }
+  if (!Array.isArray(mine) || !mine.length) {
+    box.innerHTML = '<h3 style="font-size:1rem;margin-bottom:8px">' + _t('sug.mineTitle') + '</h3><p class="text-sm" style="color:var(--gray-500)">' + _t('sug.mineEmpty') + '</p>';
+    return;
+  }
+  const stTone = { new: 'var(--gray-500)', reviewing: 'var(--brand)', planned: 'var(--accent-dark)', completed: 'var(--success)', declined: 'var(--gray-400)' };
+  box.innerHTML = '<h3 style="font-size:1rem;margin-bottom:8px">' + _t('sug.mineTitle') + '</h3>' +
+    mine.map(function (s) {
+      return '<div class="card" style="margin-bottom:8px;padding:12px 14px">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px">' +
+          '<span class="badge">' + _t('sug.cat.' + s.category) + '</span>' +
+          '<span style="font-size:.78rem;font-weight:700;color:' + (stTone[s.status] || 'var(--gray-500)') + '">' + _t('sug.st.' + s.status) + '</span>' +
+        '</div>' +
+        '<p class="text-sm">' + escapeHtml(s.message) + '</p>' +
+      '</div>';
+    }).join('');
+}
+
 // Personal information (the former Account edit form)
 async function renderProfileEdit(el) {
   const profile = await get('/api/client/profile');
@@ -5163,6 +5338,7 @@ async function adminView(hash, el) {
   if (hash==='#/users')           return renderAdminUsers(el);
   if (hash==='#/requests')        return renderAdminRequests(el);
   if (hash==='#/operations')      return renderAdminOperations(el);
+  if (hash==='#/suggestions')     return renderAdminSuggestions(el);
   if (hash==='#/disputes')        return renderAdminDisputes(el);
   if (hash==='#/reports')         return renderAdminReports(el);
   if (hash==='#/settings')        return renderSettings(el);
@@ -5210,6 +5386,41 @@ async function renderAdminOperations(el) {
       ${tbl(ops.awaiting_confirmation, [['Job','job_id'],['Title','title'],['Provider','mechanic_id'],['Waiting (h)','waiting_hours']])}</div>
     <div class="card"><h3 style="margin-bottom:10px">Stale offers <span class="text-sm" style="color:var(--gray-500)">(should self-heal on next poll)</span></h3>
       ${tbl(ops.stale_offers, [['Dispatch','dispatch_id'],['Request','request_id'],['Provider','provider_user_id'],['Age (min)','age_minutes']])}</div>`;
+}
+
+let _sugFilter = '';
+async function renderAdminSuggestions(el) {
+  const data = await get('/api/admin/suggestions?page_size=100' + (_sugFilter ? '&status=' + _sugFilter : ''));
+  const c = data.counts || {};
+  const STATUSES = ['new', 'reviewing', 'planned', 'completed', 'declined'];
+  const filterBtns = ['', ...STATUSES].map(function (s) {
+    const label = s ? (_t('sug.st.' + s) + ' (' + (c[s] || 0) + ')') : ('Todas (' + (data.total || 0) + ')');
+    return '<button class="btn btn-sm ' + (_sugFilter === s ? 'btn-primary' : 'btn-outline') + '" style="font-size:.78rem" onclick="_sugFilter=\'' + s + '\';renderAdminSuggestions(document.getElementById(\'content\'))">' + label + '</button>';
+  }).join(' ');
+  const catLabel = { pricing: 'Precios', professionals: 'Profesionales', app_experience: 'App', new_service: 'Nuevo servicio', safety: 'Seguridad', other: 'Otro' };
+  const rows = (data.items || []).map(function (s) {
+    const opts = STATUSES.map(function (st) { return '<option value="' + st + '"' + (s.status === st ? ' selected' : '') + '>' + _t('sug.st.' + st) + '</option>'; }).join('');
+    return '<div class="card" style="margin-bottom:10px">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">' +
+        '<div><span class="badge">' + (catLabel[s.category] || s.category) + '</span> <span class="text-sm" style="color:var(--gray-500)">#' + s.id + ' · ' + fmtDate(s.created_at) + (s.user_id ? ' · user ' + s.user_id : (s.email ? ' · ' + escapeHtml(s.email) : ' · anónimo')) + '</span></div>' +
+        '<select onchange="updateSuggestionStatus(' + s.id + ',this.value)" style="padding:5px 8px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:.82rem">' + opts + '</select>' +
+      '</div>' +
+      '<p class="text-sm" style="margin-bottom:8px">' + escapeHtml(s.message) + '</p>' +
+      '<div style="display:flex;gap:6px"><input id="sug-note-' + s.id + '" placeholder="Nota interna…" value="' + escapeHtml(s.admin_notes || '') + '" style="flex:1;padding:6px 10px;border-radius:8px;border:1.5px solid var(--gray-200);font-size:.82rem">' +
+        '<button class="btn btn-sm btn-outline" onclick="saveSuggestionNote(' + s.id + ')">Guardar nota</button></div>' +
+    '</div>';
+  }).join('') || '<p class="text-sm" style="color:var(--gray-500)">Sin sugerencias.</p>';
+  el.innerHTML = pageHeader('Suggestions') +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' + filterBtns + '</div>' + rows;
+}
+async function updateSuggestionStatus(id, status) {
+  try { await patch('/api/admin/suggestions/' + id, { status: status }); showToast('✓', 'success'); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+async function saveSuggestionNote(id) {
+  const v = (document.getElementById('sug-note-' + id) || {}).value || '';
+  try { await patch('/api/admin/suggestions/' + id, { admin_notes: v }); showToast('✓', 'success'); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
 async function renderAdminUsers(el) {
@@ -6938,6 +7149,8 @@ function landingNav() {
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/services\')">' + _t('nav2.servicios') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/cobertura\')">' + _t('nav2.cobertura') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();landingScrollTo(\'how-section\')">' + _t('nav2.como') + '</button>' +
+    '<button class="nav-item" onclick="closeNavDrawer();route(\'#/novedades\')">' + _t('foot.news') + '</button>' +
+    '<button class="nav-item" onclick="closeNavDrawer();route(\'#/sugerencias\')">' + _t('foot.suggest') + '</button>' +
   '</div>';
 }
 let _navLastFocus = null;
@@ -7100,6 +7313,8 @@ function renderLanding() {
           '</div>' +
           '<div class="footer-col">' +
             '<h3>Empresa</h3>' +
+            '<a href="#/novedades">' + _t('foot.news') + '</a>' +
+            '<a href="#/sugerencias">' + _t('foot.suggest') + '</a>' +
             '<a href="/support">Centro de Ayuda</a>' +
             '<a href="/terms">T\u00e9rminos de Servicio</a>' +
             '<a href="/privacy">Pol\u00edtica de Privacidad</a>' +
