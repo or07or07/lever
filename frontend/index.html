@@ -890,6 +890,52 @@ tr:hover td{background:var(--gray-50)}
 #tracking-map-container{transition:opacity .3s ease}
 .tracking-dest-icon,.tracking-provider-icon{background:none!important;border:none!important}
 #provider-tracking-card,#tracking-card{border-left:3px solid var(--brand)}
+
+/* ============ MODERN LANDING + SMOOTH THEME FLIP ============ */
+/* Smooth whole-site theme transition (client indigo ⇄ pro teal). */
+.landing-header,.landing-header button,.hero-avail,.btn-hero-primary,.btn-hero-secondary,
+.step-num,.step-card,.trust-card,.trust-card svg,.testimonial-card,.prof-card-landing,
+.cta-section button,.coverage-card,.coverage-section,.footer-col a,.btn-cta-primary,.btn-cta-outline,
+.support-tab,.btn-cta-primary{transition:background-color .45s var(--ease),color .45s var(--ease),
+  border-color .45s var(--ease),box-shadow .3s var(--ease),transform .2s var(--ease)}
+
+/* Sticky header — frosted glass */
+.landing-header{background:rgba(255,255,255,.82);backdrop-filter:saturate(1.3) blur(10px);-webkit-backdrop-filter:saturate(1.3) blur(10px);border-bottom:1px solid rgba(15,23,42,.06)}
+
+/* Hero — soft brand wash, bigger tighter type, gradient primary button */
+.hero-section{background:radial-gradient(1100px 520px at 50% -8%,var(--brand-50) 0%,#fff 60%);padding:82px 24px 68px;border-bottom:none;position:relative;overflow:hidden}
+.hero-section h1{font-size:2.85rem;letter-spacing:-.03em;line-height:1.06;font-weight:800}
+.hero-section p{font-size:1.12rem;margin-bottom:34px}
+.hero-avail{background:#fff;border:1px solid var(--brand-100);box-shadow:0 3px 14px rgba(var(--brand-rgb),.12)}
+@media(max-width:600px){.hero-section h1{font-size:2.05rem}.hero-section{padding:56px 20px 48px}.hero-section p{font-size:1rem}}
+.btn-hero-primary{background:linear-gradient(135deg,var(--brand),var(--brand-dark));border:none;box-shadow:0 8px 22px rgba(var(--brand-rgb),.28)}
+.btn-hero-primary:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(var(--brand-rgb),.4)}
+.btn-hero-secondary{background:#fff;border:1.5px solid var(--brand-200)}
+.btn-hero-secondary:hover{background:var(--brand-50);border-color:var(--brand);transform:translateY(-1px)}
+
+/* Section headings — larger, tighter */
+.how-it-works h2,.trust-section h2,.testimonials-section h2,.cta-section h2,.coverage-section h2{font-size:1.95rem;letter-spacing:-.02em}
+@media(max-width:600px){.how-it-works h2,.trust-section h2,.testimonials-section h2,.cta-section h2,.coverage-section h2{font-size:1.5rem}}
+
+/* Cards — elevated, hover-lift, modern radius */
+.step-card{background:#fff;border:1px solid var(--gray-100);border-radius:20px;box-shadow:0 2px 16px rgba(15,23,42,.05);padding:30px 22px}
+.step-card:hover,.trust-card:hover,.testimonial-card:hover{transform:translateY(-4px);box-shadow:0 16px 36px rgba(15,23,42,.10)}
+.step-num{width:48px;height:48px;font-size:1.25rem;background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff;border:none;box-shadow:0 6px 16px rgba(var(--brand-rgb),.32)}
+.trust-card,.testimonial-card{border:1px solid var(--gray-100);border-radius:20px;background:#fff;box-shadow:0 2px 16px rgba(15,23,42,.05)}
+.trust-card svg{background:var(--brand-50);width:52px;height:52px;padding:11px;border-radius:14px;box-sizing:border-box}
+.prof-card-landing{border-radius:16px;transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+.prof-card-landing:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(15,23,42,.10)}
+
+/* CTA + coverage buttons — gradient primaries */
+.cta-section .btn-cta-primary,.coverage-actions .btn-cta-primary{background:linear-gradient(135deg,var(--brand),var(--brand-dark));box-shadow:0 6px 18px rgba(var(--brand-rgb),.26)}
+
+/* Subtle staggered entrance for the landing sections */
+@keyframes landUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.landing-body>section{animation:landUp .5s var(--ease) both}
+.landing-body>section:nth-child(2){animation-delay:.06s}
+.landing-body>section:nth-child(3){animation-delay:.12s}
+.landing-body>section:nth-child(4){animation-delay:.16s}
+@media(prefers-reduced-motion:reduce){.landing-body>section{animation:none}}
 </style>
 
 <!-- Leaflet Map (Day 60 — Search + Geolocation) -->
@@ -2408,10 +2454,20 @@ async function detectAppFlavor() {
 
 // ---- Role theme (Lever Pro = teal) ----
 // The provider app is teal from the very first welcome screen; the SAME
-// palette must hold across the whole session. Driven by the app flavor
-// (native) or the signed-in role (web).
+// palette must hold across the whole session. On the web the theme follows:
+//   • the signed-in user's role (client indigo / professional teal), else
+//   • the native app flavor, else
+//   • the current ROUTE — entering a professional context flips the WHOLE
+//     site to teal, matching the provider APK, and reverts to indigo when the
+//     visitor returns to the client/landing side.
+var _PRO_ROUTES = ['#/registro/profesional'];
+function isProContext() {
+  if (_user) return _user.role === 'mechanic';
+  if (APP_FLAVOR_ROLE) return APP_FLAVOR_ROLE === 'mechanic';
+  return _PRO_ROUTES.indexOf(currentRoute()) !== -1;
+}
 function applyRoleTheme() {
-  var isPro = APP_FLAVOR_ROLE === 'mechanic' || (_user && _user.role === 'mechanic');
+  var isPro = isProContext();
   document.documentElement.classList.toggle('theme-pro', !!isPro);
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', isPro ? '#0d9488' : '#6366f1');
@@ -2703,6 +2759,9 @@ window.addEventListener('load', async () => {
 
 async function render() {
   const _hash = currentRoute();
+  // Theme follows context on every navigation (client indigo ⇄ pro teal),
+  // so entering the professional-registration route flips the whole site.
+  applyRoleTheme();
   // Keep <html lang> in sync with the active UI language (a11y).
   try { if (document.documentElement.lang !== _lang) document.documentElement.lang = _lang; } catch(e) {}
   // Language route shortcuts: #/us -> English, #/es -> Spanish
