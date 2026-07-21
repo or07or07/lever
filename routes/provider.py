@@ -153,6 +153,40 @@ def update_profile(
 
 
 # ---------------------------------------------------------------------------
+# Subscription (individual provider — free baseline + optional Pro tier)
+# Billing is not wired yet: "upgrade" records intent; the subscription only
+# becomes active when the payment integration (or an admin comp) flips it.
+# ---------------------------------------------------------------------------
+
+@router.get("/subscription")
+def my_subscription(
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    from subscriptions import ensure_subscription, subscription_public
+    sub = ensure_subscription(db, "provider", current_user.id, tier="free")
+    db.commit()
+    return subscription_public(sub)
+
+
+@router.post("/subscription/upgrade")
+def upgrade_subscription(
+    current_user: User = Depends(require_provider),
+    db: Session = Depends(get_db),
+):
+    from subscriptions import ensure_subscription, subscription_public
+    sub = ensure_subscription(db, "provider", current_user.id, tier="free")
+    sub.tier = "pro"   # intent recorded; status stays inactive until billing/comp
+    db.commit()
+    db.refresh(sub)
+    return {
+        "subscription": subscription_public(sub),
+        "billing_pending": True,
+        "message": "Tu plan Pro está reservado. Se activará cuando el cobro esté disponible.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Service selection (Phase 3 — service catalog)
 #
 # A provider is still tied to exactly one profession/category (v1 scope —

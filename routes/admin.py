@@ -267,6 +267,53 @@ def operations(
 
 
 # ---------------------------------------------------------------------------
+# Subscriptions oversight (manual comp / activation until billing ships)
+# ---------------------------------------------------------------------------
+
+@router.get("/subscriptions")
+def list_subscriptions(
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from models import Subscription, Company
+    subs = db.query(Subscription).order_by(Subscription.id.desc()).limit(500).all()
+    comp_names = {c.id: c.name for c in db.query(Company).all()}
+    out = []
+    for s in subs:
+        label = comp_names.get(s.subject_id, "") if s.subject_type == "company" else ""
+        out.append({
+            "id": s.id, "subject_type": s.subject_type, "subject_id": s.subject_id,
+            "subject_label": label, "tier": s.tier, "status": s.status,
+            "current_period_end": s.current_period_end.isoformat() if s.current_period_end else None,
+        })
+    return out
+
+
+@router.patch("/subscriptions/{sub_id}")
+def set_subscription(
+    sub_id: int,
+    payload: dict,
+    _admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Manually set a subscription's status/tier — used to comp pilot
+    companies before automated billing exists, and to test entitlements."""
+    from models import Subscription
+    ALLOWED = {"inactive", "trial", "active", "past_due", "cancelled"}
+    s = db.query(Subscription).filter(Subscription.id == sub_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    if "status" in payload:
+        if payload["status"] not in ALLOWED:
+            raise HTTPException(status_code=422, detail="Invalid status")
+        s.status = payload["status"]
+    if payload.get("tier"):
+        s.tier = str(payload["tier"])[:30]
+    db.commit()
+    return {"ok": True, "id": s.id, "tier": s.tier, "status": s.status}
+
+
+# ---------------------------------------------------------------------------
 # Community suggestions triage
 # ---------------------------------------------------------------------------
 

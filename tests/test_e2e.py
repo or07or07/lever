@@ -631,6 +631,7 @@ def run_all():
         test_admin_operations,
         test_device_registration,
         test_suggestions,
+        test_enterprise,
     ]
 
     for test_fn in tests:
@@ -1565,6 +1566,74 @@ def test_suggestions():
     check("Non-admin denied admin list (403)", forbidden.status_code == 403, forbidden.text)
 
 
+def test_enterprise():
+    section("25. Enterprise: companies, roster, reputation rollup")
+    uid = str(uuid.uuid4())[:8]
+    cr = anon.post("/api/company/register", json={
+        "company_name": "Servicios Pro GYE", "ruc": "0999999999001", "contact_phone": "0999999999",
+        "email": f"own_{uid}@test.com", "password": "Passw0rd1!", "accepted_terms": True,
+        "date_of_birth": ADULT_DOB})
+    check("Company sign-up (201)", cr.status_code == 201, cr.text)
+    owner = Session(cr.json()["access_token"])
+    me = owner.get("/api/company/me").json()
+    check("Enterprise subscription created, inactive until billing",
+          me.get("subscription", {}).get("tier") == "enterprise"
+          and me["subscription"]["active"] is False, str(me.get("subscription")))
+
+    emp = anon.post("/api/auth/register", json={
+        "email": f"emp_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "gardening", "accepted_terms": True, "date_of_birth": ADULT_DOB})
+    emp = Session(emp.json()["access_token"])
+    inv = owner.post("/api/company/members/invite", json={"email": f"emp_{uid}@test.com"})
+    check("Invite existing professional (200)", inv.status_code == 200, inv.text)
+    invs = emp.get("/api/company/invitations").json()
+    check("Employee sees the invitation", bool(invs) and invs[0]["company_id"] == me["id"], str(invs))
+    acc = emp.post(f"/api/company/invitations/{me['id']}/accept")
+    check("Employee accepts (200)", acc.status_code == 200, acc.text)
+    dup = owner.post("/api/company/members/invite", json={"email": f"emp_{uid}@test.com"})
+    check("Re-inviting an active member rejected (409)", dup.status_code == 409, dup.text)
+
+    # Employee performs and gets reviewed → rating rolls up to the COMPANY.
+    emp.post("/api/provider/go-online"); _shed_stale_offers(emp)
+    client = Session(anon.post("/api/auth/register", json={
+        "email": f"ecl_{uid}@test.com", "password": "Client123!", "role": "client",
+        "accepted_terms": True, "date_of_birth": ADULT_DOB}).json()["access_token"])
+    rq = client.post("/api/client/requests", json={
+        "title": "Poda para empresa", "description": "Trabajo realizado por empleado de empresa.",
+        "location": "Urdesa, Guayaquil", "city": "Guayaquil", "province": "Guayas",
+        "country_code": "EC", "urgency": "immediate", "profession_type": "gardening"})
+    req_id = rq.json()["id"]
+    job_id = emp.post(f"/api/provider/board/{req_id}/accept").json()["id"]
+    emp.patch(f"/api/provider/jobs/{job_id}/status", json={"status": "working"})
+    emp.patch(f"/api/provider/jobs/{job_id}/status", json={"status": "completed"})
+    client.post(f"/api/client/jobs/{job_id}/confirm-completion")
+    client.post(f"/api/client/jobs/{job_id}/review", json={"rating": 5, "comment": "excelente"})
+
+    me2 = owner.get("/api/company/me").json()
+    check("Rating rolled up to the COMPANY",
+          me2["total_jobs"] == 1 and me2["avg_rating"] == 5.0, str(me2))
+    empprof = emp.get("/api/provider/profile").json()
+    check("Employee has NO personal rating (fleet model)",
+          (empprof.get("total_jobs") or 0) == 0, str(empprof.get("total_jobs")))
+    det = client.get(f"/api/client/requests/{req_id}").json()
+    check("Client sees the company brand + rating",
+          det.get("professional_name") == "Servicios Pro GYE" and det.get("professional_rating") == 5.0,
+          str({k: det.get(k) for k in ("professional_name", "professional_rating")}))
+
+    # Guards + subscription scaffold
+    solo = Session(anon.post("/api/auth/register", json={
+        "email": f"solo_{uid}@test.com", "password": "Mech1234!", "role": "mechanic",
+        "profession": "plumbing", "accepted_terms": True, "date_of_birth": ADULT_DOB}).json()["access_token"])
+    check("Non-company-admin denied the dashboard (403)",
+          solo.get("/api/company/me").status_code == 403, "")
+    sub = solo.get("/api/provider/subscription").json()
+    up = solo.post("/api/provider/subscription/upgrade").json()
+    check("Provider Pro upgrade recorded but inactive (billing pending)",
+          sub["tier"] == "free" and up["subscription"]["tier"] == "pro"
+          and up["billing_pending"] and up["subscription"]["active"] is False, str(up))
+    emp.post("/api/provider/go-offline")
+
+
 if __name__ == "__main__":
     run_all()
 
@@ -1597,3 +1666,4 @@ def test_pytest_hourly_metering(): test_hourly_metering()
 def test_pytest_admin_operations(): test_admin_operations()
 def test_pytest_device_registration(): test_device_registration()
 def test_pytest_suggestions(): test_suggestions()
+def test_pytest_enterprise(): test_enterprise()

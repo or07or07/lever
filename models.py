@@ -613,3 +613,93 @@ class DeviceToken(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+# ---------------------------------------------------------------------------
+# Enterprise: companies, their staff, and subscriptions
+# ---------------------------------------------------------------------------
+
+class Company(Base):
+    """A business that sends its OWN employees to perform jobs. The company is
+    the subscriber, the legal/compliance holder, and the REPUTATION umbrella:
+    every completed job by any of its employees rolls up into one company
+    score (individual employees don't build a personal rating — a deliberate
+    fleet model). Document/KYC intake is a later slice; verification_status
+    holds the eventual outcome."""
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False)
+    ruc = Column(String(20), default="")          # Ecuador tax id (RUC) — validated at compliance slice
+    contact_email = Column(String(255), default="")
+    contact_phone = Column(String(30), default="")
+    description = Column(Text, default="")
+    logo_url = Column(String(500), default="")
+    # Reputation umbrella — aggregated from employees' reviewed jobs.
+    avg_rating = Column(Float, default=0.0)
+    total_jobs = Column(Integer, default=0)
+    # Compliance outcome (documents reviewed by a Lever admin — intake later).
+    verification_status = Column(
+        SAEnum("pending", "verified", "rejected", name="company_verification_enum"),
+        default="pending", nullable=False,
+    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+
+class CompanyMember(Base):
+    """Links a user to a company. Owners/admins manage the roster and see the
+    dashboard; employees perform jobs under the company's brand and rating.
+    'invited' → the person must accept before they're active (consent: nobody
+    is silently absorbed into a company)."""
+    __tablename__ = "company_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(Integer, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(
+        SAEnum("owner", "admin", "employee", name="company_member_role_enum"),
+        default="employee", nullable=False,
+    )
+    status = Column(
+        SAEnum("active", "invited", "removed", name="company_member_status_enum"),
+        default="active", nullable=False,
+    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    company = relationship("Company", foreign_keys=[company_id])
+    user = relationship("User", foreign_keys=[user_id])
+
+    __table_args__ = (
+        Index("ix_company_members_unique", "company_id", "user_id", unique=True),
+    )
+
+
+class Subscription(Base):
+    """Billing-ready but INERT until a processor is wired: a subject (a
+    provider user, or a company) is on a tier with a status. Entitlements are
+    derived from status in (trial, active); nothing charges until
+    processor/processor_ref are populated by the payment integration."""
+    __tablename__ = "subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    subject_type = Column(
+        SAEnum("provider", "company", name="subscription_subject_enum"), nullable=False,
+    )
+    subject_id = Column(Integer, nullable=False)   # user_id for provider, company_id for company
+    tier = Column(String(30), default="free", nullable=False)   # free | pro | enterprise
+    status = Column(
+        SAEnum("inactive", "trial", "active", "past_due", "cancelled",
+               name="subscription_status_enum"),
+        default="inactive", nullable=False,
+    )
+    trial_ends_at = Column(DateTime, nullable=True)
+    current_period_end = Column(DateTime, nullable=True)
+    processor = Column(String(30), default="")      # payphone | kushki | datafast | stripe | ""
+    processor_ref = Column(String(255), default="")  # external subscription id
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("ix_subscriptions_subject", "subject_type", "subject_id"),
+    )

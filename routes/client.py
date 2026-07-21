@@ -180,12 +180,22 @@ def list_requests(
     # Attach the assigned professional's summary + whether the customer has
     # reviewed the job, for the Activity cards. Batched to avoid N+1.
     mech_ids = {r.job.mechanic_id for r in reqs if r.job and r.job.mechanic_id}
-    profiles, verified = {}, {}
+    profiles, verified, companies_by_user = {}, {}, {}
     if mech_ids:
         for mp in db.query(MechanicProfile).filter(MechanicProfile.user_id.in_(mech_ids)).all():
             profiles[mp.user_id] = mp
         for u in db.query(User).filter(User.id.in_(mech_ids)).all():
             verified[u.id] = (u.verification_level == "enhanced")
+        # Enterprise: a company employee shows the COMPANY brand + rating.
+        from models import Company, CompanyMember
+        mems = db.query(CompanyMember).filter(
+            CompanyMember.user_id.in_(mech_ids), CompanyMember.status == "active").all()
+        comp_ids = {m.company_id for m in mems}
+        comps = {c.id: c for c in db.query(Company).filter(Company.id.in_(comp_ids or {0})).all()}
+        for m in mems:
+            c = comps.get(m.company_id)
+            if c:
+                companies_by_user[m.user_id] = c
     for r in reqs:
         r.professional_name = None
         r.professional_rating = None
@@ -195,14 +205,22 @@ def list_requests(
         r.has_review = None
         job = r.job
         if job and job.mechanic_id:
+            company = companies_by_user.get(job.mechanic_id)
             mp = profiles.get(job.mechanic_id)
-            if mp:
+            if company:
+                r.professional_name = company.name
+                r.professional_rating = round(company.avg_rating, 1) if company.total_jobs else None
+                r.professional_jobs = company.total_jobs or 0
+                r.professional_verified = (company.verification_status == "verified")
+                if mp:
+                    r.professional_hourly_rate = mp.hourly_rate or None
+            elif mp:
                 r.professional_name = mp.full_name or None
                 r.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
                 # Worker-set pricing + trust: their rate and verified track record
                 r.professional_hourly_rate = mp.hourly_rate or None
                 r.professional_jobs = mp.total_jobs or 0
-            r.professional_verified = verified.get(job.mechanic_id, False)
+                r.professional_verified = verified.get(job.mechanic_id, False)
             r.has_review = job.review is not None
     return reqs
 
@@ -317,13 +335,26 @@ def get_request(
         mp = db.query(MechanicProfile).filter(
             MechanicProfile.user_id == req.job.mechanic_id
         ).first()
-        if mp:
-            req.professional_name = mp.full_name or None
-            req.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
-            req.professional_hourly_rate = mp.hourly_rate or None
-            req.professional_jobs = mp.total_jobs or 0
-        u = db.query(User).filter(User.id == req.job.mechanic_id).first()
-        req.professional_verified = bool(u and u.verification_level == "enhanced")
+        from routes.company import active_company_id_for_user
+        from models import Company
+        company_id = active_company_id_for_user(db, req.job.mechanic_id)
+        company = db.query(Company).filter(Company.id == company_id).first() if company_id else None
+        if company:
+            # Enterprise: employee shows the company brand + umbrella rating.
+            req.professional_name = company.name
+            req.professional_rating = round(company.avg_rating, 1) if company.total_jobs else None
+            req.professional_jobs = company.total_jobs or 0
+            req.professional_verified = (company.verification_status == "verified")
+            if mp:
+                req.professional_hourly_rate = mp.hourly_rate or None
+        else:
+            if mp:
+                req.professional_name = mp.full_name or None
+                req.professional_rating = round(mp.avg_rating, 1) if mp.total_jobs else None
+                req.professional_hourly_rate = mp.hourly_rate or None
+                req.professional_jobs = mp.total_jobs or 0
+            u = db.query(User).filter(User.id == req.job.mechanic_id).first()
+            req.professional_verified = bool(u and u.verification_level == "enhanced")
     return req
 
 
@@ -607,14 +638,27 @@ def leave_review(
     )
     db.add(review)
 
-    # Update mechanic aggregate rating
-    mech_profile = db.query(MechanicProfile).filter(
-        MechanicProfile.user_id == mechanic_user_id
-    ).first()
-    if mech_profile:
-        existing_total = mech_profile.avg_rating * mech_profile.total_jobs
-        mech_profile.total_jobs += 1
-        mech_profile.avg_rating = (existing_total + payload.rating) / mech_profile.total_jobs
+    # ── Reputation rollup (enterprise) ──
+    # A company employee's rating rolls up to the COMPANY's umbrella score, not
+    # a personal one (fleet model). An independent contractor updates their own
+    # MechanicProfile as before.
+    from routes.company import active_company_id_for_user
+    company_id = active_company_id_for_user(db, mechanic_user_id)
+    if company_id:
+        from models import Company
+        company = db.query(Company).filter(Company.id == company_id).first()
+        if company:
+            existing_total = company.avg_rating * company.total_jobs
+            company.total_jobs += 1
+            company.avg_rating = (existing_total + payload.rating) / company.total_jobs
+    else:
+        mech_profile = db.query(MechanicProfile).filter(
+            MechanicProfile.user_id == mechanic_user_id
+        ).first()
+        if mech_profile:
+            existing_total = mech_profile.avg_rating * mech_profile.total_jobs
+            mech_profile.total_jobs += 1
+            mech_profile.avg_rating = (existing_total + payload.rating) / mech_profile.total_jobs
 
     db.commit()
     db.refresh(review)

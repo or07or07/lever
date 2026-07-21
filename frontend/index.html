@@ -1266,6 +1266,67 @@ var _translations = {
   'sug.privacy': {es:'No compartas datos sensibles. Revisa nuestra Política de Privacidad.', en:'Please don\'t share sensitive data. See our Privacy Policy.'},
   'foot.news': {es:'Novedades', en:"What's New"},
   'foot.suggest': {es:'Sugerencias', en:'Suggestions'},
+  // Enterprise
+  'ent.grpBusiness': {es:'Empresa', en:'Business'},
+  'ent.myCompany': {es:'Mi Empresa', en:'My Company'},
+  'ent.invitations': {es:'Invitaciones', en:'Invitations'},
+  'ent.subscription': {es:'Mi Suscripción', en:'My Subscription'},
+  'ent.dashTitle': {es:'Panel de Empresa', en:'Company Dashboard'},
+  'ent.members': {es:'Empleados', en:'Employees'},
+  'ent.jobs': {es:'Trabajos', en:'Jobs'},
+  'ent.rating': {es:'Calificación', en:'Rating'},
+  'ent.roster': {es:'Equipo', en:'Roster'},
+  'ent.invite': {es:'Invitar empleado', en:'Invite employee'},
+  'ent.inviteEmail': {es:'Correo del profesional', en:"Professional's email"},
+  'ent.inviteSent': {es:'Invitación enviada.', en:'Invitation sent.'},
+  'ent.inviteNotFound': {es:'No existe un profesional con ese correo. Debe registrarse primero.', en:'No professional with that email. They must register first.'},
+  'ent.inviteInCompany': {es:'Ese profesional ya pertenece a otra empresa.', en:'That professional already belongs to another company.'},
+  'ent.inviteDup': {es:'Ese profesional ya es parte de tu equipo.', en:'That professional is already on your team.'},
+  'ent.remove': {es:'Quitar', en:'Remove'},
+  'ent.removeConfirm': {es:'¿Quitar a este empleado del equipo?', en:'Remove this employee from the team?'},
+  'ent.roleOwner': {es:'Dueño', en:'Owner'},
+  'ent.roleAdmin': {es:'Administrador', en:'Admin'},
+  'ent.roleEmployee': {es:'Empleado', en:'Employee'},
+  'ent.stInvited': {es:'Invitado', en:'Invited'},
+  'ent.stActive': {es:'Activo', en:'Active'},
+  'ent.companyJobs': {es:'Trabajos del equipo', en:'Team jobs'},
+  'ent.noJobs': {es:'Aún no hay trabajos del equipo.', en:'No team jobs yet.'},
+  'ent.notAdmin': {es:'No administras ninguna empresa. Regístrate como empresa para gestionar tu equipo.', en:"You don't manage a company. Sign up as a business to manage your team."},
+  'ent.registerCta': {es:'Registrar mi empresa', en:'Register my company'},
+  'ent.verifPending': {es:'Verificación pendiente', en:'Verification pending'},
+  'ent.verifVerified': {es:'Empresa verificada', en:'Verified business'},
+  'ent.umbrella': {es:'La calificación de tu empresa es el promedio de todos los trabajos de tu equipo.', en:"Your company rating is the average of all your team's jobs."},
+  'ent.invTitle': {es:'Invitaciones de empresa', en:'Company invitations'},
+  'ent.invEmpty': {es:'No tienes invitaciones pendientes.', en:'You have no pending invitations.'},
+  'ent.accept': {es:'Aceptar', en:'Accept'},
+  'ent.joined': {es:'Te uniste a la empresa ✓', en:'You joined the company ✓'},
+  'ent.invExplain': {es:'Al aceptar, tus trabajos contarán para la calificación de la empresa.', en:"Once you accept, your jobs will count toward the company's rating."},
+  // Company sign-up
+  'ent.regTitle': {es:'Registra tu empresa', en:'Register your business'},
+  'ent.regSub': {es:'Suscripción Enterprise: envía a tus propios empleados y gestiona tu equipo desde un panel.', en:'Enterprise subscription: send your own employees and manage your team from a dashboard.'},
+  'ent.regName': {es:'Nombre de la empresa', en:'Company name'},
+  'ent.regRuc': {es:'RUC (opcional)', en:'RUC / tax id (optional)'},
+  'ent.regPhone': {es:'Teléfono de contacto (opcional)', en:'Contact phone (optional)'},
+  'ent.regOwnerEmail': {es:'Correo del administrador', en:'Admin email'},
+  'ent.regPassword': {es:'Contraseña', en:'Password'},
+  'ent.regDob': {es:'Fecha de nacimiento del administrador', en:'Admin date of birth'},
+  'ent.regSubmit': {es:'Crear cuenta de empresa', en:'Create business account'},
+  'ent.regEmpresa': {es:'Soy una empresa', en:'I am a business'},
+  // Subscription
+  'sub.title': {es:'Mi Suscripción', en:'My Subscription'},
+  'sub.tier': {es:'Plan', en:'Plan'},
+  'sub.tier.free': {es:'Gratis', en:'Free'},
+  'sub.tier.pro': {es:'Pro', en:'Pro'},
+  'sub.tier.enterprise': {es:'Enterprise', en:'Enterprise'},
+  'sub.status': {es:'Estado', en:'Status'},
+  'sub.st.inactive': {es:'Inactivo', en:'Inactive'},
+  'sub.st.trial': {es:'Prueba', en:'Trial'},
+  'sub.st.active': {es:'Activo', en:'Active'},
+  'sub.st.past_due': {es:'Pago pendiente', en:'Past due'},
+  'sub.st.cancelled': {es:'Cancelado', en:'Cancelled'},
+  'sub.freeNote': {es:'Trabajar en Lever es gratis. El plan Pro (próximamente) añade prioridad y visibilidad.', en:'Working on Lever is free. The Pro plan (coming soon) adds priority and visibility.'},
+  'sub.upgrade': {es:'Reservar plan Pro', en:'Reserve Pro plan'},
+  'sub.pendingNote': {es:'Tu plan Pro está reservado. Se activará cuando el cobro esté disponible.', en:'Your Pro plan is reserved. It activates when billing goes live.'},
   'meter.worked': {es:'Tiempo trabajado', en:'Time worked'},
   'meter.soFar': {es:'Total según tiempo', en:'Metered total'},
   'meter.cap': {es:'Máximo autorizado', en:'Authorized maximum'},
@@ -1428,6 +1489,7 @@ var _translations = {
   'nav.reports': {es:'Reportes', en:'Reports'},
   'nav.operations': {es:'Operaciones', en:'Operations'},
   'nav.suggestions': {es:'Sugerencias', en:'Suggestions'},
+  'nav.subscriptions': {es:'Suscripciones', en:'Subscriptions'},
   'nav.map': {es:'Mapa', en:'Map'},
   'nav.vehicles': {es:'Mis Vehículos', en:'My Vehicles'},
   'nav.packages': {es:'Paquetes', en:'Packages'},
@@ -2235,7 +2297,7 @@ function buildSidebarImproved(role, hash) {
 }
 
 function getPageTitle(hash) {
-  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/operations':'Operations','#/suggestions':'Suggestions','#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
+  var titles = {'#/':_t('nav.dashboard'),'#/requests':_t('nav.requests'),'#/operations':'Operations','#/suggestions':'Suggestions','#/subscriptions':'Subscriptions','#/messages':_t('nav.messages'),'#/profile':_t('nav.profile'),'#/board':_t('nav.board'),'#/jobs':_t('nav.jobs'),'#/reviews':_t('nav.reviews'),'#/users':_t('nav.users'),'#/disputes':_t('nav.disputes'),'#/reports':_t('nav.reports'),'#/settings':_t('nav.settings'),'#/map':_t('nav.map'),'#/vehicles':_t('nav.vehicles')};
   return titles[hash] || '';
 }
 
@@ -2660,6 +2722,8 @@ async function render() {
   // Novedades + Sugerencias — public pages, reachable signed in or out.
   if (_hash === '#/novedades') { renderReleaseNotes(); return; }
   if (_hash === '#/sugerencias') { renderSuggestions(); return; }
+  // Company sign-up — a business is a fresh account; reachable in any state.
+  if (_hash === '#/registro/empresa') { renderCompanyRegister(); return; }
   if (!_token) {
     if (_hash === '#/welcome') { renderWelcome(); return; }
     if (_hash === '#/welcome/choice') { renderWelcomeChoice(); return; }
@@ -2766,6 +2830,7 @@ var _navLabelMap = {
   '#/users': 'nav.users',
   '#/operations': 'nav.operations',
   '#/suggestions': 'nav.suggestions',
+  '#/subscriptions': 'nav.subscriptions',
   '#/disputes': 'nav.disputes',
   '#/reports': 'nav.reports',
   '#/map': 'nav.map',
@@ -2803,6 +2868,7 @@ const NAV = {
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>', label:'Requests',    hash:'#/requests'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>', label:'Operations', hash:'#/operations'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>', label:'Suggestions', hash:'#/suggestions'},
+    {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>', label:'Subscriptions', hash:'#/subscriptions'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>', label:'Disputes', hash:'#/disputes'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>', label:'Reports', hash:'#/reports'},
     {icon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>', label:'Settings', hash:'#/settings'},
@@ -4579,6 +4645,9 @@ async function mechanicView(hash, el) {
   if (hash.startsWith('#/chat/'))     return renderMessages(el, hash.split('/')[2]);
   if (hash==='#/profile')             return renderProviderAccount(el);
   if (hash==='#/provider/personal')   return renderMechanicProfile(el);
+  if (hash==='#/empresa')             return renderCompanyDashboard(el);
+  if (hash==='#/invitaciones')        return renderCompanyInvitations(el);
+  if (hash==='#/suscripcion')         return renderProviderSubscription(el);
   if (hash==='#/my-services')         return renderMyServices(el);
   if (hash==='#/map')                 return renderMapView(el);
   if (hash==='#/settings')            return renderSettings(el);
@@ -4635,6 +4704,10 @@ async function renderProviderAccount(el) {
       group(_t('acct.grpReputation'),
         row(_t('acct.myReviews'), "route('#/reviews')") +
         row(_t('acct.myJobs'), "route('#/jobs')")) +
+      group(_t('ent.grpBusiness'),
+        row(_t('ent.myCompany'), "route('#/empresa')") +
+        row(_t('ent.invitations'), "route('#/invitaciones')") +
+        row(_t('ent.subscription'), "route('#/suscripcion')")) +
       group(_t('acct.grpSecurity'),
         row(_t('acct.settingsSecurity'), "route('#/settings')")) +
       group(_t('acct.grpHelp'),
@@ -4649,6 +4722,172 @@ async function renderProviderAccount(el) {
 
 function offlineBoardState() {
   return `<div class="empty"><div class="empty-icon">\u{1F6AB}</div><h3>${_t('provider.offlineBoardTitle')}</h3><p>${_t('provider.offlineBoardSub')}</p><button class="btn btn-primary" style="margin-top:12px" onclick="toggleProviderOnline()">${_t('provider.goOnline')}</button></div>`;
+}
+
+// ---- Enterprise: company dashboard (owner/admin) ----
+const _subStLabel = s => _t('sub.st.' + s);
+async function renderCompanyDashboard(el) {
+  const back = '<button class="btn btn-outline" onclick="route(\'#/profile\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>';
+  el.innerHTML = pageHeader(_t('ent.dashTitle'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">' + leverSpinner(52) + '</div></div></div>';
+  let c;
+  try { c = await get('/api/company/me'); }
+  catch (e) {
+    el.innerHTML = pageHeader(_t('ent.dashTitle'), back) +
+      '<div class="card" style="max-width:520px"><p class="text-sm" style="margin-bottom:12px">' + escapeHtml(_t('ent.notAdmin')) + '</p>' +
+      '<button class="btn btn-primary" onclick="route(\'#/registro/empresa\')">' + _t('ent.registerCta') + '</button></div>';
+    return;
+  }
+  let members = [];
+  try { members = await get('/api/company/members'); } catch (e) {}
+  const roleLabel = { owner: _t('ent.roleOwner'), admin: _t('ent.roleAdmin'), employee: _t('ent.roleEmployee') };
+  const rosterRows = members.map(function (m) {
+    const canRemove = m.role !== 'owner' && c.my_role !== 'employee';
+    return '<div class="card" style="margin-bottom:8px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+      '<div><strong>' + escapeHtml(m.name || m.email) + '</strong><div class="text-sm" style="color:var(--gray-500)">' + escapeHtml(m.email) + ' · ' + (roleLabel[m.role] || m.role) + ' · ' + (m.status === 'invited' ? _t('ent.stInvited') : _t('ent.stActive')) + '</div></div>' +
+      (canRemove ? '<button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="removeCompanyMember(' + m.user_id + ')">' + _t('ent.remove') + '</button>' : '') +
+    '</div>';
+  }).join('') || '<p class="text-sm" style="color:var(--gray-500)">—</p>';
+  const sub = c.subscription || {};
+  const verifBadge = c.verification_status === 'verified'
+    ? '<span class="act-verif">✓ ' + escapeHtml(_t('ent.verifVerified')) + '</span>'
+    : '<span class="badge" style="background:var(--warn-light);color:var(--warn)">' + escapeHtml(_t('ent.verifPending')) + '</span>';
+  el.innerHTML = pageHeader(_t('ent.dashTitle'), back) +
+    '<div class="acct-wrap">' +
+      '<div class="card" style="margin-bottom:12px">' +
+        '<h2 style="font-size:1.2rem;font-weight:800;margin-bottom:4px">' + escapeHtml(c.name) + '</h2>' +
+        '<div style="margin-bottom:10px">' + verifBadge + ' <span class="badge">' + _t('sub.tier.enterprise') + ' · ' + _subStLabel(sub.status || 'inactive') + '</span></div>' +
+        '<div class="stats-grid">' +
+          '<div class="stat-card"><div class="stat-num">' + (c.avg_rating != null ? '★ ' + c.avg_rating.toFixed(1) : '—') + '</div><div class="stat-label">' + _t('ent.rating') + '</div></div>' +
+          '<div class="stat-card"><div class="stat-num">' + (c.total_jobs || 0) + '</div><div class="stat-label">' + _t('ent.jobs') + '</div></div>' +
+          '<div class="stat-card"><div class="stat-num">' + (c.member_count || 0) + '</div><div class="stat-label">' + _t('ent.members') + '</div></div>' +
+        '</div>' +
+        '<p class="text-sm" style="color:var(--gray-500);margin-top:8px">' + escapeHtml(_t('ent.umbrella')) + '</p>' +
+      '</div>' +
+      '<div class="card" style="margin-bottom:12px">' +
+        '<h3 style="font-size:1rem;margin-bottom:8px">' + _t('ent.roster') + '</h3>' +
+        '<div style="display:flex;gap:8px;margin-bottom:12px"><input id="ent-inv-email" type="email" placeholder="' + _t('ent.inviteEmail') + '" style="flex:1;padding:9px 12px;border-radius:10px;border:1.5px solid var(--gray-200)">' +
+          '<button class="btn btn-primary" onclick="inviteCompanyMember()">' + _t('ent.invite') + '</button></div>' +
+        '<div id="ent-inv-err" style="margin-bottom:8px"></div>' +
+        rosterRows +
+      '</div>' +
+      '<div class="card"><h3 style="font-size:1rem;margin-bottom:8px">' + _t('ent.companyJobs') + '</h3><div id="ent-jobs">' + leverSpinner(28) + '</div></div>' +
+    '</div>';
+  try {
+    const jobs = await get('/api/company/jobs');
+    document.getElementById('ent-jobs').innerHTML = (jobs && jobs.length)
+      ? jobs.map(function (j) { return '<div class="text-sm" style="padding:6px 0;border-bottom:1px solid var(--gray-100)">' + escapeHtml(j.title || ('#' + j.job_id)) + ' · <span style="color:var(--gray-500)">' + badge(j.status).replace(/<[^>]+>/g, '') + (j.final_price != null ? ' · ' + fmtMoney(j.final_price) : '') + '</span></div>'; }).join('')
+      : '<p class="text-sm" style="color:var(--gray-500)">' + _t('ent.noJobs') + '</p>';
+  } catch (e) {}
+}
+async function inviteCompanyMember() {
+  const email = (document.getElementById('ent-inv-email').value || '').trim();
+  const err = document.getElementById('ent-inv-err');
+  if (!email) return;
+  try {
+    await post('/api/company/members/invite', { email: email });
+    showToast(_t('ent.inviteSent'), 'success');
+    renderCompanyDashboard(document.getElementById('content'));
+  } catch (e) {
+    const m = /PROFESSIONAL_NOT_FOUND/.test(e.message) ? _t('ent.inviteNotFound')
+      : /ALREADY_IN_A_COMPANY/.test(e.message) ? _t('ent.inviteInCompany')
+      : /ALREADY_A_MEMBER/.test(e.message) ? _t('ent.inviteDup') : e.message;
+    err.innerHTML = alert_el('error', m);
+  }
+}
+async function removeCompanyMember(userId) {
+  if (!confirm(_t('ent.removeConfirm'))) return;
+  try { await del('/api/company/members/' + userId); renderCompanyDashboard(document.getElementById('content')); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+// ---- Enterprise: company sign-up (public) ----
+function renderCompanyRegister() {
+  const today = new Date().toISOString().slice(0, 10);
+  document.getElementById('app').innerHTML =
+    '<div class="gpage">' + gHeader('#/', escapeHtml(_t('ent.regTitle'))) +
+    '<p class="gpage-sub">' + escapeHtml(_t('ent.regSub')) + '</p>' +
+    '<div class="card" style="max-width:520px;margin:0 auto">' +
+      '<div class="form-group"><label>' + _t('ent.regName') + '</label><input id="er-name" maxlength="200"></div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>' + _t('ent.regRuc') + '</label><input id="er-ruc" maxlength="20"></div>' +
+        '<div class="form-group"><label>' + _t('ent.regPhone') + '</label><input id="er-phone" maxlength="30"></div>' +
+      '</div>' +
+      '<div class="form-group"><label>' + _t('ent.regOwnerEmail') + '</label><input id="er-email" type="email" autocomplete="email"></div>' +
+      '<div class="form-row">' +
+        '<div class="form-group"><label>' + _t('ent.regPassword') + '</label><input id="er-pass" type="password" autocomplete="new-password"></div>' +
+        '<div class="form-group"><label>' + _t('ent.regDob') + '</label><input id="er-dob" type="date" max="' + today + '"></div>' +
+      '</div>' +
+      '<label style="display:flex;gap:8px;align-items:flex-start;font-size:.85rem;margin-bottom:12px"><input type="checkbox" id="er-terms" style="margin-top:3px"><span>' + _t('auth.acceptTermsPre') + _t('auth.acceptTermsLink') + _t('auth.acceptTermsAnd') + _t('auth.acceptPrivacyLink') + '</span></label>' +
+      '<div id="er-err"></div>' +
+      '<button class="gbtn-primary" id="er-submit" onclick="submitCompanyRegister()">' + _t('ent.regSubmit') + '</button>' +
+    '</div></div>';
+}
+async function submitCompanyRegister() {
+  const g = id => (document.getElementById(id) || {}).value;
+  const err = document.getElementById('er-err');
+  const name = (g('er-name') || '').trim(), email = (g('er-email') || '').trim();
+  const pass = g('er-pass') || '', dob = g('er-dob') || '';
+  if (name.length < 2) { err.innerHTML = alert_el('error', _t('ent.regName')); return; }
+  if (!email || pass.length < 8 || !dob) { err.innerHTML = alert_el('error', _lang === 'es' ? 'Completa correo, contraseña (8+) y fecha de nacimiento.' : 'Fill email, password (8+) and date of birth.'); return; }
+  if (!document.getElementById('er-terms').checked) { err.innerHTML = alert_el('error', _lang === 'es' ? 'Debes aceptar los términos.' : 'You must accept the terms.'); return; }
+  const btn = document.getElementById('er-submit'); btn.disabled = true;
+  try {
+    const data = await post('/api/company/register', {
+      company_name: name, ruc: (g('er-ruc') || '').trim(), contact_phone: (g('er-phone') || '').trim(),
+      email: email, password: pass, accepted_terms: true, date_of_birth: dob,
+    });
+    login(data.access_token, { id: data.user_id, user_id: data.user_id, email: email, role: data.role, profession: data.profession, email_verified: data.email_verified !== false });
+    await loadProfessions();
+    route(data.email_verified === false ? '#/verify-email' : '#/empresa');
+  } catch (e) {
+    const dup = /already registered/i.test(e.message || '');
+    const age = /MINIMUM_AGE|INVALID_DATE/i.test(e.message || '');
+    err.innerHTML = alert_el('error', dup ? (_lang === 'es' ? 'Ese correo ya está registrado.' : 'That email is already registered.') : age ? (_lang === 'es' ? 'El administrador debe ser mayor de 18 años.' : 'The admin must be 18+.') : e.message);
+    btn.disabled = false;
+  }
+}
+
+// ---- Enterprise: employee invitations ----
+async function renderCompanyInvitations(el) {
+  const back = '<button class="btn btn-outline" onclick="route(\'#/profile\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>';
+  el.innerHTML = pageHeader(_t('ent.invTitle'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">' + leverSpinner(52) + '</div></div></div>';
+  let invs = [];
+  try { invs = await get('/api/company/invitations'); } catch (e) {}
+  const body = (invs && invs.length)
+    ? '<p class="text-sm" style="color:var(--gray-500);margin-bottom:10px">' + escapeHtml(_t('ent.invExplain')) + '</p>' +
+      invs.map(function (i) {
+        return '<div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+          '<strong>' + escapeHtml(i.company_name) + '</strong>' +
+          '<button class="btn btn-success btn-sm" onclick="acceptInvitation(' + i.company_id + ')">' + _t('ent.accept') + '</button></div>';
+      }).join('')
+    : '<div class="card"><p class="text-sm" style="color:var(--gray-500)">' + _t('ent.invEmpty') + '</p></div>';
+  el.innerHTML = pageHeader(_t('ent.invTitle'), back) + '<div class="acct-wrap">' + body + '</div>';
+}
+async function acceptInvitation(companyId) {
+  try { await post('/api/company/invitations/' + companyId + '/accept'); showToast(_t('ent.joined'), 'success'); route('#/empresa'); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+// ---- Individual provider subscription (scaffold — billing not live) ----
+async function renderProviderSubscription(el) {
+  const back = '<button class="btn btn-outline" onclick="route(\'#/profile\')">‹ ' + escapeHtml(_t('acct.back')) + '</button>';
+  el.innerHTML = pageHeader(_t('sub.title'), back) + '<div class="acct-wrap"><div class="empty"><div class="empty-icon">' + leverSpinner(52) + '</div></div></div>';
+  let s = { tier: 'free', status: 'inactive' };
+  try { s = await get('/api/provider/subscription'); } catch (e) {}
+  const isPro = s.tier === 'pro';
+  el.innerHTML = pageHeader(_t('sub.title'), back) +
+    '<div class="acct-wrap"><div class="card" style="max-width:520px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<span class="text-sm">' + _t('sub.tier') + '</span><strong>' + _t('sub.tier.' + s.tier) + '</strong></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+        '<span class="text-sm">' + _t('sub.status') + '</span><span class="badge">' + _subStLabel(s.status) + '</span></div>' +
+      '<p class="text-sm" style="color:var(--gray-500);margin-bottom:14px">' + escapeHtml(isPro ? _t('sub.pendingNote') : _t('sub.freeNote')) + '</p>' +
+      (isPro ? '' : '<button class="btn btn-primary" onclick="upgradeToPro()">' + _t('sub.upgrade') + '</button>') +
+    '</div></div>';
+}
+async function upgradeToPro() {
+  try { const r = await post('/api/provider/subscription/upgrade'); showToast(r.message || _t('sub.pendingNote'), 'success'); renderProviderSubscription(document.getElementById('content')); }
+  catch (e) { showToast(e.message, 'error'); }
 }
 
 async function renderMechanicDash(el) {
@@ -5339,6 +5578,7 @@ async function adminView(hash, el) {
   if (hash==='#/requests')        return renderAdminRequests(el);
   if (hash==='#/operations')      return renderAdminOperations(el);
   if (hash==='#/suggestions')     return renderAdminSuggestions(el);
+  if (hash==='#/subscriptions')   return renderAdminSubscriptions(el);
   if (hash==='#/disputes')        return renderAdminDisputes(el);
   if (hash==='#/reports')         return renderAdminReports(el);
   if (hash==='#/settings')        return renderSettings(el);
@@ -5420,6 +5660,25 @@ async function updateSuggestionStatus(id, status) {
 async function saveSuggestionNote(id) {
   const v = (document.getElementById('sug-note-' + id) || {}).value || '';
   try { await patch('/api/admin/suggestions/' + id, { admin_notes: v }); showToast('✓', 'success'); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+async function renderAdminSubscriptions(el) {
+  const subs = await get('/api/admin/subscriptions');
+  const rows = (subs || []).map(function (s) {
+    const on = s.status === 'active' || s.status === 'trial';
+    return '<div class="card" style="margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px">' +
+      '<div><strong>' + escapeHtml(s.subject_label || (s.subject_type + ' #' + s.subject_id)) + '</strong>' +
+        '<div class="text-sm" style="color:var(--gray-500)">' + s.subject_type + ' · ' + escapeHtml(s.tier) + ' · ' + _t('sub.st.' + s.status) + '</div></div>' +
+      '<button class="btn btn-sm ' + (on ? 'btn-ghost' : 'btn-primary') + '" onclick="setSubscription(' + s.id + ',\'' + (on ? 'inactive' : 'active') + '\')">' +
+        (on ? 'Deactivate' : 'Activate (comp)') + '</button>' +
+    '</div>';
+  }).join('') || '<p class="text-sm" style="color:var(--gray-500)">No subscriptions yet.</p>';
+  el.innerHTML = pageHeader('Subscriptions') +
+    '<p class="text-sm" style="color:var(--gray-500);margin-bottom:12px">Manually comp/activate until automated billing ships.</p>' + rows;
+}
+async function setSubscription(id, status) {
+  try { await patch('/api/admin/subscriptions/' + id, { status: status }); showToast('✓', 'success'); renderAdminSubscriptions(document.getElementById('content')); }
   catch (e) { showToast(e.message, 'error'); }
 }
 
@@ -7149,6 +7408,7 @@ function landingNav() {
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/services\')">' + _t('nav2.servicios') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/cobertura\')">' + _t('nav2.cobertura') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();landingScrollTo(\'how-section\')">' + _t('nav2.como') + '</button>' +
+    '<button class="nav-item" onclick="closeNavDrawer();route(\'#/registro/empresa\')">' + _t('ent.regEmpresa') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/novedades\')">' + _t('foot.news') + '</button>' +
     '<button class="nav-item" onclick="closeNavDrawer();route(\'#/sugerencias\')">' + _t('foot.suggest') + '</button>' +
   '</div>';
